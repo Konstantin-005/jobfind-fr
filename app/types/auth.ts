@@ -23,7 +23,9 @@ export interface AuthResponse {
   user: {
     id: string;
     email: string;
+    user_type?: 'job_seeker' | 'employer';
   };
+  user_type?: 'job_seeker' | 'employer';
 }
 
 export interface MessageResponse {

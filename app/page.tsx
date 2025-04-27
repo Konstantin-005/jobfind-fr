@@ -3,28 +3,32 @@ import Link from 'next/link'
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">JobFind</h1>
-          <p className="mt-2 text-gray-600">Найдите свою идеальную работу</p>
-        </div>
-        
-        <div className="mt-8 space-y-4">
-          <Link
-            href="/login"
-            className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+    <div className="relative flex flex-col items-center justify-center min-h-[70vh] p-4 bg-cover bg-center" style={{backgroundImage: 'url(/bg.jpg)'}}>
+      <div className="absolute inset-0 bg-black/40 z-0" />
+      <div className="relative z-10 w-full max-w-2xl mx-auto text-center">
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-lg">Найдите работу уже завтра</h1>
+        <form className="flex flex-col md:flex-row items-center gap-2 w-full">
+          <input
+            type="text"
+            placeholder="Профессия, должность или компания"
+            className="flex-1 rounded-md px-4 py-3 text-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm"
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-md text-lg shadow-md transition"
           >
-            Войти
-          </Link>
-          
-          <Link
-            href="/register"
-            className="flex w-full justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
+            Найти
+          </button>
+          <button
+            type="button"
+            className="ml-2 flex items-center justify-center bg-white border border-gray-200 rounded-md p-3 shadow hover:bg-gray-100"
+            title="Фильтры"
           >
-            Зарегистрироваться
-          </Link>
-        </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-700">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M6 12h12M9 18h6" />
+            </svg>
+          </button>
+        </form>
       </div>
     </div>
   )

@@ -1,0 +1,60 @@
+import { useEffect, useState } from 'react';
+
+// В реальном проекте здесь будет логика получения пользователя из localStorage, cookie или контекста
+export type UserRole = 'guest' | 'job_seeker' | 'employer';
+
+function parseJwt(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+export function useUser(): { role: UserRole; logout: () => void } {
+  const [role, setRole] = useState<UserRole>('guest');
+
+  useEffect(() => {
+    function updateRole() {
+      const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+      if (!userType) return setRole('guest');
+      if (userType === 'job_seeker') return setRole('job_seeker');
+      if (userType === 'employer') return setRole('employer');
+      setRole('guest');
+    }
+    updateRole();
+    window.addEventListener('storage', updateRole);
+    return () => window.removeEventListener('storage', updateRole);
+  }, []);
+
+  // Для обновления роли после логина/логаута в этом же окне
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+      const newRole: UserRole =
+        !userType ? 'guest' :
+        userType === 'job_seeker' ? 'job_seeker' :
+        userType === 'employer' ? 'employer' : 'guest';
+      setRole(prev => prev !== newRole ? newRole : prev);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_type');
+    setRole('guest');
+  }
+
+  return { role, logout };
+} 

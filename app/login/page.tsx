@@ -19,15 +19,17 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await authApi.login(email, password);
+      const response = await authApi.login({ email, password });
       
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        // Сохраняем токен в localStorage
+        // Сохраняем токен и user_type в localStorage
         localStorage.setItem('token', response.data.token);
-        // Перенаправляем на главную страницу
-        router.push('/');
+        if (response.data.user && response.data.user.user_type) {
+          localStorage.setItem('user_type', response.data.user.user_type);
+        }
+        window.location.href = '/';
       }
     } catch (err) {
       setError('Произошла ошибка при входе');
@@ -50,7 +52,6 @@ export default function Login() {
             {error}
           </div>
         )}
-        
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">

@@ -16,9 +16,8 @@ export default function ForgotPassword() {
     setError('');
     setSuccess('');
     setIsLoading(true);
-
     try {
-      const response = await authApi.forgotPassword(email);
+      const response = await authApi.forgotPassword({ email });
       
       if (response.error) {
         setError(response.error);
