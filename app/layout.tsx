@@ -4,6 +4,8 @@ import './globals.css'
 import dynamic from 'next/dynamic'
 
 const Header = dynamic(() => import('./components/Header'), { ssr: false })
+const CookieConsent = dynamic(() => import('./components/CookieConsent'), { ssr: false })
+const Footer = dynamic(() => import('./components/Footer'), { ssr: false })
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -45,6 +47,8 @@ export default function RootLayout({
         <main className="min-h-screen bg-gray-50">
           {children}
         </main>
+        <Footer />
+        <CookieConsent />
       </body>
     </html>
   )

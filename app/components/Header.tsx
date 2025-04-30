@@ -34,15 +34,15 @@ export default function Header() {
   if (!isClient) return null;
 
   return (
-    <header className="w-full fixed top-0 left-0 z-30 bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200">
+    <header className="w-full fixed top-0 left-0 z-30 bg-[#2B81B0] shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4 md:px-8">
         {/* Left: Город + Навигация для job_seeker */}
         <div className="flex items-center gap-4">
-          <Link href="#" className="text-blue-700 underline text-base font-semibold hover:text-blue-900 transition">Одинцово</Link>
+          <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Одинцово</Link>
           {role === 'job_seeker' && (
             <>
-              <Link href="#" className="text-blue-700 underline text-base font-semibold hover:text-blue-900 transition">Мои резюме</Link>
-              <Link href="#" className="text-blue-700 underline text-base font-semibold hover:text-blue-900 transition">Мои отклики</Link>
+              <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Мои резюме</Link>
+              <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Мои отклики</Link>
             </>
           )}
         </div>
@@ -50,18 +50,18 @@ export default function Header() {
         {role !== 'job_seeker' && (
           <nav className="hidden md:flex items-center gap-8">
             {role === 'guest' && <>
-              <Link href="#" className="text-gray-700 text-base font-medium hover:text-blue-700 transition">Соискателям</Link>
-              <Link href="#" className="text-blue-700 text-base font-semibold underline hover:text-blue-900 transition">Работодателям</Link>
+              <Link href="#" className="text-white text-base font-medium hover:text-gray-100 transition">Соискателям</Link>
+              <Link href="#" className="text-white text-base font-semibold underline hover:text-gray-100 transition">Работодателям</Link>
             </>}
             {role === 'employer' && <>
-              <Link href="#" className="text-gray-700 text-base font-medium hover:text-blue-700 transition">Мои вакансии</Link>
-              <Link href="#" className="text-blue-700 text-base font-semibold underline hover:text-blue-900 transition">Отклики</Link>
+              <Link href="#" className="text-white text-base font-medium hover:text-gray-100 transition">Мои вакансии</Link>
+              <Link href="#" className="text-white text-base font-semibold underline hover:text-gray-100 transition">Отклики</Link>
             </>}
           </nav>
         )}
         {/* Right: Кнопки */}
         <div className="flex items-center gap-2 md:gap-3">
-          <Link href="#" className={`text-blue-700 underline text-base font-semibold hover:text-blue-900 transition${role === 'job_seeker' ? '' : ' bg-yellow-600 text-white px-4 py-1.5 rounded-lg shadow hover:bg-yellow-700'}`}>Помощь</Link>
+          <Link href="#" className={`text-white underline text-base font-semibold hover:text-gray-100 transition${role === 'job_seeker' ? '' : ' bg-yellow-600 text-white px-4 py-1.5 rounded-lg shadow hover:bg-yellow-700'}`}>Помощь</Link>
           {role === 'guest' && <>
             <Link href="#" className="bg-green-100 text-green-900 px-4 py-1.5 rounded-lg text-sm font-semibold border border-green-300 shadow hover:bg-green-200 transition">Создать резюме</Link>
             <Link href="/login" className="bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow hover:bg-blue-800 transition">Войти</Link>
