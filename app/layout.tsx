@@ -4,8 +4,8 @@ import './globals.css'
 import dynamic from 'next/dynamic'
 
 const Header = dynamic(() => import('./components/Header'), { ssr: false })
-const CookieConsent = dynamic(() => import('./components/CookieConsent'), { ssr: false })
-const Footer = dynamic(() => import('./components/Footer'), { ssr: false })
+const CookieConsent = dynamic(() => import('./components/CookieConsent'), { ssr: true })
+const Footer = dynamic(() => import('./components/Footer'), { ssr: true })
 
 const inter = Inter({ subsets: ['latin'] })
 

@@ -1,17 +1,31 @@
-import React from 'react'
-import Link from 'next/link'
+'use client'
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const router = useRouter()
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    // Navigate to the vacancy page with the search term as a query parameter
+    if (searchTerm) {
+      router.push(`/vacancy?query=${encodeURIComponent(searchTerm)}`)
+    }
+  }
+
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[70vh] p-4 bg-cover bg-center" style={{backgroundImage: 'url(/bg.jpg)'}}>
       <div className="absolute inset-0 bg-black/40 z-0" />
       <div className="relative z-10 w-full max-w-2xl mx-auto text-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-lg">Найдите работу уже завтра</h1>
-        <form className="flex flex-col md:flex-row items-center gap-2 w-full">
+        <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 drop-shadow-lg">Работа в IT в Москве - тысячи вакансий в Ит-компаниях</h1>
+        <form className="flex flex-col md:flex-row items-center gap-2 w-full" onSubmit={handleSearch}>
           <input
             type="text"
-            placeholder="Профессия, должность или компания"
+            placeholder="Профессия или компания"
             className="flex-1 rounded-md px-4 py-3 text-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
           <button
             type="submit"
