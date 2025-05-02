@@ -1,0 +1,844 @@
+'use client'
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { API_ENDPOINTS } from '../config/api'
+
+interface JobFiltersProps {
+  onFilterChange: (filters: any) => void
+}
+
+interface Location {
+  id: number
+  name: string
+  type: 'city' | 'reg'
+}
+
+interface SelectedLocation {
+  id: number
+  name: string
+  type: 'city' | 'reg'
+}
+
+interface ProfessionGroup {
+  group_id: number
+  name: string
+  professions: {
+    profession_id: number
+    name: string
+  }[]
+}
+
+interface Industry {
+  industry_id: number
+  name: string
+}
+
+interface DropdownProps {
+  isOpen: boolean
+  onClose: () => void
+  children: React.ReactNode
+}
+
+const Dropdown: React.FC<DropdownProps> = ({ isOpen, onClose, children }) => {
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [onClose])
+
+  if (!isOpen) return null
+
+  return (
+    <div ref={dropdownRef} className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-y-auto">
+      {children}
+    </div>
+  )
+}
+
+export default function JobFilters({ onFilterChange }: JobFiltersProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [salaryFrom, setSalaryFrom] = useState('')
+  const [locationSearch, setLocationSearch] = useState('')
+  const [locationResults, setLocationResults] = useState<Location[]>([])
+  const [showLocationResults, setShowLocationResults] = useState(false)
+  const [selectedLocations, setSelectedLocations] = useState<SelectedLocation[]>([])
+  const locationSearchTimeout = useRef<NodeJS.Timeout>()
+  const locationSearchRef = useRef<HTMLDivElement>(null)
+  const isInitialMount = useRef(true)
+
+  // Profession filter
+  const [professionGroups, setProfessionGroups] = useState<ProfessionGroup[]>([])
+  const [showProfessions, setShowProfessions] = useState(false)
+  const [selectedProfessions, setSelectedProfessions] = useState<number[]>([])
+  const [tempSelectedProfessions, setTempSelectedProfessions] = useState<number[]>([])
+  const [openGroups, setOpenGroups] = useState<{ [id: number]: boolean }>({})
+
+  // Industry filter
+  const [industries, setIndustries] = useState<Industry[]>([])
+  const [showIndustries, setShowIndustries] = useState(false)
+  const [selectedIndustries, setSelectedIndustries] = useState<number[]>([])
+  const [tempSelectedIndustries, setTempSelectedIndustries] = useState<number[]>([])
+
+  // Education filter
+  const [selectedEducation, setSelectedEducation] = useState<string[]>([])
+  const educationOptions = [
+    { value: 'not_required', label: 'Не требуется/не указано' },
+    { value: 'school', label: 'Среднее' },
+    { value: 'specialist', label: 'Среднее профессиональное' },
+    { value: 'higher_edu', label: 'Высшее' }
+  ]
+
+  // Experience filter
+  const [selectedExperience, setSelectedExperience] = useState<string[]>([])
+  const experienceOptions = [
+    { value: '0', label: 'Без опыта' },
+    { value: '0_1', label: 'До 1 года' },
+    { value: '1_3', label: 'От 1 до 3 лет' },
+    { value: '3_5', label: 'От 3 до 5 лет' },
+    { value: 'more_5', label: 'Более 5 лет' }
+  ]
+
+  // Employment type filter
+  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([])
+  const employmentTypeOptions = [
+    { value: 'full', label: 'Полный день' },
+    { value: 'not_full', label: 'Неполный день' },
+    { value: 'agile', label: 'Гибкий рабочий день' },
+    { value: 'not_norm', label: 'Ненормированный рабочий день' },
+    { value: 'shift', label: 'Сменный' },
+    { value: 'vahta', label: 'Вахта' },
+    { value: 'project', label: 'Проектный' },
+    { value: 'intern', label: 'Стажировка' }
+  ]
+
+  // --- Новые состояния для поиска ---
+  const [professionSearch, setProfessionSearch] = useState('')
+  const [industrySearch, setIndustrySearch] = useState('')
+  const [showEmploymentTypes, setShowEmploymentTypes] = useState(false)
+  const [tempSelectedEmploymentTypes, setTempSelectedEmploymentTypes] = useState<string[]>([])
+
+  // --- Фильтрация профессий по поиску ---
+  const filteredProfessionGroups = professionGroups.map(group => ({
+    ...group,
+    professions: group.professions?.filter(p =>
+      p.name.toLowerCase().includes(professionSearch.toLowerCase())
+    ) || []
+  })).filter(group => group.professions.length > 0)
+
+  // --- Фильтрация отраслей по поиску ---
+  const filteredIndustries = industries.filter(i =>
+    i.name.toLowerCase().includes(industrySearch.toLowerCase())
+  )
+
+  // Initialize filters from URL
+  useEffect(() => {
+    const initializeFilters = async () => {
+      // Initialize salary
+      const salary = searchParams.get('salary')
+      if (salary) {
+        setSalaryFrom(salary)
+      }
+
+      // Initialize locations
+      const cityIds = searchParams.get('city_id')
+      if (cityIds) {
+        const ids = cityIds.split(',').map(Number)
+        try {
+          const locationPromises = ids.map(async (id) => {
+            const response = await fetch(`${API_ENDPOINTS.locations}?query=${id}`)
+            const data = await response.json()
+            const location = data.find((loc: Location) => loc.id === id)
+            if (location) {
+              return {
+                id: location.id,
+                name: location.name,
+                type: location.type
+              }
+            }
+            return null
+          })
+
+          const locations = (await Promise.all(locationPromises)).filter(Boolean)
+          setSelectedLocations(locations)
+        } catch (error) {
+          console.error('Failed to fetch location details:', error)
+        }
+      }
+
+      // Initialize professions
+      const professionIds = searchParams.get('profession_id')
+      if (professionIds) {
+        setSelectedProfessions(professionIds.split(',').map(Number))
+      }
+
+      // Initialize industries
+      const industryIds = searchParams.get('industry_id')
+      if (industryIds) {
+        setSelectedIndustries(industryIds.split(',').map(Number))
+      }
+
+      // Initialize education
+      const education = searchParams.get('education')
+      if (education) {
+        setSelectedEducation(education.split(','))
+      }
+
+      // Initialize experience
+      const experience = searchParams.get('work_experience')
+      if (experience) {
+        setSelectedExperience(experience.split(','))
+      }
+
+      // Initialize employment types
+      const employmentTypes = searchParams.get('employment_type')
+      if (employmentTypes) {
+        setSelectedEmploymentTypes(employmentTypes.split(','))
+      }
+    }
+
+    initializeFilters()
+  }, [searchParams])
+
+  // Fetch profession groups
+  useEffect(() => {
+    const fetchProfessions = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.dictionaries.professions)
+        if (!response.ok) throw new Error('Failed to fetch professions')
+        const data = await response.json()
+        // Преобразуем VacancyProfessions -> professions
+        const normalized = data.map((group: any) => ({
+          ...group,
+          professions: group.VacancyProfessions || []
+        }))
+        setProfessionGroups(normalized)
+      } catch (error) {
+        console.error('Failed to fetch professions:', error)
+      }
+    }
+    fetchProfessions()
+  }, [])
+
+  // Fetch industries
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.dictionaries.industries)
+        if (!response.ok) {
+          throw new Error('Failed to fetch industries')
+        }
+        const data = await response.json()
+        setIndustries(data)
+      } catch (error) {
+        console.error('Failed to fetch industries:', error)
+      }
+    }
+
+    fetchIndustries()
+  }, [])
+
+  const updateURL = (filters: any) => {
+    if (pathname === '/vacancy') {
+      const params = new URLSearchParams(searchParams.toString())
+      
+      if (filters.query) {
+        params.set('query', filters.query)
+      }
+      
+      if (filters.locations?.length > 0) {
+        const cityIds = filters.locations
+          .filter((loc: any) => loc.type === 'city')
+          .map((loc: any) => loc.id)
+        if (cityIds.length > 0) {
+          params.set('city_id', cityIds.join(','))
+        } else {
+          params.delete('city_id')
+        }
+      } else {
+        params.delete('city_id')
+      }
+      
+      if (filters.salaryFrom) {
+        params.set('salary', filters.salaryFrom)
+      } else {
+        params.delete('salary')
+      }
+
+      if (filters.professions?.length > 0) {
+        params.set('profession_id', filters.professions.join(','))
+      } else {
+        params.delete('profession_id')
+      }
+
+      if (filters.industries?.length > 0) {
+        params.set('industry_id', filters.industries.join(','))
+      } else {
+        params.delete('industry_id')
+      }
+
+      if (filters.education?.length > 0) {
+        params.set('education', filters.education.join(','))
+      } else {
+        params.delete('education')
+      }
+
+      if (filters.work_experience?.length > 0) {
+        params.set('work_experience', filters.work_experience.join(','))
+      } else {
+        params.delete('work_experience')
+      }
+
+      if (filters.employment_type?.length > 0) {
+        params.set('employment_type', filters.employment_type.join(','))
+      } else {
+        params.delete('employment_type')
+      }
+      
+      router.replace(`/vacancy?${params.toString()}`, { scroll: false })
+    }
+  }
+
+  const handleProfessionGroupSelect = (groupId: number) => {
+    const group = professionGroups.find(g => g.group_id === groupId)
+    if (!group || !Array.isArray(group.professions)) return
+
+    const groupProfessionIds = group.professions.map(p => p.profession_id)
+    const allSelected = groupProfessionIds.every(id => tempSelectedProfessions.includes(id))
+
+    if (allSelected) {
+      setTempSelectedProfessions(prev => prev.filter(id => !groupProfessionIds.includes(id)))
+    } else {
+      setTempSelectedProfessions(prev => [...new Set([...prev, ...groupProfessionIds])])
+    }
+  }
+
+  const handleProfessionSelect = (professionId: number) => {
+    setTempSelectedProfessions(prev => {
+      if (prev.includes(professionId)) {
+        return prev.filter(id => id !== professionId)
+      }
+      return [...prev, professionId]
+    })
+  }
+
+  const handleProfessionApply = () => {
+    setSelectedProfessions(tempSelectedProfessions)
+    setShowProfessions(false)
+    const filterData = { professions: tempSelectedProfessions }
+    updateURL(filterData)
+    onFilterChange(filterData)
+  }
+
+  const handleProfessionClear = () => {
+    setTempSelectedProfessions([])
+    setSelectedProfessions([])
+    setShowProfessions(false)
+    const filterData = { professions: [] }
+    updateURL(filterData)
+    onFilterChange(filterData)
+  }
+
+  const handleIndustrySelect = (industryId: number) => {
+    setTempSelectedIndustries(prev => {
+      if (prev.includes(industryId)) {
+        return prev.filter(id => id !== industryId)
+      }
+      return [...prev, industryId]
+    })
+  }
+
+  const handleIndustryApply = () => {
+    setSelectedIndustries(tempSelectedIndustries)
+    setShowIndustries(false)
+    const filterData = { industries: tempSelectedIndustries }
+    updateURL(filterData)
+    onFilterChange(filterData)
+  }
+
+  const handleIndustryClear = () => {
+    setTempSelectedIndustries([])
+    setSelectedIndustries([])
+    setShowIndustries(false)
+    const filterData = { industries: [] }
+    updateURL(filterData)
+    onFilterChange(filterData)
+  }
+
+  const handleEducationChange = (value: string) => {
+    setSelectedEducation(prev => {
+      const newSelection = prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+      const filterData = { education: newSelection }
+      updateURL(filterData)
+      onFilterChange(filterData)
+      return newSelection
+    })
+  }
+
+  const handleExperienceChange = (value: string) => {
+    setSelectedExperience(prev => {
+      const newSelection = prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+      const filterData = { work_experience: newSelection }
+      updateURL(filterData)
+      onFilterChange(filterData)
+      return newSelection
+    })
+  }
+
+  const handleEmploymentTypeChange = (value: string) => {
+    setSelectedEmploymentTypes(prev => {
+      const newSelection = prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+      const filterData = { employment_type: newSelection }
+      updateURL(filterData)
+      onFilterChange(filterData)
+      return newSelection
+    })
+  }
+
+  const getFirstSelectedProfession = () => {
+    if (selectedProfessions.length === 0) return 'Любая'
+    if (!professionGroups || professionGroups.length === 0) return 'Любая'
+    const firstProfession = professionGroups
+      .flatMap(g => g.professions)
+      .find(p => p.profession_id === selectedProfessions[0])
+    return firstProfession?.name || 'Любая'
+  }
+
+  const getFirstSelectedIndustry = () => {
+    if (selectedIndustries.length === 0) return 'Любая'
+    if (!industries || industries.length === 0) return 'Любая'
+    const firstIndustry = industries.find(i => i.industry_id === selectedIndustries[0])
+    return firstIndustry?.name || 'Любая'
+  }
+
+  const handleLocationSelect = (location: Location) => {
+    if (!selectedLocations.some(l => l.id === location.id)) {
+      const newLocation: SelectedLocation = {
+        id: location.id,
+        name: location.name,
+        type: location.type
+      }
+      const newLocations = [...selectedLocations, newLocation]
+      setSelectedLocations(newLocations)
+      setLocationSearch('')
+      setShowLocationResults(false)
+      
+      const filterData = {
+        locations: newLocations.map(l => ({
+          id: l.id,
+          type: l.type
+        }))
+      }
+      
+      updateURL(filterData)
+      onFilterChange(filterData)
+    }
+  }
+
+  const handleLocationRemove = (location: SelectedLocation) => {
+    const newLocations = selectedLocations.filter(l => l.id !== location.id)
+    setSelectedLocations(newLocations)
+    
+    const filterData = {
+      locations: newLocations.map(l => ({
+        id: l.id,
+        type: l.type
+      }))
+    }
+    
+    updateURL(filterData)
+    onFilterChange(filterData)
+  }
+
+  const toggleGroup = (groupId: number) => {
+    setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
+  }
+
+  const isGroupChecked = (group: ProfessionGroup) =>
+    Array.isArray(group.professions) &&
+    group.professions.length > 0 &&
+    group.professions.every(p => tempSelectedProfessions.includes(p.profession_id))
+
+  const isGroupIndeterminate = (group: ProfessionGroup) => {
+    if (!Array.isArray(group.professions) || group.professions.length === 0) return false
+    const checkedCount = group.professions.filter(p => tempSelectedProfessions.includes(p.profession_id)).length
+    return checkedCount > 0 && checkedCount < group.professions.length
+  }
+
+  return (
+    <div className="w-80 bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-xl font-semibold mb-6">Фильтры</h2>
+      
+      {/* Salary Filter */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Зарплата от
+        </label>
+        <input
+          type="number"
+          value={salaryFrom}
+          onChange={(e) => {
+            setSalaryFrom(e.target.value)
+            const filterData = { salaryFrom: e.target.value }
+            updateURL(filterData)
+            onFilterChange(filterData)
+          }}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Введите сумму"
+        />
+      </div>
+
+      {/* Location Filter */}
+      <div className="mb-6" ref={locationSearchRef}>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Город или Регион
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            value={locationSearch}
+            onChange={(e) => setLocationSearch(e.target.value)}
+            onFocus={() => setShowLocationResults(true)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Поиск по названию"
+          />
+          {showLocationResults && locationResults.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {locationResults.map((location) => (
+                <div
+                  key={location.id}
+                  onClick={() => handleLocationSelect(location)}
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  <div className="font-medium">{location.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {location.type === 'city' ? 'Город' : 'Регион'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mt-2 space-y-2">
+          {selectedLocations.map((location) => (
+            <div key={location.id} className="bg-gray-100 rounded-md p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="font-medium">{location.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {location.type === 'city' ? 'Город' : 'Регион'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleLocationRemove(location)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Фильтр "Специализация" */}
+      <div className="mb-6">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowProfessions(!showProfessions)
+              setTempSelectedProfessions(selectedProfessions)
+            }}
+            className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md text-gray-500"
+          >
+            <span>Специализация</span>
+            {selectedProfessions.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-[#2B81B0] rounded-full px-2 py-0.5 text-xs">
+                {selectedProfessions.length}
+              </span>
+            )}
+            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <Dropdown isOpen={showProfessions} onClose={() => setShowProfessions(false)}>
+            <div className="p-4 w-80 overflow-x-hidden whitespace-normal break-words">
+              <div className="max-h-48 overflow-y-auto">
+                {professionGroups.length === 0 && (
+                  <div className="text-gray-500 text-sm py-2">Нет результатов</div>
+                )}
+                {professionGroups.map(group => (
+                  <div key={group.group_id}>
+                    <div className="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
+                      <span
+                        className="mr-2 select-none flex items-center"
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleGroup(group.group_id);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {openGroups[group.group_id] ? (
+                          <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        ) : (
+                          <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isGroupChecked(group)}
+                        ref={el => {
+                          if (el) el.indeterminate = isGroupIndeterminate(group)
+                        }}
+                        onChange={e => {
+                          handleProfessionGroupSelect(group.group_id)
+                        }}
+                        onClick={e => e.stopPropagation()}
+                        className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                      />
+                      <span
+                        className="font-medium select-none"
+                        onClick={e => {
+                          e.stopPropagation();
+                          toggleGroup(group.group_id);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {group.name}
+                      </span>
+                    </div>
+                    {openGroups[group.group_id] && (
+                      <div className="ml-4 space-y-1">
+                        {Array.isArray(group.professions) && group.professions.length > 0 ? (
+                          group.professions.map(profession => (
+                            <label key={profession.profession_id} className="flex items-center py-1 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={tempSelectedProfessions.includes(profession.profession_id)}
+                                onChange={() => handleProfessionSelect(profession.profession_id)}
+                                className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                              />
+                              <span className="flex-1">{profession.name}</span>
+                            </label>
+                          ))
+                        ) : (
+                          <div className="text-gray-500 text-sm py-2">Нет доступных профессий</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  onClick={handleProfessionClear}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Отменить
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProfessionApply}
+                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </Dropdown>
+        </div>
+      </div>
+
+      {/* Фильтр "Отрасль компании" */}
+      <div className="mb-6">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowIndustries(!showIndustries)
+              setTempSelectedIndustries(selectedIndustries)
+            }}
+            className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md text-gray-500"
+          >
+            <span>Отрасль компании</span>
+            {selectedIndustries.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-[#2B81B0] rounded-full px-2 py-0.5 text-xs">
+                {selectedIndustries.length}
+              </span>
+            )}
+            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <Dropdown isOpen={showIndustries} onClose={() => setShowIndustries(false)}>
+            <div className="p-4 w-80 overflow-x-hidden">
+              <div className="max-h-48 overflow-y-auto">
+                {industries.length === 0 && (
+                  <div className="text-gray-500 text-sm py-2">Нет результатов</div>
+                )}
+                {industries.map(industry => (
+                  <label key={industry.industry_id} className="flex items-center py-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedIndustries.includes(industry.industry_id)}
+                      onChange={() => handleIndustrySelect(industry.industry_id)}
+                      className="mr-2"
+                    />
+                    <span className="flex-1">{industry.name}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  onClick={handleIndustryClear}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Отменить
+                </button>
+                <button
+                  type="button"
+                  onClick={handleIndustryApply}
+                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </Dropdown>
+        </div>
+      </div>
+
+      {/* Фильтр "Вид занятости" */}
+      <div className="mb-6">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowEmploymentTypes(!showEmploymentTypes)
+              setTempSelectedEmploymentTypes(selectedEmploymentTypes)
+            }}
+            className="w-full flex justify-between items-center px-3 py-2 border border-gray-300 rounded-md text-gray-500"
+          >
+            <span>Вид занятости</span>
+            {selectedEmploymentTypes.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-[#2B81B0] rounded-full px-2 py-0.5 text-xs">
+                {selectedEmploymentTypes.length}
+              </span>
+            )}
+            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <Dropdown isOpen={showEmploymentTypes} onClose={() => setShowEmploymentTypes(false)}>
+            <div className="p-4 w-80 overflow-x-hidden">
+              <div className="max-h-48 overflow-y-auto">
+                {employmentTypeOptions.map(option => (
+                  <label key={option.value} className="flex items-center py-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={tempSelectedEmploymentTypes.includes(option.value)}
+                      onChange={() => {
+                        setTempSelectedEmploymentTypes(prev =>
+                          prev.includes(option.value)
+                            ? prev.filter(v => v !== option.value)
+                            : [...prev, option.value]
+                        )
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="flex-1">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-between mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempSelectedEmploymentTypes(selectedEmploymentTypes)
+                    setShowEmploymentTypes(false)
+                  }}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Отменить
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedEmploymentTypes(tempSelectedEmploymentTypes)
+                    setShowEmploymentTypes(false)
+                    const filterData = { employment_type: tempSelectedEmploymentTypes }
+                    updateURL(filterData)
+                    onFilterChange(filterData)
+                  }}
+                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
+                >
+                  Применить
+                </button>
+              </div>
+            </div>
+          </Dropdown>
+        </div>
+      </div>
+
+      {/* Education Filter */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Образование
+        </label>
+        <div className="space-y-2">
+          {educationOptions.map(option => (
+            <div
+              key={option.value}
+              onClick={() => handleEducationChange(option.value)}
+              className={`cursor-pointer p-2 rounded ${
+                selectedEducation.includes(option.value)
+                  ? 'bg-blue-50 border border-[#2B81B0]'
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              {option.label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Experience Filter */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Опыт работы
+        </label>
+        <div className="space-y-2">
+          {experienceOptions.map(option => (
+            <div
+              key={option.value}
+              onClick={() => handleExperienceChange(option.value)}
+              className={`cursor-pointer p-2 rounded ${
+                selectedExperience.includes(option.value)
+                  ? 'bg-blue-50 border border-[#2B81B0]'
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              {option.label}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+} 

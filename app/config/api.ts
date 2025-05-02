@@ -7,4 +7,10 @@ export const API_ENDPOINTS = {
     forgotPassword: `${API_BASE_URL}/api/auth/forgot-password`,
     resetPassword: `${API_BASE_URL}/api/auth/reset-password`,
   },
+  locations: `${API_BASE_URL}/api/locations`,
+  jobs: `${API_BASE_URL}/api/jobs`,
+  dictionaries: {
+    professions: `${API_BASE_URL}/api/dictionaries/professions`,
+    industries: `${API_BASE_URL}/api/dictionaries/industries`,
+  },
 }; 
