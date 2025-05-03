@@ -56,7 +56,7 @@ const Dropdown: React.FC<DropdownProps> = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null
 
   return (
-    <div ref={dropdownRef} className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-y-auto">
+    <div ref={dropdownRef} className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-96 overflow-y-auto" style={{overflowX: 'hidden'}}>
       {children}
     </div>
   )
@@ -248,62 +248,40 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
 
   const updateURL = (filters: any) => {
     if (pathname === '/vacancy') {
-      const params = new URLSearchParams(searchParams.toString())
-      
-      if (filters.query) {
-        params.set('query', filters.query)
-      }
-      
-      if (filters.locations?.length > 0) {
-        const cityIds = filters.locations
-          .filter((loc: any) => loc.type === 'city')
-          .map((loc: any) => loc.id)
-        if (cityIds.length > 0) {
-          params.set('city_id', cityIds.join(','))
-        } else {
-          params.delete('city_id')
-        }
-      } else {
-        params.delete('city_id')
-      }
-      
-      if (filters.salaryFrom) {
-        params.set('salary', filters.salaryFrom)
-      } else {
-        params.delete('salary')
+      // Собираем все фильтры из состояния и searchParams
+      const allFilters: any = {
+        salaryFrom,
+        locations: selectedLocations.map(l => ({ id: l.id, type: l.type })),
+        professions: selectedProfessions,
+        industries: selectedIndustries,
+        education: selectedEducation,
+        work_experience: selectedExperience,
+        employment_type: selectedEmploymentTypes,
+        // сохраняем query из searchParams, если оно есть и не перезаписано явно
+        query: typeof filters.query !== 'undefined' ? filters.query : (searchParams.get('query') || undefined),
+        ...filters // перезаписываем только то, что явно меняется
       }
 
-      if (filters.professions?.length > 0) {
-        params.set('profession_id', filters.professions.join(','))
-      } else {
-        params.delete('profession_id')
+      // Формируем объект для url
+      const params: Record<string, string> = {}
+      if (allFilters.query) params['query'] = allFilters.query
+      if (allFilters.salaryFrom) params['salary'] = allFilters.salaryFrom
+      if (allFilters.locations && allFilters.locations.length > 0) {
+        const cityIds = allFilters.locations.filter((loc: any) => loc.type === 'city').map((loc: any) => loc.id)
+        if (cityIds.length > 0) params['city_id'] = cityIds.join(',')
       }
+      if (allFilters.professions && allFilters.professions.length > 0) params['profession_id'] = allFilters.professions.join(',')
+      if (allFilters.industries && allFilters.industries.length > 0) params['industry_id'] = allFilters.industries.join(',')
+      if (allFilters.education && allFilters.education.length > 0) params['education'] = allFilters.education.join(',')
+      if (allFilters.work_experience && allFilters.work_experience.length > 0) params['work_experience'] = allFilters.work_experience.join(',')
+      if (allFilters.employment_type && allFilters.employment_type.length > 0) params['employment_type'] = allFilters.employment_type.join(',')
 
-      if (filters.industries?.length > 0) {
-        params.set('industry_id', filters.industries.join(','))
-      } else {
-        params.delete('industry_id')
-      }
+      // Собираем строку вручную, чтобы не кодировать кириллицу и запятые
+      const queryString = Object.entries(params)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&')
 
-      if (filters.education?.length > 0) {
-        params.set('education', filters.education.join(','))
-      } else {
-        params.delete('education')
-      }
-
-      if (filters.work_experience?.length > 0) {
-        params.set('work_experience', filters.work_experience.join(','))
-      } else {
-        params.delete('work_experience')
-      }
-
-      if (filters.employment_type?.length > 0) {
-        params.set('employment_type', filters.employment_type.join(','))
-      } else {
-        params.delete('employment_type')
-      }
-      
-      router.replace(`/vacancy?${params.toString()}`, { scroll: false })
+      router.replace(`/vacancy${queryString ? '?' + queryString : ''}`, { scroll: false })
     }
   }
 
@@ -479,6 +457,28 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     return checkedCount > 0 && checkedCount < group.professions.length
   }
 
+  // --- Поиск по "Город или Регион" ---
+  useEffect(() => {
+    if (locationSearch.trim().length === 0) {
+      setLocationResults([])
+      return
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.locations}?query=${encodeURIComponent(locationSearch)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setLocationResults(data)
+        } else {
+          setLocationResults([])
+        }
+      } catch {
+        setLocationResults([])
+      }
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [locationSearch])
+
   return (
     <div className="w-80 bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold mb-6">Фильтры</h2>
@@ -518,39 +518,48 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
           />
           {showLocationResults && locationResults.length > 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {locationResults.map((location) => (
-                <div
-                  key={location.id}
-                  onClick={() => handleLocationSelect(location)}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                >
-                  <div className="font-medium">{location.name}</div>
-                  <div className="text-sm text-gray-500">
-                    {location.type === 'city' ? 'Город' : 'Регион'}
+              {locationResults.map((location) => {
+                const isChecked = selectedLocations.some(l => l.id === location.id)
+                return (
+                  <div
+                    key={location.id}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => {
+                      if (!isChecked) handleLocationSelect(location)
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      readOnly
+                      className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                    />
+                    <span className="font-medium">{location.name}</span>
+                    <span className="text-sm text-gray-500">{location.type === 'city' ? 'Город' : 'Регион'}</span>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
         <div className="mt-2 space-y-2">
           {selectedLocations.map((location) => (
-            <div key={location.id} className="bg-gray-100 rounded-md p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="font-medium">{location.name}</div>
-                  <div className="text-sm text-gray-500">
-                    {location.type === 'city' ? 'Город' : 'Регион'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleLocationRemove(location)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  ×
-                </button>
-              </div>
+            <div key={location.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={true}
+                onChange={() => handleLocationRemove(location)}
+                className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+              />
+              <span className="font-medium">{location.name}</span>
+              <button
+                type="button"
+                onClick={() => handleLocationRemove(location)}
+                className="ml-auto text-black text-2xl leading-none hover:text-red-600"
+                aria-label="Удалить"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
@@ -576,93 +585,79 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
           </button>
           <Dropdown isOpen={showProfessions} onClose={() => setShowProfessions(false)}>
-            <div className="p-4 w-80 overflow-x-hidden whitespace-normal break-words">
-              <div className="max-h-48 overflow-y-auto">
-                {professionGroups.length === 0 && (
-                  <div className="text-gray-500 text-sm py-2">Нет результатов</div>
-                )}
-                {professionGroups.map(group => (
-                  <div key={group.group_id}>
-                    <div className="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
-                      <span
-                        className="mr-2 select-none flex items-center"
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleGroup(group.group_id);
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {openGroups[group.group_id] ? (
-                          <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ) : (
-                          <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={isGroupChecked(group)}
-                        ref={el => {
-                          if (el) el.indeterminate = isGroupIndeterminate(group)
-                        }}
-                        onChange={e => {
-                          handleProfessionGroupSelect(group.group_id)
-                        }}
-                        onClick={e => e.stopPropagation()}
-                        className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
-                      />
-                      <span
-                        className="font-medium select-none"
-                        onClick={e => {
-                          e.stopPropagation();
-                          toggleGroup(group.group_id);
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {group.name}
-                      </span>
-                    </div>
-                    {openGroups[group.group_id] && (
-                      <div className="ml-4 space-y-1">
-                        {Array.isArray(group.professions) && group.professions.length > 0 ? (
-                          group.professions.map(profession => (
-                            <label key={profession.profession_id} className="flex items-center py-1 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={tempSelectedProfessions.includes(profession.profession_id)}
-                                onChange={() => handleProfessionSelect(profession.profession_id)}
-                                className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
-                              />
-                              <span className="flex-1">{profession.name}</span>
-                            </label>
-                          ))
-                        ) : (
-                          <div className="text-gray-500 text-sm py-2">Нет доступных профессий</div>
-                        )}
-                      </div>
-                    )}
+            <div className="p-4 w-80 whitespace-normal break-words max-h-48 overflow-y-auto" style={{overflowX: 'hidden'}}>
+              {professionGroups.length === 0 && (
+                <div className="text-gray-500 text-sm py-2">Нет результатов</div>
+              )}
+              {professionGroups.map(group => (
+                <div key={group.group_id}>
+                  <div className="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded">
+                    <span
+                      className="mr-2 select-none flex items-center"
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleGroup(group.group_id);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {openGroups[group.group_id] ? (
+                        <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <svg width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={isGroupChecked(group)}
+                      ref={el => {
+                        if (el) el.indeterminate = isGroupIndeterminate(group)
+                      }}
+                      onChange={e => {
+                        handleProfessionGroupSelect(group.group_id)
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                    />
+                    <span
+                      className="font-medium select-none"
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleGroup(group.group_id);
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {group.name}
+                    </span>
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-4">
-                <button
-                  type="button"
-                  onClick={handleProfessionClear}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  Отменить
-                </button>
-                <button
-                  type="button"
-                  onClick={handleProfessionApply}
-                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
-                >
-                  Применить
-                </button>
-              </div>
+                  {openGroups[group.group_id] && (
+                    <div className="ml-4 space-y-1">
+                      {Array.isArray(group.professions) && group.professions.length > 0 ? (
+                        group.professions.map(profession => (
+                          <label key={profession.profession_id} className="flex items-center py-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tempSelectedProfessions.includes(profession.profession_id)}
+                              onChange={() => handleProfessionSelect(profession.profession_id)}
+                              className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                            />
+                            <span className="flex-1">{profession.name}</span>
+                          </label>
+                        ))
+                      ) : (
+                        <div className="text-gray-500 text-sm py-2">Нет доступных профессий</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="sticky bottom-0 left-0 right-0 bg-white pt-2 pb-2 px-4 flex justify-between border-t border-gray-200">
+              <button type="button" onClick={handleProfessionClear} className="text-gray-600 hover:text-gray-800">Отменить</button>
+              <button type="button" onClick={handleProfessionApply} className="bg-[#2B81B0] text-white px-4 py-1 rounded">Применить</button>
             </div>
           </Dropdown>
         </div>
@@ -688,39 +683,25 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
           </button>
           <Dropdown isOpen={showIndustries} onClose={() => setShowIndustries(false)}>
-            <div className="p-4 w-80 overflow-x-hidden">
-              <div className="max-h-48 overflow-y-auto">
-                {industries.length === 0 && (
-                  <div className="text-gray-500 text-sm py-2">Нет результатов</div>
-                )}
-                {industries.map(industry => (
-                  <label key={industry.industry_id} className="flex items-center py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={tempSelectedIndustries.includes(industry.industry_id)}
-                      onChange={() => handleIndustrySelect(industry.industry_id)}
-                      className="mr-2"
-                    />
-                    <span className="flex-1">{industry.name}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex justify-between mt-4">
-                <button
-                  type="button"
-                  onClick={handleIndustryClear}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  Отменить
-                </button>
-                <button
-                  type="button"
-                  onClick={handleIndustryApply}
-                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
-                >
-                  Применить
-                </button>
-              </div>
+            <div className="p-4 w-80 whitespace-normal break-words max-h-48 overflow-y-auto" style={{overflowX: 'hidden'}}>
+              {filteredIndustries.length === 0 && (
+                <div className="text-gray-500 text-sm py-2">Нет результатов</div>
+              )}
+              {filteredIndustries.map(industry => (
+                <label key={industry.industry_id} className="flex items-center py-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tempSelectedIndustries.includes(industry.industry_id)}
+                    onChange={() => handleIndustrySelect(industry.industry_id)}
+                    className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                  />
+                  <span className="flex-1">{industry.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="sticky bottom-0 left-0 right-0 bg-white pt-2 pb-2 px-4 flex justify-between border-t border-gray-200">
+              <button type="button" onClick={handleIndustryClear} className="text-gray-600 hover:text-gray-800">Отменить</button>
+              <button type="button" onClick={handleIndustryApply} className="bg-[#2B81B0] text-white px-4 py-1 rounded">Применить</button>
             </div>
           </Dropdown>
         </div>
@@ -746,51 +727,28 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
           </button>
           <Dropdown isOpen={showEmploymentTypes} onClose={() => setShowEmploymentTypes(false)}>
-            <div className="p-4 w-80 overflow-x-hidden">
-              <div className="max-h-48 overflow-y-auto">
-                {employmentTypeOptions.map(option => (
-                  <label key={option.value} className="flex items-center py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={tempSelectedEmploymentTypes.includes(option.value)}
-                      onChange={() => {
-                        setTempSelectedEmploymentTypes(prev =>
-                          prev.includes(option.value)
-                            ? prev.filter(v => v !== option.value)
-                            : [...prev, option.value]
-                        )
-                      }}
-                      className="mr-2"
-                    />
-                    <span className="flex-1">{option.label}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex justify-between mt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTempSelectedEmploymentTypes(selectedEmploymentTypes)
-                    setShowEmploymentTypes(false)
-                  }}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  Отменить
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedEmploymentTypes(tempSelectedEmploymentTypes)
-                    setShowEmploymentTypes(false)
-                    const filterData = { employment_type: tempSelectedEmploymentTypes }
-                    updateURL(filterData)
-                    onFilterChange(filterData)
-                  }}
-                  className="bg-[#2B81B0] text-white px-4 py-1 rounded"
-                >
-                  Применить
-                </button>
-              </div>
+            <div className="p-4 w-80 whitespace-normal break-words max-h-48 overflow-y-auto" style={{overflowX: 'hidden'}}>
+              {employmentTypeOptions.map(option => (
+                <label key={option.value} className="flex items-center py-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tempSelectedEmploymentTypes.includes(option.value)}
+                    onChange={() => {
+                      setTempSelectedEmploymentTypes(prev =>
+                        prev.includes(option.value)
+                          ? prev.filter(v => v !== option.value)
+                          : [...prev, option.value]
+                      )
+                    }}
+                    className="mr-2 w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
+                  />
+                  <span className="flex-1">{option.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="sticky bottom-0 left-0 right-0 bg-white pt-2 pb-2 px-4 flex justify-between border-t border-gray-200">
+              <button type="button" onClick={() => { setTempSelectedEmploymentTypes(selectedEmploymentTypes); setShowEmploymentTypes(false); }} className="text-gray-600 hover:text-gray-800">Отменить</button>
+              <button type="button" onClick={() => { setSelectedEmploymentTypes(tempSelectedEmploymentTypes); setShowEmploymentTypes(false); const filterData = { employment_type: tempSelectedEmploymentTypes }; updateURL(filterData); onFilterChange(filterData); }} className="bg-[#2B81B0] text-white px-4 py-1 rounded">Применить</button>
             </div>
           </Dropdown>
         </div>
@@ -803,17 +761,20 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         </label>
         <div className="space-y-2">
           {educationOptions.map(option => (
-            <div
+            <label
               key={option.value}
-              onClick={() => handleEducationChange(option.value)}
-              className={`cursor-pointer p-2 rounded ${
-                selectedEducation.includes(option.value)
-                  ? 'bg-blue-50 border border-[#2B81B0]'
-                  : 'hover:bg-gray-100'
-              }`}
+              className="flex items-center cursor-pointer select-none"
             >
-              {option.label}
-            </div>
+              <input
+                type="checkbox"
+                checked={selectedEducation.includes(option.value)}
+                onChange={() => handleEducationChange(option.value)}
+                className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded mr-2 focus:ring-2 focus:ring-[#2B81B0]"
+              />
+              <span className={selectedEducation.includes(option.value) ? 'text-[#2B81B0] font-medium' : ''}>
+                {option.label === 'Не требуется/не указано' ? 'Не требуется или не указано' : option.label}
+              </span>
+            </label>
           ))}
         </div>
       </div>
@@ -825,17 +786,20 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         </label>
         <div className="space-y-2">
           {experienceOptions.map(option => (
-            <div
+            <label
               key={option.value}
-              onClick={() => handleExperienceChange(option.value)}
-              className={`cursor-pointer p-2 rounded ${
-                selectedExperience.includes(option.value)
-                  ? 'bg-blue-50 border border-[#2B81B0]'
-                  : 'hover:bg-gray-100'
-              }`}
+              className="flex items-center cursor-pointer select-none"
             >
-              {option.label}
-            </div>
+              <input
+                type="checkbox"
+                checked={selectedExperience.includes(option.value)}
+                onChange={() => handleExperienceChange(option.value)}
+                className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded mr-2 focus:ring-2 focus:ring-[#2B81B0]"
+              />
+              <span className={selectedExperience.includes(option.value) ? 'text-[#2B81B0] font-medium' : ''}>
+                {option.label}
+              </span>
+            </label>
           ))}
         </div>
       </div>
