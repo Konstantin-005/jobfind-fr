@@ -12,5 +12,7 @@ export const API_ENDPOINTS = {
   dictionaries: {
     professions: `${API_BASE_URL}/api/dictionaries/professions`,
     industries: `${API_BASE_URL}/api/dictionaries/industries`,
+    citiesByIds: `${API_BASE_URL}/api/dictionaries/cities-by-ids`,
+    regionsByIds: `${API_BASE_URL}/api/dictionaries/regions-by-ids`,
   },
 }; 

@@ -22,50 +22,38 @@ export default function Vacancy() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const [filters, setFilters] = useState<any>({})
 
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoading(true)
-        const query = searchParams.get('query')
-        
+        // Формируем параметры только из searchParams
+        const params = new URLSearchParams()
+        searchParams.forEach((value, key) => {
+          // Если параметр уже есть, добавляем как массив
+          if (params.has(key)) {
+            params.append(key, value)
+          } else {
+            params.set(key, value)
+          }
+        })
+
         // Cancel any ongoing request
         if (abortControllerRef.current) {
           abortControllerRef.current.abort()
         }
-        
-        // Create new AbortController for this request
         abortControllerRef.current = new AbortController()
-        
-        // Construct the API URL with query parameters
-        const params = new URLSearchParams()
-        if (query) {
-          params.append('query', query)
-        }
 
-        // Add filter parameters
-        Object.entries(filters).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            value.forEach(v => params.append(key, v))
-          } else if (value) {
-            params.append(key, value.toString())
-          }
-        })
-        
         const response = await fetch(`/api/jobs?${params.toString()}`, {
           signal: abortControllerRef.current.signal
         })
-        
         if (!response.ok) {
           throw new Error('Failed to fetch jobs')
         }
-        
         const data = await response.json()
         setJobs(data)
         setError(null)
       } catch (err) {
-        // Ignore abort errors
         if (err instanceof Error && err.name === 'AbortError') {
           return
         }
@@ -74,20 +62,13 @@ export default function Vacancy() {
         setLoading(false)
       }
     }
-
     fetchJobs()
-
-    // Cleanup function
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
     }
-  }, [searchParams, filters])
-
-  const handleFilterChange = (newFilters: any) => {
-    setFilters(prev => ({ ...prev, ...newFilters }))
-  }
+  }, [searchParams])
 
   if (loading) {
     return (
@@ -108,11 +89,9 @@ export default function Vacancy() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex gap-8">
-        <JobFilters onFilterChange={handleFilterChange} />
-        
+        <JobFilters />
         <div className="flex-1">
           <h1 className="text-3xl font-bold mb-8">Результаты поиска вакансий</h1>
-          
           {jobs.length === 0 ? (
             <div className="text-center text-gray-500">
               По вашему запросу вакансий не найдено

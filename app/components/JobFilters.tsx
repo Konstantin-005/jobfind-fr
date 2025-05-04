@@ -4,7 +4,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { API_ENDPOINTS } from '../config/api'
 
 interface JobFiltersProps {
-  onFilterChange: (filters: any) => void
+  onFilterChange?: (filters: any) => void
 }
 
 interface Location {
@@ -139,6 +139,84 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     i.name.toLowerCase().includes(industrySearch.toLowerCase())
   )
 
+  // --- Новое состояние для модального окна выбора локаций ---
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [tempSelectedLocations, setTempSelectedLocations] = useState<SelectedLocation[]>([])
+  const [tempLocationSearch, setTempLocationSearch] = useState('')
+  const [tempLocationResults, setTempLocationResults] = useState<Location[]>([])
+
+  // --- Поиск по локациям в модальном окне ---
+  useEffect(() => {
+    if (!showLocationModal) return
+    if (tempLocationSearch.trim().length === 0) {
+      setTempLocationResults([])
+      return
+    }
+    setTempLocationResults([])
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.locations}?query=${encodeURIComponent(tempLocationSearch)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setTempLocationResults(data)
+        } else {
+          setTempLocationResults([])
+        }
+      } catch {
+        setTempLocationResults([])
+      }
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [tempLocationSearch, showLocationModal])
+
+  // --- Открытие модального окна ---
+  const openLocationModal = () => {
+    setTempSelectedLocations(selectedLocations)
+    setTempLocationSearch('')
+    setTempLocationResults([])
+    setShowLocationModal(true)
+  }
+
+  // --- Закрытие модального окна ---
+  const closeLocationModal = () => {
+    setShowLocationModal(false)
+  }
+
+  // --- Добавление/удаление локации во временный список ---
+  const handleTempLocationToggle = (location: Location) => {
+    if (tempSelectedLocations.some(l => l.id === location.id)) {
+      setTempSelectedLocations(prev => prev.filter(l => l.id !== location.id))
+    } else {
+      setTempSelectedLocations(prev => [...prev, location])
+    }
+  }
+  const handleTempLocationRemove = (location: SelectedLocation) => {
+    setTempSelectedLocations(prev => prev.filter(l => l.id !== location.id))
+  }
+
+  // --- Применить выбранные локации ---
+  const handleLocationApply = () => {
+    setSelectedLocations(tempSelectedLocations)
+    setShowLocationModal(false)
+    const cityIds = tempSelectedLocations.filter(l => l.type === 'city').map(l => l.id)
+    const regionIds = tempSelectedLocations.filter(l => l.type === 'reg').map(l => l.id)
+    const filterData: any = {
+      locations: tempSelectedLocations.map(l => ({ id: l.id, type: l.type })),
+      city_id: cityIds.length > 0 ? cityIds : undefined,
+      region_id: regionIds.length > 0 ? regionIds : undefined
+    }
+    const urlFilterData: any = { ...filterData }
+    if (cityIds.length > 0) urlFilterData.city_id = cityIds.join(',')
+    if (regionIds.length > 0) urlFilterData.region_id = regionIds.join(',')
+    updateURL(urlFilterData)
+    onFilterChange?.(filterData)
+  }
+
+  // --- Отменить выбор ---
+  const handleLocationCancel = () => {
+    setShowLocationModal(false)
+  }
+
   // Initialize filters from URL
   useEffect(() => {
     const initializeFilters = async () => {
@@ -150,28 +228,48 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
 
       // Initialize locations
       const cityIds = searchParams.get('city_id')
+      const regionIds = searchParams.get('region_id')
+      let locations: SelectedLocation[] = []
       if (cityIds) {
         const ids = cityIds.split(',').map(Number)
         try {
-          const locationPromises = ids.map(async (id) => {
-            const response = await fetch(`${API_ENDPOINTS.locations}?query=${id}`)
-            const data = await response.json()
-            const location = data.find((loc: Location) => loc.id === id)
-            if (location) {
-              return {
-                id: location.id,
-                name: location.name,
-                type: location.type
-              }
-            }
-            return null
+          const response = await fetch(API_ENDPOINTS.dictionaries.citiesByIds, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city_ids: ids })
           })
-
-          const locations = (await Promise.all(locationPromises)).filter(Boolean)
-          setSelectedLocations(locations)
+          const data = await response.json()
+          const cityLocations = data.map((city: any) => ({
+            id: city.city_id,
+            name: city.name,
+            type: 'city' as const
+          }))
+          locations = locations.concat(cityLocations)
         } catch (error) {
-          console.error('Failed to fetch location details:', error)
+          console.error('Failed to fetch city details:', error)
         }
+      }
+      if (regionIds) {
+        const ids = regionIds.split(',').map(Number)
+        try {
+          const response = await fetch(API_ENDPOINTS.dictionaries.regionsByIds, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ region_ids: ids })
+          })
+          const data = await response.json()
+          const regionLocations = data.map((region: any) => ({
+            id: region.region_id,
+            name: region.name,
+            type: 'reg' as const
+          }))
+          locations = locations.concat(regionLocations)
+        } catch (error) {
+          console.error('Failed to fetch region details:', error)
+        }
+      }
+      if (locations.length > 0) {
+        setSelectedLocations(locations)
       }
 
       // Initialize professions
@@ -269,6 +367,8 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
       if (allFilters.locations && allFilters.locations.length > 0) {
         const cityIds = allFilters.locations.filter((loc: any) => loc.type === 'city').map((loc: any) => loc.id)
         if (cityIds.length > 0) params['city_id'] = cityIds.join(',')
+        const regionIds = allFilters.locations.filter((loc: any) => loc.type === 'reg').map((loc: any) => loc.id)
+        if (regionIds.length > 0) params['region_id'] = regionIds.join(',')
       }
       if (allFilters.professions && allFilters.professions.length > 0) params['profession_id'] = allFilters.professions.join(',')
       if (allFilters.industries && allFilters.industries.length > 0) params['industry_id'] = allFilters.industries.join(',')
@@ -313,7 +413,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     setShowProfessions(false)
     const filterData = { professions: tempSelectedProfessions }
     updateURL(filterData)
-    onFilterChange(filterData)
+    onFilterChange?.(filterData)
   }
 
   const handleProfessionClear = () => {
@@ -322,7 +422,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     setShowProfessions(false)
     const filterData = { professions: [] }
     updateURL(filterData)
-    onFilterChange(filterData)
+    onFilterChange?.(filterData)
   }
 
   const handleIndustrySelect = (industryId: number) => {
@@ -339,7 +439,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     setShowIndustries(false)
     const filterData = { industries: tempSelectedIndustries }
     updateURL(filterData)
-    onFilterChange(filterData)
+    onFilterChange?.(filterData)
   }
 
   const handleIndustryClear = () => {
@@ -348,7 +448,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     setShowIndustries(false)
     const filterData = { industries: [] }
     updateURL(filterData)
-    onFilterChange(filterData)
+    onFilterChange?.(filterData)
   }
 
   const handleEducationChange = (value: string) => {
@@ -358,7 +458,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         : [...prev, value]
       const filterData = { education: newSelection }
       updateURL(filterData)
-      onFilterChange(filterData)
+      onFilterChange?.(filterData)
       return newSelection
     })
   }
@@ -370,7 +470,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         : [...prev, value]
       const filterData = { work_experience: newSelection }
       updateURL(filterData)
-      onFilterChange(filterData)
+      onFilterChange?.(filterData)
       return newSelection
     })
   }
@@ -382,7 +482,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         : [...prev, value]
       const filterData = { employment_type: newSelection }
       updateURL(filterData)
-      onFilterChange(filterData)
+      onFilterChange?.(filterData)
       return newSelection
     })
   }
@@ -423,7 +523,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
       }
       
       updateURL(filterData)
-      onFilterChange(filterData)
+      onFilterChange?.(filterData)
     }
   }
 
@@ -439,7 +539,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
     }
     
     updateURL(filterData)
-    onFilterChange(filterData)
+    onFilterChange?.(filterData)
   }
 
   const toggleGroup = (groupId: number) => {
@@ -495,7 +595,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             setSalaryFrom(e.target.value)
             const filterData = { salaryFrom: e.target.value }
             updateURL(filterData)
-            onFilterChange(filterData)
+            onFilterChange?.(filterData)
           }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Введите сумму"
@@ -503,52 +603,17 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
       </div>
 
       {/* Location Filter */}
-      <div className="mb-6" ref={locationSearchRef}>
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Город или Регион
         </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={locationSearch}
-            onChange={(e) => setLocationSearch(e.target.value)}
-            onFocus={() => setShowLocationResults(true)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Поиск по названию"
-          />
-          {showLocationResults && locationResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {locationResults.map((location) => {
-                const isChecked = selectedLocations.some(l => l.id === location.id)
-                return (
-                  <div
-                    key={location.id}
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => {
-                      if (!isChecked) handleLocationSelect(location)
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      readOnly
-                      className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
-                    />
-                    <span className="font-medium">{location.name}</span>
-                    <span className="text-sm text-gray-500">{location.type === 'city' ? 'Город' : 'Регион'}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
         <div className="mt-2 space-y-2">
           {selectedLocations.map((location) => (
             <div key={location.id} className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={true}
-                onChange={() => handleLocationRemove(location)}
+                readOnly
                 className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded focus:ring-2 focus:ring-[#2B81B0]"
               />
               <span className="font-medium">{location.name}</span>
@@ -563,7 +628,104 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={openLocationModal}
+          className="mt-3 text-blue-700 underline text-base hover:text-blue-900"
+        >
+          Добавить локацию
+        </button>
       </div>
+
+      {/* Модальное окно выбора локаций */}
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white rounded-lg shadow-lg w-96 max-w-full p-6 relative">
+            <h3 className="text-lg font-semibold mb-4">Добавить локацию</h3>
+            <input
+              type="text"
+              value={tempLocationSearch}
+              onChange={e => setTempLocationSearch(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+              placeholder="Поиск по названию"
+              autoFocus
+            />
+            <div className="max-h-40 overflow-y-auto border-b border-gray-200 mb-2">
+              {tempLocationSearch && tempLocationResults.length === 0 && (
+                <div className="text-gray-500 text-sm py-2 px-2">Нет результатов</div>
+              )}
+              {tempLocationResults.map(location => (
+                <div
+                  key={location.id}
+                  className="flex items-center gap-2 px-2 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleTempLocationToggle(location)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!tempSelectedLocations.find(l => l.id === location.id)}
+                    readOnly
+                    className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded"
+                  />
+                  <span className="font-medium">{location.name}</span>
+                  <span className="text-sm text-gray-500">{location.type === 'city' ? 'Город' : 'Регион'}</span>
+                </div>
+              ))}
+            </div>
+            {/* Список выбранных локаций */}
+            {tempSelectedLocations.length > 0 && (
+              <div className="mb-2">
+                <div className="font-medium text-sm mb-1">Выбранные:</div>
+                <div className="space-y-1">
+                  {tempSelectedLocations.map(location => (
+                    <div key={location.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        readOnly
+                        className="w-5 h-5 accent-[#2B81B0] border-2 border-[#2B81B0] rounded"
+                      />
+                      <span className="font-medium">{location.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleTempLocationRemove(location)}
+                        className="ml-auto text-black text-2xl leading-none hover:text-red-600"
+                        aria-label="Удалить"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Кнопки управления */}
+            <div className="flex justify-between items-center mt-4">
+              <button
+                type="button"
+                onClick={handleLocationCancel}
+                className="text-gray-600 hover:text-gray-800 px-4 py-1"
+              >
+                Отменить
+              </button>
+              <button
+                type="button"
+                onClick={handleLocationApply}
+                className="bg-[#2B81B0] text-white px-4 py-1 rounded"
+              >
+                Применить
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={closeLocationModal}
+              className="absolute top-2 right-2 text-2xl text-gray-400 hover:text-red-600"
+              aria-label="Закрыть"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Фильтр "Специализация" */}
       <div className="mb-6">
@@ -748,7 +910,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
             </div>
             <div className="sticky bottom-0 left-0 right-0 bg-white pt-2 pb-2 px-4 flex justify-between border-t border-gray-200">
               <button type="button" onClick={() => { setTempSelectedEmploymentTypes(selectedEmploymentTypes); setShowEmploymentTypes(false); }} className="text-gray-600 hover:text-gray-800">Отменить</button>
-              <button type="button" onClick={() => { setSelectedEmploymentTypes(tempSelectedEmploymentTypes); setShowEmploymentTypes(false); const filterData = { employment_type: tempSelectedEmploymentTypes }; updateURL(filterData); onFilterChange(filterData); }} className="bg-[#2B81B0] text-white px-4 py-1 rounded">Применить</button>
+              <button type="button" onClick={() => { setSelectedEmploymentTypes(tempSelectedEmploymentTypes); setShowEmploymentTypes(false); const filterData = { employment_type: tempSelectedEmploymentTypes }; updateURL(filterData); onFilterChange?.(filterData); }} className="bg-[#2B81B0] text-white px-4 py-1 rounded">Применить</button>
             </div>
           </Dropdown>
         </div>
