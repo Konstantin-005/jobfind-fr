@@ -631,7 +631,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         <button
           type="button"
           onClick={openLocationModal}
-          className="mt-3 text-blue-700 underline text-base hover:text-blue-900"
+          className="mt-3 underline text-base text-[#2B81B0] hover:text-[#18608a]"
         >
           Добавить локацию
         </button>
