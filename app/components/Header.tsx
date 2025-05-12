@@ -41,7 +41,7 @@ export default function Header() {
           <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Одинцово</Link>
           {role === 'job_seeker' && (
             <>
-              <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Мои резюме</Link>
+              <Link href="/resume" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Мои резюме</Link>
               <Link href="#" className="text-white hover:text-gray-100 underline text-base font-semibold transition">Мои отклики</Link>
             </>
           )}
@@ -61,7 +61,6 @@ export default function Header() {
         )}
         {/* Right: Кнопки */}
         <div className="flex items-center gap-2 md:gap-3">
-          <Link href="#" className={`text-white underline text-base font-semibold hover:text-gray-100 transition${role === 'job_seeker' ? '' : ' bg-yellow-600 text-white px-4 py-1.5 rounded-lg shadow hover:bg-yellow-700'}`}>Помощь</Link>
           {role === 'guest' && <>
             <Link href="#" className="bg-green-100 text-green-900 px-4 py-1.5 rounded-lg text-sm font-semibold border border-green-300 shadow hover:bg-green-200 transition">Создать резюме</Link>
             <Link href="/login" className="bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-semibold shadow hover:bg-blue-800 transition">Войти</Link>

@@ -15,4 +15,7 @@ export const API_ENDPOINTS = {
     citiesByIds: `${API_BASE_URL}/api/dictionaries/cities-by-ids`,
     regionsByIds: `${API_BASE_URL}/api/dictionaries/regions-by-ids`,
   },
+  resumes: {
+    my: `${API_BASE_URL}/api/resumes/my`,
+  },
 }; 

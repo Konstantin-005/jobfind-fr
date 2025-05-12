@@ -79,4 +79,13 @@ export const authApi = {
       body: JSON.stringify({ token, password }),
     });
   },
-}; 
+};
+
+export async function getMyResumes(token: string) {
+  return apiRequest<any[]>(API_ENDPOINTS.resumes.my, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+} 
