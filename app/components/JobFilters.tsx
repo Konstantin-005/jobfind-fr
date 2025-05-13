@@ -580,7 +580,7 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
   }, [locationSearch])
 
   return (
-    <div className="w-80 bg-white rounded-lg shadow-md p-6">
+    <div className="w-80 bg-white rounded-lg p-6">
       <h2 className="text-xl font-semibold mb-6">Фильтры</h2>
       
       {/* Salary Filter */}

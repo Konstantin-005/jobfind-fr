@@ -199,7 +199,7 @@ export default function Vacancy() {
         <JobFilters />
         <div className="flex-1">
           {/* Поисковая панель и сортировка */}
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6 flex flex-col gap-2 sticky top-0 z-20">
+          <div className="bg-white rounded-lg p-4 mb-6 flex flex-col gap-2 sticky top-0 z-20">
             {/* Первая строка: поиск и кнопки */}
             <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
               <input
@@ -276,7 +276,7 @@ export default function Vacancy() {
           ) : (
             <div className="grid gap-6">
               {jobs.map((job) => (
-                <div key={job.id} className="bg-white rounded-lg shadow-md p-6">
+                <div key={job.id} className="bg-white rounded-lg p-6">
                   <h2 className="text-xl font-semibold mb-2">{job.title}</h2>
                   <p className="text-gray-600 mb-2">{job.company}</p>
                   <div className="flex flex-wrap gap-2 mb-4">
