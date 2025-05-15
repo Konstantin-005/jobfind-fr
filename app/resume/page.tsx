@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getMyResumes } from '../utils/api';
 
 interface Resume {
@@ -25,6 +26,7 @@ export default function ResumePage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchResumes = async () => {
@@ -35,6 +37,13 @@ export default function ResumePage() {
         if (!token) {
           setError('Не авторизовано');
           setLoading(false);
+          router.push('/login');
+          return;
+        }
+        const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+        if (userType !== 'job_seeker') {
+          setLoading(false);
+          router.push('/');
           return;
         }
         const res = await getMyResumes(token);
@@ -50,7 +59,7 @@ export default function ResumePage() {
       }
     };
     fetchResumes();
-  }, []);
+  }, [router]);
 
   return (
     <div className="max-w-6xl mx-auto pt-12 pb-8 px-4">
