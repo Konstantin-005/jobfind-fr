@@ -1,0 +1,43 @@
+{
+"driving_license_categories": [
+	{
+		"category_id" : 1,
+		"code" : "A",
+		"description" : null
+	},
+	{
+		"category_id" : 2,
+		"code" : "B",
+		"description" : null
+	},
+	{
+		"category_id" : 3,
+		"code" : "C",
+		"description" : null
+	},
+	{
+		"category_id" : 4,
+		"code" : "D",
+		"description" : null
+	},
+	{
+		"category_id" : 5,
+		"code" : "E",
+		"description" : null
+	},
+	{
+		"category_id" : 6,
+		"code" : "BE",
+		"description" : null
+	},
+	{
+		"category_id" : 7,
+		"code" : "CE",
+		"description" : null
+	},
+	{
+		"category_id" : 8,
+		"code" : "DE",
+		"description" : null
+	}
+]}

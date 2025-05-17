@@ -48,6 +48,10 @@ export default function ResumePage() {
         }
         const res = await getMyResumes(token);
         if (res.error) {
+          if (res.error.includes('Job seeker profile not found')) {
+            router.push('/profile?from=resumeAdd');
+            return;
+          }
           setError(res.error);
         } else {
           setResumes(res.data || []);
@@ -65,7 +69,7 @@ export default function ResumePage() {
     <div className="max-w-6xl mx-auto pt-12 pb-8 px-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-4xl font-bold text-gray-900">Мои резюме</h1>
-        <Link href="#" className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-2 rounded-lg font-semibold text-base shadow hover:bg-blue-100 transition">
+        <Link href="/resume/add" className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-5 py-2 rounded-lg font-semibold text-base shadow hover:bg-blue-100 transition">
           <span className="text-lg">+</span> Создать резюме
         </Link>
       </div>

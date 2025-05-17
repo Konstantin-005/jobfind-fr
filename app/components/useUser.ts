@@ -21,12 +21,30 @@ function parseJwt(token: string): any {
   }
 }
 
+function isTokenExpired(token: string): boolean {
+  const decoded = parseJwt(token);
+  if (!decoded || !decoded.exp) return true;
+  
+  // exp в JWT хранится в секундах, а Date.now() возвращает миллисекунды
+  return decoded.exp * 1000 < Date.now();
+}
+
 export function useUser(): { role: UserRole; logout: () => void } {
   const [role, setRole] = useState<UserRole>('guest');
 
   useEffect(() => {
     function updateRole() {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+      
+      // Проверяем наличие и валидность токена
+      if (!token || isTokenExpired(token)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user_type');
+        setRole('guest');
+        return;
+      }
+
       if (!userType) return setRole('guest');
       if (userType === 'job_seeker') return setRole('job_seeker');
       if (userType === 'employer') return setRole('employer');
@@ -40,7 +58,17 @@ export function useUser(): { role: UserRole; logout: () => void } {
   // Для обновления роли после логина/логаута в этом же окне
   useEffect(() => {
     const interval = setInterval(() => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+      
+      // Проверяем наличие и валидность токена
+      if (!token || isTokenExpired(token)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user_type');
+        setRole('guest');
+        return;
+      }
+
       const newRole: UserRole =
         !userType ? 'guest' :
         userType === 'job_seeker' ? 'job_seeker' :

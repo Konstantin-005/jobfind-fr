@@ -1,0 +1,48 @@
+{
+"languages": [
+	{
+		"language_id" : 1,
+		"name" : "Английский",
+		"code" : "ENG"
+	},
+	{
+		"language_id" : 2,
+		"name" : "Хинди",
+		"code" : "HIN"
+	},
+	{
+		"language_id" : 3,
+		"name" : "Испанский",
+		"code" : "SPA"
+	},
+	{
+		"language_id" : 4,
+		"name" : "Французский",
+		"code" : "FRA"
+	},
+	{
+		"language_id" : 5,
+		"name" : "Русский",
+		"code" : "RUS"
+	},
+	{
+		"language_id" : 6,
+		"name" : "Португальский",
+		"code" : "POR"
+	},
+	{
+		"language_id" : 7,
+		"name" : "Немецкий",
+		"code" : "DEU"
+	},
+	{
+		"language_id" : 8,
+		"name" : "Итальянский",
+		"code" : "ITA"
+	},
+	{
+		"language_id" : 9,
+		"name" : "Японский",
+		"code" : "JPN"
+	}
+]}
