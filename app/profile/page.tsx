@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { API_ENDPOINTS } from "../config/api";
 import languagesData from "../config/languages_202505172245.json";
 import drivingLicenseCategoriesData from "../config/driving_license_categories_202505172315.json";
+import CityAutocomplete from '../components/CityAutocomplete';
 
 const jobSearchStatuses = [
   { value: "actively_looking", label: "Активно ищу работу" },
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [cities, setCities] = useState<{ id: number; name: string }[]>([]);
   const [form, setForm] = useState<any>({
     job_search_status: "actively_looking",
@@ -49,6 +51,17 @@ export default function ProfilePage() {
   const [showDrivingDropdown, setShowDrivingDropdown] = useState(false);
   const drivingDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Проверка авторизации и типа пользователя
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userType = localStorage.getItem("user_type");
+
+    if (!token || userType !== "job_seeker") {
+      router.push("/vacancy");
+      return;
+    }
+  }, [router]);
+
   // Получение городов
   useEffect(() => {
     fetch(API_ENDPOINTS.locations)
@@ -60,6 +73,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) return;
+    
     fetch(API_ENDPOINTS.jobSeekerProfile.me, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -74,12 +88,37 @@ export default function ProfilePage() {
           return;
         }
         const data = await r.json();
+
+        // Получаем название города по ID
+        let cityName = "";
+        if (data.city_id) {
+          try {
+            const cityResponse = await fetch(API_ENDPOINTS.dictionaries.citiesByIds, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ city_ids: [data.city_id] }),
+            });
+            const cityData = await cityResponse.json();
+            if (cityData && cityData.length > 0) {
+              cityName = cityData[0].name;
+            }
+          } catch (error) {
+            console.error('Error fetching city name:', error);
+          }
+        }
+
         setForm({
           ...form,
           ...data,
           birth_date: data.birth_date ? data.birth_date.split("T")[0] : "",
-          languages: data.languages || [],
-          driving_licenses: data.driving_licenses || [],
+          languages: data.JobSeekerLanguages?.map((lang: any) => ({
+            language_id: lang.language_id.toString(),
+            proficiency_level: lang.proficiency_level
+          })) || [],
+          driving_licenses: data.JobSeekerDrivingLicenses?.map((license: any) => license.category_id) || [],
+          city_name: cityName
         });
         setLoading(false);
       })
@@ -146,34 +185,50 @@ export default function ProfilePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) return;
     const method = form.profile_id ? "PUT" : "POST";
     const url = form.profile_id ? API_ENDPOINTS.jobSeekerProfile.update : API_ENDPOINTS.jobSeekerProfile.create;
-    const body = { ...form };
-    // Преобразование driving_licenses в массив объектов, если нужно
-    if (Array.isArray(form.driving_licenses) && typeof form.driving_licenses[0] === "number") {
-      body.driving_licenses = form.driving_licenses.map((id: number) => ({ category_id: id }));
-    }
+
+    // Формируем тело запроса в соответствии со спецификацией API
+    const requestBody = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      middle_name: form.middle_name,
+      birth_date: form.birth_date,
+      gender: form.gender,
+      job_search_status: form.job_search_status,
+      city_id: parseInt(form.city_id),
+      driving_licenses: form.driving_licenses.map((id: number) => ({
+        category_id: id
+      })),
+      languages: form.languages.map((lang: any) => ({
+        language_id: parseInt(lang.language_id),
+        proficiency_level: lang.proficiency_level
+      }))
+    };
+
     fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
     })
       .then(async (r) => {
         if (!r.ok) {
-          setError("Ошибка сохранения профиля");
+          const errorData = await r.json().catch(() => ({}));
+          setError(errorData.message || "Ошибка сохранения профиля");
           setLoading(false);
           return;
         }
-        // После успешного сохранения можно редиректить на /resume/add если fromResumeAdd
         if (fromResumeAdd) {
           router.push("/resume/add");
         } else {
+          setSuccess("Данные профиля успешно обновлены.");
           setLoading(false);
         }
       })
@@ -188,10 +243,11 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-bold mb-8">Данные профиля</h1>
       {fromResumeAdd && (
         <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded">
-          Для создания резюме необходимо заполнить профиль соискателя.
+          Видимость ФИО для работодателей можно будет указать в настройках резюме.
         </div>
       )}
-      {error && <div className="mb-4 text-red-600">{error}</div>}
+      {error && <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 text-red-800 rounded">{error}</div>}
+      {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 text-green-800 rounded">{success}</div>}
       <form className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4" onSubmit={handleSubmit}>
         <label className="font-semibold text-sm flex items-center gap-1">Статус поиска работы <span className="text-red-500">*</span></label>
         <select name="job_search_status" value={form.job_search_status} onChange={handleChange} required className="border rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition placeholder-gray-400">
@@ -214,12 +270,12 @@ export default function ProfilePage() {
         <label className="font-semibold text-sm flex items-center gap-1">Дата рождения <span className="text-red-500">*</span></label>
         <input name="birth_date" type="date" value={form.birth_date} onChange={handleChange} required className="border rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition" placeholder="ДД.ММ.ГГГГ" />
         <label className="font-semibold text-sm flex items-center gap-1">Город проживания <span className="text-red-500">*</span></label>
-        <select name="city_id" value={form.city_id} onChange={handleChange} required className="border rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition">
-          <option value="">Выберите город</option>
-          {cities.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <CityAutocomplete
+          value={form.city_id}
+          onChange={(cityId) => setForm({ ...form, city_id: cityId })}
+          required
+          initialCityName={form.city_name}
+        />
         <label className="font-semibold text-sm">Владение иностранными языками</label>
         <div>
           {form.languages.map((lang: any, idx: number) => (
