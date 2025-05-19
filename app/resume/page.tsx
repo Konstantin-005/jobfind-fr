@@ -80,7 +80,7 @@ export default function ResumePage() {
       ) : error ? (
         <div className="text-center text-red-500 py-8">{error}</div>
       ) : resumes.length === 0 ? (
-        <div className="text-center text-gray-500 py-8">У вас пока нет резюме</div>
+        <div className="text-center text-gray-500 py-8">У вас пока нет резюме. Создайте его, чтобы откликнуться на вакансии.</div>
       ) : (
         <div className="divide-y divide-gray-200">
           {resumes.map((resume) => (
