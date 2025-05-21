@@ -11,12 +11,15 @@ export const API_ENDPOINTS = {
   jobs: `${API_BASE_URL}/api/jobs`,
   dictionaries: {
     professions: `${API_BASE_URL}/api/dictionaries/professions`,
+    professionsSearch: `${API_BASE_URL}/api/dictionaries/professions/search`,
     industries: `${API_BASE_URL}/api/dictionaries/industries`,
     citiesByIds: `${API_BASE_URL}/api/dictionaries/cities-by-ids`,
     regionsByIds: `${API_BASE_URL}/api/dictionaries/regions-by-ids`,
   },
   resumes: {
     my: `${API_BASE_URL}/api/resumes/my`,
+    create: `${API_BASE_URL}/api/resumes`,
+    update: (resumeId: number) => `${API_BASE_URL}/api/resumes/${resumeId}`,
   },
   jobSeekerProfile: {
     create: `${API_BASE_URL}/api/job-seeker-profiles`,
