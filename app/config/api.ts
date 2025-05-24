@@ -15,6 +15,9 @@ export const API_ENDPOINTS = {
     industries: `${API_BASE_URL}/api/dictionaries/industries`,
     citiesByIds: `${API_BASE_URL}/api/dictionaries/cities-by-ids`,
     regionsByIds: `${API_BASE_URL}/api/dictionaries/regions-by-ids`,
+    companiesSearch: `${API_BASE_URL}/api/dictionaries/companies/search`,
+    educationalInstitutionsSearch: `${API_BASE_URL}/api/dictionaries/educational-institutions/search`,
+    specializationsSearch: `${API_BASE_URL}/api/dictionaries/specializations/search`,
   },
   resumes: {
     my: `${API_BASE_URL}/api/resumes/my`,
@@ -26,4 +29,5 @@ export const API_ENDPOINTS = {
     me: `${API_BASE_URL}/api/job-seeker-profiles/me`,
     update: `${API_BASE_URL}/api/job-seeker-profiles/me`,
   },
+  citiesSearch: `${API_BASE_URL}/api/locations/cities/search`,
 }; 

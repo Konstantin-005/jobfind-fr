@@ -1,0 +1,31 @@
+{
+"education_types": [
+	{
+		"education_type_id" : 1,
+		"name" : "Среднее"
+	},
+	{
+		"education_type_id" : 2,
+		"name" : "Среднее профессиональное"
+	},
+	{
+		"education_type_id" : 3,
+		"name" : "Неполное высшее"
+	},
+	{
+		"education_type_id" : 4,
+		"name" : "Высшее"
+	},
+	{
+		"education_type_id" : 5,
+		"name" : "MBA"
+	},
+	{
+		"education_type_id" : 6,
+		"name" : "Кандидат наук"
+	},
+	{
+		"education_type_id" : 7,
+		"name" : "Доктор наук"
+	}
+]}

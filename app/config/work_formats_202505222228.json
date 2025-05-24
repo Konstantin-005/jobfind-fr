@@ -1,0 +1,23 @@
+{
+"work_formats": [
+	{
+		"work_format_id" : 1,
+		"name" : "Удаленно"
+	},
+	{
+		"work_format_id" : 2,
+		"name" : "Гибрид"
+	},
+	{
+		"work_format_id" : 3,
+		"name" : "На месте работодателя"
+	},
+	{
+		"work_format_id" : 4,
+		"name" : "Вахта"
+	},
+	{
+		"work_format_id" : 5,
+		"name" : "Разъездной"
+	}
+]}

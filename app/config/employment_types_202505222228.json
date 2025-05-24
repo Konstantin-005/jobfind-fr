@@ -1,0 +1,23 @@
+{
+"employment_types": [
+	{
+		"employment_type_id" : 1,
+		"name" : "Полная занятость"
+	},
+	{
+		"employment_type_id" : 2,
+		"name" : "Частичная занятость"
+	},
+	{
+		"employment_type_id" : 3,
+		"name" : "Проектная занятость"
+	},
+	{
+		"employment_type_id" : 4,
+		"name" : "Стажировка"
+	},
+	{
+		"employment_type_id" : 5,
+		"name" : "Волонтерство"
+	}
+]}
