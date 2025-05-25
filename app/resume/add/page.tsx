@@ -1003,7 +1003,6 @@ export default function ResumeAddPage() {
             <section>
               <h1 className="text-2xl font-bold mb-6">Контакты и настройки видимости</h1>
               <div className="mb-8">
-                <h2 className="text-lg font-medium mb-4">Контакты</h2>
                 <div className="space-y-4">
                   <div>
                     <input
