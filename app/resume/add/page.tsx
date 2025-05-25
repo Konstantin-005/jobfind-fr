@@ -11,7 +11,8 @@ const steps = [
   { label: "Условия работы" },
   { label: "Опыт работы" },
   { label: "Уровень образования" },
-  { label: "Настройки видимости" },
+  { label: "О себе" },
+  { label: "Контакты и настройки видимости" },
 ];
 
 export default function ResumeAddPage() {
@@ -63,6 +64,19 @@ export default function ResumeAddPage() {
         end_year: "",
       },
     ],
+    professional_summary: "",
+    phone: "",
+    phoneComment: "",
+    hasWhatsapp: false,
+    hasTelegram: false,
+    email: "",
+    website: "",
+    hideNameAndPhoto: false,
+    hidePhone: false,
+    hideEmail: false,
+    hideOtherContacts: false,
+    hideCompanyNames: false,
+    visibility: "public" as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only",
   });
   const [suggestions, setSuggestions] = useState<Array<{ profession_id: number; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -381,6 +395,70 @@ export default function ResumeAddPage() {
     handleEducationChange(idx, "specialization_id", spec.specialization_id);
     handleEducationChange(idx, "specialization", spec.name);
     handleEducationChange(idx, "specializationSuggestions", []);
+  };
+
+  // 2. Добавляю обработчик для поля professional_summary
+  const handleProfessionalSummaryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, professional_summary: e.target.value }));
+  };
+
+  // 2. Добавляю обработчики для полей контактов и настроек видимости
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Маска для телефона: +7(XXX)XXX-XX-XX
+    const maskedValue = value.replace(/\D/g, "").replace(/^(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, p1, p2, p3, p4) => {
+      let result = "+7";
+      if (p1) result += `(${p1}`;
+      if (p2) result += `)${p2}`;
+      if (p3) result += `-${p3}`;
+      if (p4) result += `-${p4}`;
+      return result;
+    });
+    setForm((prev) => ({ ...prev, phone: maskedValue }));
+  };
+
+  const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, phoneComment: e.target.value }));
+  };
+
+  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hasWhatsapp: e.target.checked }));
+  };
+
+  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hasTelegram: e.target.checked }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, email: e.target.value }));
+  };
+
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, website: e.target.value }));
+  };
+
+  const handleHideNameAndPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideNameAndPhoto: e.target.checked }));
+  };
+
+  const handleHidePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hidePhone: e.target.checked }));
+  };
+
+  const handleHideEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideEmail: e.target.checked }));
+  };
+
+  const handleHideOtherContactsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideOtherContacts: e.target.checked }));
+  };
+
+  const handleHideCompanyNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideCompanyNames: e.target.checked }));
+  };
+
+  const handleVisibilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, visibility: e.target.value as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only" }));
   };
 
   return (
@@ -890,7 +968,191 @@ export default function ResumeAddPage() {
               </div>
             </section>
           )}
-          {/* Здесь будут остальные шаги */}
+
+          {currentStep === 4 && (
+            <section>
+              <h1 className="text-2xl font-bold mb-6">О себе</h1>
+              <div className="mb-8">
+                <label className="block text-lg font-medium mb-2">Расскажите о себе</label>
+                <textarea
+                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                  placeholder="Опишите свой опыт, навыки и достижения"
+                  value={form.professional_summary}
+                  onChange={handleProfessionalSummaryChange}
+                  rows={8}
+                />
+              </div>
+              <div className="flex justify-between mt-12">
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handlePrev}
+                >
+                  Назад
+                </button>
+                <button
+                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
+                  onClick={handleNext}
+                >
+                  Далее
+                </button>
+              </div>
+            </section>
+          )}
+
+          {currentStep === 5 && (
+            <section>
+              <h1 className="text-2xl font-bold mb-6">Контакты и настройки видимости</h1>
+              <div className="mb-8">
+                <h2 className="text-lg font-medium mb-4">Контакты</h2>
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="text"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="Телефон в формате +7(XXX)XXX-XX-XX"
+                      value={form.phone}
+                      onChange={handlePhoneChange}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={form.hasWhatsapp}
+                        onChange={handleHasWhatsappChange}
+                      />
+                      Есть Вотсап
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={form.hasTelegram}
+                        onChange={handleHasTelegramChange}
+                      />
+                      Есть Телеграм
+                    </label>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="Комментарий к номеру телефона"
+                      value={form.phoneComment}
+                      onChange={handlePhoneCommentChange}
+                    />
+                  </div>               
+                  <div>
+                    <input
+                      type="email"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="Email"
+                      value={form.email}
+                      onChange={handleEmailChange}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="Веб-сайт"
+                      value={form.website}
+                      onChange={handleWebsiteChange}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="mb-8">
+                <h2 className="text-lg font-medium mb-4">Настройки приватности</h2>
+                <div className="space-y-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={form.hideNameAndPhoto}
+                      onChange={handleHideNameAndPhotoChange}
+                    />
+                    Скрыть ФИО и фото
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={form.hidePhone}
+                      onChange={handleHidePhoneChange}
+                    />
+                    Скрыть номер телефона
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={form.hideEmail}
+                      onChange={handleHideEmailChange}
+                    />
+                    Скрыть Емайл
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={form.hideOtherContacts}
+                      onChange={handleHideOtherContactsChange}
+                    />
+                    Скрыть остальные контакты
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={form.hideCompanyNames}
+                      onChange={handleHideCompanyNamesChange}
+                    />
+                    Скрыть названия компаний в опыте работы
+                  </label>
+                  <div>
+                    <label className="block text-base mb-2">Видимость резюме</label>
+                    <div className="space-y-2">
+                      {[
+                        { value: "public", label: "Видно всем зарегистрированным работодателям на сайте" },
+                        { value: "excluded_companies", label: "Видно всем, кроме работодателей из черного списка" },
+                        { value: "selected_companies", label: "Видно только работодателям из белого списка" },
+                        { value: "link_only", label: "Доступ только по прямой ссылке" },
+                        { value: "private", label: "Не видно никому" },
+                      ].map((option) => (
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="radio"
+                            name="visibility"
+                            className="mr-2"
+                            value={option.value}
+                            checked={form.visibility === option.value}
+                            onChange={handleVisibilityChange}
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between mt-12">
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handlePrev}
+                >
+                  Назад
+                </button>
+                <button
+                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
+                  onClick={handleNext}
+                >
+                  Далее
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </div>
