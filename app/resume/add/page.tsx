@@ -17,6 +17,8 @@ const steps = [
 
 export default function ResumeAddPage() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [form, setForm] = useState({
     title: "",
     salary_expectation: "",
@@ -459,6 +461,112 @@ export default function ResumeAddPage() {
 
   const handleVisibilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, visibility: e.target.value as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only" }));
+  };
+
+  const handleSave = async () => {
+    try {
+      // Проверка обязательных полей
+      if (!form.title) {
+        setErrorMessage('Укажите желаемую должность');
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      if (form.employment_type_ids.length === 0) {
+        setErrorMessage('Выберите хотя бы один тип занятости');
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      if (form.work_format_ids.length === 0) {
+        setErrorMessage('Выберите хотя бы один формат работы');
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      if (!form.city_id) {
+        setErrorMessage('Укажите город поиска работы');
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login?redirect=/resume/add');
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.resumes.create, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: form.title,
+          professional_summary: form.professional_summary,
+          salary_expectation: form.salary_expectation ? Number(form.salary_expectation) : undefined,
+          visibility: form.visibility,
+          phone: form.phone,
+          email: form.email,
+          has_whatsapp: form.hasWhatsapp,
+          has_telegram: form.hasTelegram,
+          employment_type_ids: form.employment_type_ids.map(id => Number(id)),
+          work_format_ids: form.work_format_ids.map(id => Number(id)),
+          work_experiences: form.work_experiences.map(exp => ({
+            company_id: exp.company_id,
+            company_name: exp.company_name,
+            city_id: exp.city_id,
+            position: exp.profession_name,
+            profession_id: exp.profession_id,
+            start_month: exp.start_month,
+            start_year: Number(exp.start_year),
+            end_month: exp.end_month,
+            end_year: exp.end_year ? Number(exp.end_year) : undefined,
+            is_current: exp.is_current,
+            responsibilities: exp.responsibilities,
+          })),
+          educations: form.educations.map(edu => ({
+            institution_id: edu.institution_id,
+            specialization_id: edu.specialization_id,
+            end_year: Number(edu.end_year),
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Произошла ошибка при создании резюме';
+        
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Проверьте правильность заполнения данных формы';
+            break;
+          case 401:
+            localStorage.removeItem('token');
+            router.push('/login?redirect=/resume/add');
+            return;
+          case 403:
+            errorMessage = 'У вас нет прав для выполнения этого действия';
+            break;
+          case 404:
+            errorMessage = 'Страница не найдена';
+            break;
+          case 500:
+            errorMessage = 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже';
+            break;
+        }
+
+        setErrorMessage(errorMessage);
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      router.push('/resume');
+    } catch (error) {
+      console.error('Error creating resume:', error);
+      setErrorMessage('Произошла ошибка при создании резюме. Пожалуйста, попробуйте позже');
+      setIsErrorModalOpen(true);
+    }
   };
 
   return (
@@ -1145,15 +1253,43 @@ export default function ResumeAddPage() {
                 </button>
                 <button
                   className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleNext}
+                  onClick={handleSave}
                 >
-                  Далее
+                  Сохранить
                 </button>
               </div>
             </section>
           )}
         </div>
       </main>
+
+      {/* Модальное окно с ошибкой */}
+      {isErrorModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Ошибка</h3>
+              <button
+                onClick={() => setIsErrorModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">{errorMessage}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsErrorModalOpen(false)}
+                className="bg-[#2B81B0] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#18608a] transition"
+              >
+                Понятно
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
