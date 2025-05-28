@@ -406,17 +406,31 @@ export default function ResumeAddPage() {
 
   // 2. Добавляю обработчики для полей контактов и настроек видимости
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Маска для телефона: +7(XXX)XXX-XX-XX
-    const maskedValue = value.replace(/\D/g, "").replace(/^(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/, (_, p1, p2, p3, p4) => {
-      let result = "+7";
-      if (p1) result += `(${p1}`;
-      if (p2) result += `)${p2}`;
-      if (p3) result += `-${p3}`;
-      if (p4) result += `-${p4}`;
-      return result;
+    const input = e.target;
+    const cursorPosition = input.selectionStart || 0;
+    
+    // Получаем только цифры из введенного значения, исключая +7
+    let value = input.value.replace(/[^\d]/g, '');
+    if (value.startsWith('7')) {
+      value = value.slice(1);
+    }
+    
+    // Ограничиваем длину до 10 цифр
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    
+    // Форматируем номер
+    const formattedValue = value.length > 0 ? `+7${value}` : '';
+    
+    setForm((prev) => ({ ...prev, phone: formattedValue }));
+
+    // Восстанавливаем позицию курсора
+    requestAnimationFrame(() => {
+      // Всегда ставим курсор в конец, если вводим новую цифру
+      const newPosition = formattedValue.length;
+      input.setSelectionRange(newPosition, newPosition);
     });
-    setForm((prev) => ({ ...prev, phone: maskedValue }));
   };
 
   const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -511,6 +525,7 @@ export default function ResumeAddPage() {
           email: form.email,
           has_whatsapp: form.hasWhatsapp,
           has_telegram: form.hasTelegram,
+          business_trips: form.business_trips || undefined,
           employment_type_ids: form.employment_type_ids.map(id => Number(id)),
           work_format_ids: form.work_format_ids.map(id => Number(id)),
           work_experiences: form.work_experiences.map(exp => ({
@@ -762,7 +777,7 @@ export default function ResumeAddPage() {
                 <button
                   className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
                   onClick={handleNext}
-                  disabled={form.employment_type_ids.length === 0 || form.work_format_ids.length === 0 || !form.business_trips}
+                  disabled={form.employment_type_ids.length === 0 || form.work_format_ids.length === 0}
                 >
                   Далее
                 </button>
@@ -1116,7 +1131,7 @@ export default function ResumeAddPage() {
                     <input
                       type="text"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Телефон в формате +7(XXX)XXX-XX-XX"
+                      placeholder="Телефон в формате +7XXXXXXXXXX"
                       value={form.phone}
                       onChange={handlePhoneChange}
                     />
