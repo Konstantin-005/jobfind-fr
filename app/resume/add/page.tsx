@@ -19,6 +19,8 @@ export default function ResumeAddPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     salary_expectation: "",
@@ -191,7 +193,10 @@ export default function ResumeAddPage() {
 
   // Автокомплит для компании
   const handleCompanyInput = async (idx: number, value: string) => {
+    // Очищаем company_id при редактировании текста
     handleWorkExpChange(idx, "company_name", value);
+    handleWorkExpChange(idx, "company_id", undefined);
+    
     if (!value.trim()) {
       handleWorkExpChange(idx, "companySuggestions", []);
       return;
@@ -239,7 +244,10 @@ export default function ResumeAddPage() {
 
   // Автокомплит для должности
   const handleProfessionInput = async (idx: number, value: string) => {
-    handleWorkExpChange(idx, "profession_name", value);
+    // Очищаем profession_id при редактировании текста
+    handleWorkExpChange(idx, "position", value);
+    handleWorkExpChange(idx, "profession_id", undefined);
+    
     if (!value.trim()) {
       handleWorkExpChange(idx, "professionSuggestions", []);
       return;
@@ -256,12 +264,26 @@ export default function ResumeAddPage() {
   };
   const handleProfessionSelect = (idx: number, prof: { profession_id: number; name: string }) => {
     handleWorkExpChange(idx, "profession_id", prof.profession_id);
-    handleWorkExpChange(idx, "profession_name", prof.name);
+    handleWorkExpChange(idx, "position", prof.name);
     handleWorkExpChange(idx, "professionSuggestions", []);
   };
 
   // Переход к следующему шагу (заглушка)
   const handleNext = () => {
+    // Проверка на первом шаге
+    if (currentStep === 0) {
+      if (!form.title.trim()) {
+        setErrorMessage('Укажите желаемую должность');
+        setIsErrorModalOpen(true);
+        return;
+      }
+      if (!form.city_id && !form.city_name.trim()) {
+        setErrorMessage('Укажите город поиска работы');
+        setIsErrorModalOpen(true);
+        return;
+      }
+    }
+
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -280,7 +302,13 @@ export default function ResumeAddPage() {
   };
 
   const handleSearchCityInput = async (value: string) => {
-    setForm((prev) => ({ ...prev, city_name: value }));
+    // Очищаем city_id при редактировании текста
+    setForm((prev) => ({ 
+      ...prev, 
+      city_name: value,
+      city_id: undefined // Очищаем city_id при любом изменении текста
+    }));
+    
     if (!value.trim()) {
       setForm((prev) => ({ ...prev, citySuggestions: [] }));
       return;
@@ -477,10 +505,22 @@ export default function ResumeAddPage() {
     setForm((prev) => ({ ...prev, visibility: e.target.value as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only" }));
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     try {
       // Проверка обязательных полей
-      if (!form.title) {
+      if (!form.title.trim()) {
         setErrorMessage('Укажите желаемую должность');
         setIsErrorModalOpen(true);
         return;
@@ -498,7 +538,7 @@ export default function ResumeAddPage() {
         return;
       }
 
-      if (!form.city_id) {
+      if (!form.city_id && !form.city_name.trim()) {
         setErrorMessage('Укажите город поиска работы');
         setIsErrorModalOpen(true);
         return;
@@ -510,43 +550,71 @@ export default function ResumeAddPage() {
         return;
       }
 
+      // Создаем FormData для отправки файла
+      const formData = new FormData();
+      
+      // Добавляем все поля формы
+      formData.append('title', form.title);
+      formData.append('professional_summary', form.professional_summary);
+      if (form.salary_expectation) {
+        formData.append('salary_expectation', form.salary_expectation);
+      }
+      formData.append('visibility', form.visibility);
+      formData.append('phone', form.phone);
+      formData.append('email', form.email);
+      formData.append('has_whatsapp', String(form.hasWhatsapp));
+      formData.append('has_telegram', String(form.hasTelegram));
+      formData.append('business_trips', form.business_trips || '');
+      
+      // Добавляем данные города
+      if (form.city_id) {
+        formData.append('city_id', String(form.city_id));
+      }
+      if (form.city_name) {
+        formData.append('city_name', form.city_name);
+      }
+      
+      // Добавляем массивы
+      form.employment_type_ids.forEach(id => {
+        formData.append('employment_type_ids[]', String(id));
+      });
+      form.work_format_ids.forEach(id => {
+        formData.append('work_format_ids[]', String(id));
+      });
+      
+      // Добавляем опыт работы
+      form.work_experiences.forEach((exp, index) => {
+        formData.append(`work_experiences[${index}][company_id]`, String(exp.company_id || ''));
+        formData.append(`work_experiences[${index}][company_name]`, exp.company_name);
+        formData.append(`work_experiences[${index}][city_id]`, String(exp.city_id || ''));
+        formData.append(`work_experiences[${index}][position]`, exp.position);
+        formData.append(`work_experiences[${index}][profession_id]`, String(exp.profession_id || ''));
+        formData.append(`work_experiences[${index}][start_month]`, String(exp.start_month || ''));
+        formData.append(`work_experiences[${index}][start_year]`, exp.start_year);
+        formData.append(`work_experiences[${index}][end_month]`, String(exp.end_month || ''));
+        formData.append(`work_experiences[${index}][end_year]`, exp.end_year || '');
+        formData.append(`work_experiences[${index}][is_current]`, String(exp.is_current));
+        formData.append(`work_experiences[${index}][responsibilities]`, exp.responsibilities);
+      });
+
+      // Добавляем образование
+      form.educations.forEach((edu, index) => {
+        formData.append(`educations[${index}][institution_id]`, String(edu.institution_id || ''));
+        formData.append(`educations[${index}][specialization_id]`, String(edu.specialization_id || ''));
+        formData.append(`educations[${index}][end_year]`, edu.end_year);
+      });
+
+      // Добавляем фото, если оно есть
+      if (photo) {
+        formData.append('photo', photo);
+      }
+
       const response = await fetch(API_ENDPOINTS.resumes.create, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: form.title,
-          professional_summary: form.professional_summary,
-          salary_expectation: form.salary_expectation ? Number(form.salary_expectation) : undefined,
-          visibility: form.visibility,
-          phone: form.phone,
-          email: form.email,
-          has_whatsapp: form.hasWhatsapp,
-          has_telegram: form.hasTelegram,
-          business_trips: form.business_trips || undefined,
-          employment_type_ids: form.employment_type_ids.map(id => Number(id)),
-          work_format_ids: form.work_format_ids.map(id => Number(id)),
-          work_experiences: form.work_experiences.map(exp => ({
-            company_id: exp.company_id,
-            company_name: exp.company_name,
-            city_id: exp.city_id,
-            position: exp.profession_name,
-            profession_id: exp.profession_id,
-            start_month: exp.start_month,
-            start_year: Number(exp.start_year),
-            end_month: exp.end_month,
-            end_year: exp.end_year ? Number(exp.end_year) : undefined,
-            is_current: exp.is_current,
-            responsibilities: exp.responsibilities,
-          })),
-          educations: form.educations.map(edu => ({
-            institution_id: edu.institution_id,
-            specialization_id: edu.specialization_id,
-            end_year: Number(edu.end_year),
-          })),
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -629,6 +697,7 @@ export default function ResumeAddPage() {
           {currentStep === 0 && (
             <section>
               <h1 className="text-2xl font-bold mb-6">Кем вы хотите работать?</h1>
+              
               <div className="relative">
                 <input
                   type="text"
@@ -692,11 +761,41 @@ export default function ResumeAddPage() {
                   </ul>
                 )}
               </div>
+              {/* Фото профиля */}
+              <div className="mt-6">
+                <label className="block text-lg font-medium mb-2">Ваше фото (не обязательно)</label>
+              </div>
+              <div className="mb-8 flex flex-col items-center">
+                <div className="relative w-32 h-32 mb-4">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Фото профиля"
+                      className="w-full h-full object-cover rounded-full border-2 border-[#2B81B0]"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-gray-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <label className="cursor-pointer bg-white text-[#2B81B0] border border-[#2B81B0] px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition">
+                  {photoPreview ? 'Изменить фото' : 'Добавить фото'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                  />
+                </label>
+              </div>
               <div className="flex justify-end mt-12">
                 <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
+                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleNext}
-                  disabled={!form.title.trim()}
+                  disabled={currentStep === 0 && (!form.title.trim() || (!form.city_id && !form.city_name.trim()))}
                 >
                   Далее
                 </button>
@@ -865,7 +964,7 @@ export default function ResumeAddPage() {
                       type="text"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
                       placeholder="Должность"
-                      value={exp.profession_name}
+                      value={exp.position}
                       onChange={e => handleProfessionInput(idx, e.target.value)}
                       autoComplete="off"
                     />
