@@ -23,14 +23,11 @@ export default function ResumeAddPage() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
+    profession_id: undefined as number | undefined,
     salary_expectation: "",
     employment_type_ids: [] as number[],
     work_format_ids: [] as number[],
     business_trips: "" as "yes" | "no" | "sometimes" | "",
-    city_id: undefined as number | undefined,
-    city_name: "",
-    citySuggestions: [] as Array<{ city_id: number; name: string }>,
-    isLoadingCity: false,
     work_experiences: [
       {
         company_id: undefined as number | undefined,
@@ -39,7 +36,6 @@ export default function ResumeAddPage() {
         city_name: "",
         position: "",
         profession_id: undefined as number | undefined,
-        profession_name: "",
         start_month: undefined as number | undefined,
         start_year: "",
         end_month: undefined as number | undefined,
@@ -114,8 +110,8 @@ export default function ResumeAddPage() {
   };
 
   // Обработка выбора профессии из подсказок
-  const handleSuggestionClick = (name: string) => {
-    setForm((prev) => ({ ...prev, title: name }));
+  const handleSuggestionClick = (name: string, id?: number) => {
+    setForm((prev) => ({ ...prev, title: name, profession_id: id }));
     setSuggestions([]);
   };
 
@@ -173,7 +169,6 @@ export default function ResumeAddPage() {
           city_name: "",
           position: "",
           profession_id: undefined,
-          profession_name: "",
           start_month: undefined,
           start_year: "",
           end_month: undefined,
@@ -277,11 +272,6 @@ export default function ResumeAddPage() {
         setIsErrorModalOpen(true);
         return;
       }
-      if (!form.city_id && !form.city_name.trim()) {
-        setErrorMessage('Укажите город поиска работы');
-        setIsErrorModalOpen(true);
-        return;
-      }
     }
 
     if (currentStep < steps.length - 1) {
@@ -302,36 +292,13 @@ export default function ResumeAddPage() {
   };
 
   const handleSearchCityInput = async (value: string) => {
-    // Очищаем city_id при редактировании текста
-    setForm((prev) => ({ 
-      ...prev, 
-      city_name: value,
-      city_id: undefined // Очищаем city_id при любом изменении текста
-    }));
-    
-    if (!value.trim()) {
-      setForm((prev) => ({ ...prev, citySuggestions: [] }));
-      return;
-    }
-    setForm((prev) => ({ ...prev, isLoadingCity: true }));
-    try {
-      const res = await fetch(`${API_ENDPOINTS.citiesSearch}?query=${encodeURIComponent(value)}`);
-      let data = await res.json();
-      data = data.map((city: any) => ({ city_id: city.city_id ?? city.id, name: city.name }));
-      setForm((prev) => ({ ...prev, citySuggestions: data }));
-    } catch (e) {
-      setForm((prev) => ({ ...prev, citySuggestions: [] }));
-    }
-    setForm((prev) => ({ ...prev, isLoadingCity: false }));
+    // Функция больше не нужна, оставлена пустой для совместимости если вызывается где-то
+    return;
   };
 
   const handleSearchCitySelect = (city: { city_id: number; name: string }) => {
-    setForm((prev) => ({
-      ...prev,
-      city_id: city.city_id,
-      city_name: city.name,
-      citySuggestions: [],
-    }));
+    // Функция больше не нужна, оставлена пустой для совместимости если вызывается где-то
+    return;
   };
 
   // 1. Добавляю функцию для удаления блока опыта работы
@@ -383,7 +350,10 @@ export default function ResumeAddPage() {
 
   // 2. Обработчики для автокомплита учебного заведения
   const handleInstitutionInput = async (idx: number, value: string) => {
+    // Очищаем institution_id при редактировании текста
     handleEducationChange(idx, "institution", value);
+    handleEducationChange(idx, "institution_id", undefined);
+    
     if (!value.trim()) {
       handleEducationChange(idx, "institutionSuggestions", []);
       return;
@@ -398,15 +368,13 @@ export default function ResumeAddPage() {
     }
     handleEducationChange(idx, "isLoadingInstitution", false);
   };
-  const handleInstitutionSelect = (idx: number, inst: { institution_id: number; name: string }) => {
-    handleEducationChange(idx, "institution_id", inst.institution_id);
-    handleEducationChange(idx, "institution", inst.name);
-    handleEducationChange(idx, "institutionSuggestions", []);
-  };
 
   // 3. Обработчики для автокомплита специальности
   const handleSpecializationInput = async (idx: number, value: string) => {
+    // Очищаем specialization_id при редактировании текста
     handleEducationChange(idx, "specialization", value);
+    handleEducationChange(idx, "specialization_id", undefined);
+    
     if (!value.trim()) {
       handleEducationChange(idx, "specializationSuggestions", []);
       return;
@@ -421,6 +389,13 @@ export default function ResumeAddPage() {
     }
     handleEducationChange(idx, "isLoadingSpecialization", false);
   };
+
+  const handleInstitutionSelect = (idx: number, inst: { institution_id: number; name: string }) => {
+    handleEducationChange(idx, "institution_id", inst.institution_id);
+    handleEducationChange(idx, "institution", inst.name);
+    handleEducationChange(idx, "institutionSuggestions", []);
+  };
+
   const handleSpecializationSelect = (idx: number, spec: { specialization_id: number; name: string }) => {
     handleEducationChange(idx, "specialization_id", spec.specialization_id);
     handleEducationChange(idx, "specialization", spec.name);
@@ -525,90 +500,70 @@ export default function ResumeAddPage() {
         setIsErrorModalOpen(true);
         return;
       }
-
       if (form.employment_type_ids.length === 0) {
         setErrorMessage('Выберите хотя бы один тип занятости');
         setIsErrorModalOpen(true);
         return;
       }
-
       if (form.work_format_ids.length === 0) {
         setErrorMessage('Выберите хотя бы один формат работы');
         setIsErrorModalOpen(true);
         return;
       }
-
-      if (!form.city_id && !form.city_name.trim()) {
-        setErrorMessage('Укажите город поиска работы');
+      if (!form.education_type_id) {
+        setErrorMessage('Укажите уровень образования');
         setIsErrorModalOpen(true);
         return;
       }
-
       const token = localStorage.getItem('token');
       if (!token) {
         router.push('/login?redirect=/resume/add');
         return;
       }
-
-      // Создаем FormData для отправки файла
       const formData = new FormData();
-      
-      // Добавляем все поля формы
       formData.append('title', form.title);
-      formData.append('professional_summary', form.professional_summary);
-      if (form.salary_expectation) {
-        formData.append('salary_expectation', form.salary_expectation);
-      }
+      formData.append('profession_id', String(form.profession_id));
+      if (form.professional_summary) formData.append('professional_summary', form.professional_summary);
+      if (form.salary_expectation) formData.append('salary_expectation', form.salary_expectation);
       formData.append('visibility', form.visibility);
-      formData.append('phone', form.phone);
-      formData.append('email', form.email);
+      if (form.phone) formData.append('phone', form.phone);
+      if (form.email) formData.append('email', form.email);
+      if (form.website) formData.append('website_url', form.website);
       formData.append('has_whatsapp', String(form.hasWhatsapp));
       formData.append('has_telegram', String(form.hasTelegram));
-      formData.append('business_trips', form.business_trips || '');
-      
-      // Добавляем данные города
-      if (form.city_id) {
-        formData.append('city_id', String(form.city_id));
-      }
-      if (form.city_name) {
-        formData.append('city_name', form.city_name);
-      }
-      
-      // Добавляем массивы
-      form.employment_type_ids.forEach(id => {
-        formData.append('employment_type_ids[]', String(id));
-      });
-      form.work_format_ids.forEach(id => {
-        formData.append('work_format_ids[]', String(id));
-      });
-      
-      // Добавляем опыт работы
+      formData.append('education_type_id', String(form.education_type_id));
+      if (photo) formData.append('photo', photo);
+      formData.append('hide_full_name', String(form.hideNameAndPhoto));
+      formData.append('hide_phone', String(form.hidePhone));
+      formData.append('hide_email', String(form.hideEmail));
+      formData.append('hide_other_contacts', String(form.hideOtherContacts));
+      formData.append('hide_experience', String(form.hideCompanyNames));
+      if (form.phoneComment) formData.append('phone_comment', form.phoneComment);
+      if (form.business_trips) formData.append('business_trips', form.business_trips);
+      form.employment_type_ids.forEach(id => formData.append('employment_type_ids[]', String(id)));
+      form.work_format_ids.forEach(id => formData.append('work_format_ids[]', String(id)));
+      // work_experiences
       form.work_experiences.forEach((exp, index) => {
-        formData.append(`work_experiences[${index}][company_id]`, String(exp.company_id || ''));
-        formData.append(`work_experiences[${index}][company_name]`, exp.company_name);
-        formData.append(`work_experiences[${index}][city_id]`, String(exp.city_id || ''));
-        formData.append(`work_experiences[${index}][position]`, exp.position);
-        formData.append(`work_experiences[${index}][profession_id]`, String(exp.profession_id || ''));
-        formData.append(`work_experiences[${index}][start_month]`, String(exp.start_month || ''));
-        formData.append(`work_experiences[${index}][start_year]`, exp.start_year);
-        formData.append(`work_experiences[${index}][end_month]`, String(exp.end_month || ''));
-        formData.append(`work_experiences[${index}][end_year]`, exp.end_year || '');
+        const hasAny = exp.company_id || exp.company_name || exp.city_id || exp.position || exp.profession_id || exp.start_month || exp.start_year || exp.end_month || exp.end_year || exp.responsibilities;
+        if (!hasAny) return;
+        if (exp.company_id) formData.append(`work_experiences[${index}][company_id]`, String(exp.company_id));
+        if (exp.company_name) formData.append(`work_experiences[${index}][company_name]`, exp.company_name);
+        if (exp.city_id) formData.append(`work_experiences[${index}][city_id]`, String(exp.city_id));
+        if (exp.position) formData.append(`work_experiences[${index}][position]`, exp.position);
+        if (exp.profession_id) formData.append(`work_experiences[${index}][profession_id]`, String(exp.profession_id));
+        if (exp.start_month) formData.append(`work_experiences[${index}][start_month]`, String(exp.start_month));
+        if (exp.start_year) formData.append(`work_experiences[${index}][start_year]`, exp.start_year);
+        if (exp.end_month) formData.append(`work_experiences[${index}][end_month]`, String(exp.end_month));
+        if (exp.end_year) formData.append(`work_experiences[${index}][end_year]`, exp.end_year);
         formData.append(`work_experiences[${index}][is_current]`, String(exp.is_current));
-        formData.append(`work_experiences[${index}][responsibilities]`, exp.responsibilities);
+        if (exp.responsibilities) formData.append(`work_experiences[${index}][responsibilities]`, exp.responsibilities);
       });
-
-      // Добавляем образование
+      // educations
       form.educations.forEach((edu, index) => {
-        formData.append(`educations[${index}][institution_id]`, String(edu.institution_id || ''));
-        formData.append(`educations[${index}][specialization_id]`, String(edu.specialization_id || ''));
-        formData.append(`educations[${index}][end_year]`, edu.end_year);
+        if (edu.institution_id) formData.append(`educations[${index}][institution_id]`, String(edu.institution_id));
+        if (edu.specialization_id) formData.append(`educations[${index}][specialization_id]`, String(edu.specialization_id));
+        if (edu.end_year) formData.append(`educations[${index}][end_year]`, edu.end_year);
       });
-
-      // Добавляем фото, если оно есть
-      if (photo) {
-        formData.append('photo', photo);
-      }
-
       const response = await fetch(API_ENDPOINTS.resumes.create, {
         method: 'POST',
         headers: {
@@ -616,10 +571,8 @@ export default function ResumeAddPage() {
         },
         body: formData,
       });
-
       if (!response.ok) {
         let errorMessage = 'Произошла ошибка при создании резюме';
-        
         switch (response.status) {
           case 400:
             errorMessage = 'Проверьте правильность заполнения данных формы';
@@ -638,12 +591,10 @@ export default function ResumeAddPage() {
             errorMessage = 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже';
             break;
         }
-
         setErrorMessage(errorMessage);
         setIsErrorModalOpen(true);
         return;
       }
-
       router.push('/resume');
     } catch (error) {
       console.error('Error creating resume:', error);
@@ -655,9 +606,9 @@ export default function ResumeAddPage() {
   return (
     <div className="flex min-h-screen bg-[#FAFCFE]">
       {/* Sidebar */}
-      <aside className="w-72 bg-white flex flex-col justify-between py-8 px-4 border-r border-gray-100">
+      <aside className="w-72 bg-gray-200 flex flex-col justify-between py-8 px-4 border-r border-gray-100 pt-16">
         <div>
-          <h2 className="text-lg font-bold mb-8">Создайте своё резюме</h2>
+          <h2 className="text-lg font-bold mb-8 text-gray-900">Добавление резюме</h2>
           <ol className="space-y-2">
             {steps.map((step, idx) => (
               <li key={step.label}>
@@ -683,16 +634,10 @@ export default function ResumeAddPage() {
             ))}
           </ol>
         </div>
-        <button
-          className="mt-8 w-full bg-white border border-gray-200 rounded-lg py-3 font-semibold text-base text-gray-800 hover:bg-gray-50 transition shadow"
-          onClick={handleSaveAndExit}
-        >
-          Сохранить и выйти
-        </button>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-start pt-12 bg-gray-200">
+      <main className="flex-1 flex flex-col items-center justify-start pt-16 bg-white">
         <div className="w-full max-w-2xl">
           {currentStep === 0 && (
             <section>
@@ -713,7 +658,7 @@ export default function ResumeAddPage() {
                       <li
                         key={suggestion.profession_id}
                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => handleSuggestionClick(suggestion.name)}
+                        onClick={() => handleSuggestionClick(suggestion.name, suggestion.profession_id)}
                       >
                         {suggestion.name}
                       </li>
@@ -730,36 +675,6 @@ export default function ResumeAddPage() {
                   value={form.salary_expectation}
                   onChange={handleSalaryChange}
                 />
-              </div>
-              <div className="relative mb-4 mt-6">
-                <input
-                  type="text"
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-4 text-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                  placeholder="Город поиска работы"
-                  value={form.city_name}
-                  onChange={e => handleSearchCityInput(e.target.value)}
-                  autoComplete="off"
-                />
-                {form.isLoadingCity && <div className="absolute right-4 top-4">...</div>}
-                {form.citySuggestions.length > 0 && (
-                  <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                    {form.citySuggestions.map(cityRaw => {
-                      const city = {
-                        city_id: (cityRaw as any).city_id ?? (cityRaw as any).id,
-                        name: cityRaw.name,
-                      };
-                      return (
-                        <li
-                          key={city.city_id}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => handleSearchCitySelect(city)}
-                        >
-                          {city.name}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
               </div>
               {/* Фото профиля */}
               <div className="mt-6">
@@ -795,7 +710,7 @@ export default function ResumeAddPage() {
                 <button
                   className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleNext}
-                  disabled={currentStep === 0 && (!form.title.trim() || (!form.city_id && !form.city_name.trim()))}
+                  disabled={currentStep === 0 && !form.title.trim()}
                 >
                   Далее
                 </button>
@@ -809,7 +724,7 @@ export default function ResumeAddPage() {
               
               {/* Тип занятости */}
               <div className="mb-8">
-                <label className="block text-lg font-medium mb-4">Тип занятости</label>
+                <label className="block text-lg font-medium mb-4">Тип занятости <span className="text-red-500 ml-1">*</span></label>
                 <div className="space-y-3">
                   {employmentTypes.employment_types.map((type) => (
                     <label key={type.employment_type_id} className="flex items-center space-x-3">
@@ -827,7 +742,7 @@ export default function ResumeAddPage() {
 
               {/* Формат работы */}
               <div className="mb-8">
-                <label className="block text-lg font-medium mb-4">Формат работы</label>
+                <label className="block text-lg font-medium mb-4">Формат работы <span className="text-red-500 ml-1">*</span></label>
                 <div className="space-y-3">
                   {workFormats.work_formats.map((format) => (
                     <label key={format.work_format_id} className="flex items-center space-x-3">
@@ -888,7 +803,7 @@ export default function ResumeAddPage() {
             <section>
               <h1 className="text-2xl font-bold mb-6">Опыт работы</h1>
               {form.work_experiences.map((exp, idx) => (
-                <div key={idx} className="mb-10 p-6 bg-gray-200 rounded-xl border border-gray-400 relative">
+                <div key={idx} className="mb-10 p-6 bg-white rounded-xl border border-gray-400 relative">
                   {/* Кнопка удалить */}
                   {idx > 0 && (
                     <button
@@ -929,34 +844,61 @@ export default function ResumeAddPage() {
                   </div>
                   {/* Город */}
                   <div className="mb-4 relative">
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Город или регион"
-                      value={exp.city_name}
-                      onChange={e => handleCityInput(idx, e.target.value)}
-                      autoComplete="off"
-                    />
-                    {exp.isLoadingCity && <div className="absolute right-4 top-3">...</div>}
-                    {exp.citySuggestions.length > 0 && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                        {exp.citySuggestions.map(cityRaw => {
-                          const city = {
-                            city_id: (cityRaw as any).city_id ?? (cityRaw as any).id,
-                            name: cityRaw.name,
-                          };
-                          return (
-                            <li
-                              key={city.city_id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleCitySelect(idx, city)}
-                            >
-                              {city.name}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
+                        placeholder="Город или населенный пункт"
+                        value={exp.city_name}
+                        onChange={e => {
+                          handleWorkExpChange(idx, "city_name", e.target.value);
+                          handleWorkExpChange(idx, "city_id", undefined);
+                          handleCityInput(idx, e.target.value);
+                        }}
+                        autoComplete="off"
+                        readOnly={!!exp.city_id}
+                        style={{ wordBreak: 'break-word' }}
+                      />
+                      {exp.city_id && (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                          onClick={() => {
+                            handleWorkExpChange(idx, "city_name", "");
+                            handleWorkExpChange(idx, "city_id", undefined);
+                          }}
+                          tabIndex={-1}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      {exp.isLoadingCity && <div className="absolute right-4 top-3">...</div>}
+                      {exp.citySuggestions.length > 0 && (
+                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                          {exp.citySuggestions.map(cityRaw => {
+                            const city = {
+                              city_id: (cityRaw as any).city_id ?? (cityRaw as any).id,
+                              name: cityRaw.name,
+                            };
+                            return (
+                              <li
+                                key={city.city_id}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => {
+                                  handleWorkExpChange(idx, "city_id", city.city_id);
+                                  handleWorkExpChange(idx, "city_name", city.name);
+                                  handleWorkExpChange(idx, "citySuggestions", []);
+                                }}
+                              >
+                                {city.name}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                   {/* Должность */}
                   <div className="mb-4 relative">
@@ -1059,10 +1001,10 @@ export default function ResumeAddPage() {
               ))}
               <button
                 type="button"
-                className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-full py-4 text-xl font-semibold shadow hover:bg-gray-400 transition"
+                className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-lg py-4 text-xl font-semibold shadow hover:bg-gray-400 transition"
                 onClick={handleAddWorkExp}
               >
-                + Добавить еще
+                + Добавить еще компанию
               </button>
               <div className="flex justify-between mt-12">
                 <button
@@ -1085,7 +1027,10 @@ export default function ResumeAddPage() {
             <section>
               <h1 className="text-2xl font-bold mb-6">Уровень образования</h1>
               <div className="mb-8">
-                <label className="block text-lg font-medium mb-2">Образование</label>
+                <label className="block text-lg font-medium mb-2">
+                  Образование
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
                 <select
                   className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
                   value={form.education_type_id || ""}
@@ -1113,50 +1058,88 @@ export default function ResumeAddPage() {
                         </svg>
                       </button>
                     )}
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Учебное заведение"
-                      value={edu.institution}
-                      onChange={e => handleInstitutionInput(idx, e.target.value)}
-                      autoComplete="off"
-                    />
-                    {edu.isLoadingInstitution && <div className="absolute right-4 top-3">...</div>}
-                    {edu.institutionSuggestions.length > 0 && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                        {edu.institutionSuggestions.map(inst => (
-                          <li
-                            key={inst.institution_id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleInstitutionSelect(idx, inst)}
-                          >
-                            {inst.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Специальность"
-                      value={edu.specialization}
-                      onChange={e => handleSpecializationInput(idx, e.target.value)}
-                      autoComplete="off"
-                    />
-                    {edu.isLoadingSpecialization && <div className="absolute right-4 top-3">...</div>}
-                    {edu.specializationSuggestions.length > 0 && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                        {edu.specializationSuggestions.map(spec => (
-                          <li
-                            key={spec.specialization_id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleSpecializationSelect(idx, spec)}
-                          >
-                            {spec.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
+                        placeholder="Учебное заведение"
+                        value={edu.institution}
+                        onChange={e => handleInstitutionInput(idx, e.target.value)}
+                        autoComplete="off"
+                        readOnly={!!edu.institution_id}
+                        style={{ wordBreak: 'break-word' }}
+                      />
+                      {edu.institution_id && (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                          onClick={() => {
+                            handleEducationChange(idx, "institution", "");
+                            handleEducationChange(idx, "institution_id", undefined);
+                          }}
+                          tabIndex={-1}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      {edu.isLoadingInstitution && <div className="absolute right-4 top-3">...</div>}
+                      {edu.institutionSuggestions.length > 0 && (
+                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                          {edu.institutionSuggestions.map(inst => (
+                            <li
+                              key={inst.institution_id}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleInstitutionSelect(idx, inst)}
+                            >
+                              {inst.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
+                        placeholder="Специальность"
+                        value={edu.specialization}
+                        onChange={e => handleSpecializationInput(idx, e.target.value)}
+                        autoComplete="off"
+                        readOnly={!!edu.specialization_id}
+                        style={{ wordBreak: 'break-word' }}
+                      />
+                      {edu.specialization_id && (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                          onClick={() => {
+                            handleEducationChange(idx, "specialization", "");
+                            handleEducationChange(idx, "specialization_id", undefined);
+                          }}
+                          tabIndex={-1}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                      {edu.isLoadingSpecialization && <div className="absolute right-4 top-3">...</div>}
+                      {edu.specializationSuggestions.length > 0 && (
+                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                          {edu.specializationSuggestions.map(spec => (
+                            <li
+                              key={spec.specialization_id}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleSpecializationSelect(idx, spec)}
+                            >
+                              {spec.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                     <input
                       type="number"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1168,7 +1151,7 @@ export default function ResumeAddPage() {
                 ))}
                 <button
                   type="button"
-                  className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-full py-3 text-lg font-semibold shadow hover:bg-gray-400 transition"
+                  className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-lg py-3 text-lg font-semibold shadow hover:bg-gray-400 transition"
                   onClick={handleAddEducation}
                 >
                   + Добавить учебное заведение
@@ -1182,8 +1165,9 @@ export default function ResumeAddPage() {
                   Назад
                 </button>
                 <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
+                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleNext}
+                  disabled={!form.education_type_id}
                 >
                   Далее
                 </button>

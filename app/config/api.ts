@@ -21,7 +21,7 @@ export const API_ENDPOINTS = {
   },
   resumes: {
     my: `${API_BASE_URL}/api/resumes/my`,
-    create: `${API_BASE_URL}/api/resumes1`,
+    create: `${API_BASE_URL}/api/resumes`,
     update: (resumeId: number) => `${API_BASE_URL}/api/resumes/${resumeId}`,
   },
   jobSeekerProfile: {
