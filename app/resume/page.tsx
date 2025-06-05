@@ -86,7 +86,9 @@ export default function ResumePage() {
           {resumes.map((resume) => (
             <div className="py-6 bg-white rounded-xl" key={resume.resume_id}>
               <div className="mb-1">
-                <span className="text-xl font-bold text-[#2B81B0]">{resume.title}</span>
+                <Link href={`/resume/${resume.resume_id}`}>
+                  <span className="text-xl font-bold text-[#2B81B0] hover:text-[#18608a] transition">{resume.title}</span>
+                </Link>
               </div>
               <div className="text-lg text-gray-700 mb-1">
                 {resume.salary_expectation ? `от ${resume.salary_expectation.toLocaleString()} руб.` : ''}
