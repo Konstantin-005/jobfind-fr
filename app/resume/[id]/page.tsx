@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { API_ENDPOINTS } from "../../config/api";
+import { API_ENDPOINTS, API_BASE_URL } from "../../config/api";
 import employmentTypes from "../../config/employment_types_202505222228.json";
 import workFormats from "../../config/work_formats_202505222228.json";
 import educationTypes from "../../config/education_types_202505242225.json";
@@ -117,15 +117,15 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
           title: data.title || "",
           profession_id: data.profession_id,
           salary_expectation: data.salary_expectation?.toString() || "",
-          employment_type_ids: data.employment_type_ids || [],
-          work_format_ids: data.work_format_ids || [],
+          employment_type_ids: data.employmentTypes?.map((et: any) => et.employment_type_id) || [],
+          work_format_ids: data.workFormats?.map((wf: any) => wf.work_format_id) || [],
           business_trips: data.business_trips || "",
-          work_experiences: data.work_experiences?.map((exp: any) => ({
+          work_experiences: data.workExperiences?.map((exp: any) => ({
             experience_id: exp.experience_id,
             company_id: exp.company_id,
             company_name: exp.company_name || "",
             city_id: exp.city_id,
-            city_name: exp.city_name || "",
+            city_name: exp.City?.name || "",
             position: exp.position || "",
             profession_id: exp.profession_id,
             start_month: exp.start_month,
@@ -162,11 +162,11 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
             isLoadingProfession: false,
           }],
           education_type_id: data.education_type_id,
-          educations: data.educations?.map((edu: any) => ({
+          educations: data.education?.map((edu: any) => ({
             education_id: edu.education_id,
-            institution: edu.institution_name || "",
+            institution: edu.EducationalInstitution?.name || "",
             institution_id: edu.institution_id,
-            specialization: edu.specialization_name || "",
+            specialization: edu.Specialization?.name || "",
             specialization_id: edu.specialization_id,
             end_year: edu.end_year?.toString() || "",
             institutionSuggestions: [],
@@ -201,7 +201,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         });
 
         if (data.photo_url) {
-          setPhotoPreview(data.photo_url);
+          const photoUrl = `${API_BASE_URL}/${data.photo_url}`;
+          setPhotoPreview(photoUrl);
         }
       } catch (error) {
         console.error('Error fetching resume:', error);
@@ -667,6 +668,104 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleSaveAndClose = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login?redirect=/resume/' + params.id + '/edit');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('title', form.title);
+      formData.append('profession_id', String(form.profession_id));
+      if (form.professional_summary) formData.append('professional_summary', form.professional_summary);
+      if (form.salary_expectation) formData.append('salary_expectation', form.salary_expectation);
+      formData.append('visibility', form.visibility);
+      if (form.phone) formData.append('phone', form.phone);
+      if (form.email) formData.append('email', form.email);
+      if (form.website) formData.append('website_url', form.website);
+      formData.append('has_whatsapp', String(form.hasWhatsapp));
+      formData.append('has_telegram', String(form.hasTelegram));
+      formData.append('education_type_id', String(form.education_type_id));
+      if (photo) formData.append('photo', photo);
+      formData.append('hide_full_name', String(form.hideNameAndPhoto));
+      formData.append('hide_phone', String(form.hidePhone));
+      formData.append('hide_email', String(form.hideEmail));
+      formData.append('hide_other_contacts', String(form.hideOtherContacts));
+      formData.append('hide_experience', String(form.hideCompanyNames));
+      if (form.phoneComment) formData.append('phone_comment', form.phoneComment);
+      if (form.business_trips) formData.append('business_trips', form.business_trips);
+      form.employment_type_ids.forEach(id => formData.append('employment_type_ids[]', String(id)));
+      form.work_format_ids.forEach(id => formData.append('work_format_ids[]', String(id)));
+
+      // work_experiences
+      form.work_experiences.forEach((exp, index) => {
+        const hasAny = exp.company_id || exp.company_name || exp.city_id || exp.position || exp.profession_id || exp.start_month || exp.start_year || exp.end_month || exp.end_year || exp.responsibilities;
+        if (!hasAny) return;
+        if (exp.experience_id) formData.append(`work_experiences[${index}][experience_id]`, String(exp.experience_id));
+        if (exp.company_id) formData.append(`work_experiences[${index}][company_id]`, String(exp.company_id));
+        if (exp.company_name) formData.append(`work_experiences[${index}][company_name]`, exp.company_name);
+        if (exp.city_id) formData.append(`work_experiences[${index}][city_id]`, String(exp.city_id));
+        if (exp.position) formData.append(`work_experiences[${index}][position]`, exp.position);
+        if (exp.profession_id) formData.append(`work_experiences[${index}][profession_id]`, String(exp.profession_id));
+        if (exp.start_month) formData.append(`work_experiences[${index}][start_month]`, String(exp.start_month));
+        if (exp.start_year) formData.append(`work_experiences[${index}][start_year]`, exp.start_year);
+        if (exp.end_month) formData.append(`work_experiences[${index}][end_month]`, String(exp.end_month));
+        if (exp.end_year) formData.append(`work_experiences[${index}][end_year]`, exp.end_year);
+        formData.append(`work_experiences[${index}][is_current]`, String(exp.is_current));
+        if (exp.responsibilities) formData.append(`work_experiences[${index}][responsibilities]`, exp.responsibilities);
+      });
+
+      // educations
+      form.educations.forEach((edu, index) => {
+        if (edu.education_id) formData.append(`educations[${index}][education_id]`, String(edu.education_id));
+        if (edu.institution_id) formData.append(`educations[${index}][institution_id]`, String(edu.institution_id));
+        if (edu.specialization_id) formData.append(`educations[${index}][specialization_id]`, String(edu.specialization_id));
+        if (edu.end_year) formData.append(`educations[${index}][end_year]`, edu.end_year);
+      });
+
+      const response = await fetch(`/api/resumes/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Произошла ошибка при обновлении резюме';
+        switch (response.status) {
+          case 400:
+            errorMessage = 'Проверьте правильность заполнения данных формы';
+            break;
+          case 401:
+            localStorage.removeItem('token');
+            router.push('/login?redirect=/resume/' + params.id + '/edit');
+            return;
+          case 403:
+            errorMessage = 'У вас нет прав для выполнения этого действия';
+            break;
+          case 404:
+            errorMessage = 'Резюме не найдено';
+            break;
+          case 500:
+            errorMessage = 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже';
+            break;
+        }
+        setErrorMessage(errorMessage);
+        setIsErrorModalOpen(true);
+        return;
+      }
+
+      router.push('/resume');
+    } catch (error) {
+      console.error('Error updating resume:', error);
+      setErrorMessage('Произошла ошибка при обновлении резюме. Пожалуйста, попробуйте позже');
+      setIsErrorModalOpen(true);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#FAFCFE]">
       {/* Sidebar */}
@@ -770,7 +869,13 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                   />
                 </label>
               </div>
-              <div className="flex justify-end mt-12">
+              <div className="flex justify-between mt-12">
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
                 <button
                   className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleNext}
@@ -846,6 +951,12 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               </div>
 
               <div className="flex justify-between mt-12">
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
                   onClick={handlePrev}
@@ -1073,6 +1184,12 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between mt-12">
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
                   onClick={handlePrev}
                 >
                   Назад
@@ -1224,6 +1341,12 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between mt-12">
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
                   onClick={handlePrev}
                 >
                   Назад
@@ -1253,6 +1376,12 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                 />
               </div>
               <div className="flex justify-between mt-12">
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
                   onClick={handlePrev}
@@ -1409,15 +1538,21 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               <div className="flex justify-between mt-12">
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
+                  onClick={handleSaveAndClose}
+                >
+                  Сохранить и закрыть
+                </button>
+                <button
+                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
                   onClick={handlePrev}
                 >
                   Назад
                 </button>
                 <button
                   className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleSave}
+                  onClick={handleNext}
                 >
-                  Сохранить
+                  Далее
                 </button>
               </div>
             </section>

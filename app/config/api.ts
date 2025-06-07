@@ -30,4 +30,5 @@ export const API_ENDPOINTS = {
     update: `${API_BASE_URL}/api/job-seeker-profiles/me`,
   },
   citiesSearch: `${API_BASE_URL}/api/locations/cities/search`,
+  RESUME_DELETE: (resumeId: number) => `/api/resumes/${resumeId}`,
 }; 
