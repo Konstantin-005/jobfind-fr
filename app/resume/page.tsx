@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getMyResumes } from '../utils/api';
@@ -27,55 +27,131 @@ export default function ResumePage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [copyingResumeId, setCopyingResumeId] = useState<number | null>(null);
+  const [deletingResumeId, setDeletingResumeId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchResumes = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (!token) {
-          setError('Не авторизовано');
-          setLoading(false);
-          router.push('/login');
-          return;
-        }
-        const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
-        if (userType !== 'job_seeker') {
-          setLoading(false);
-          router.push('/');
-          return;
-        }
-        const res = await getMyResumes(token);
-        if (res.error) {
-          if (res.error.includes('Job seeker profile not found')) {
-            router.push('/profile?from=resumeAdd');
-            return;
-          }
-          setError(res.error);
-        } else {
-          setResumes(res.data || []);
-        }
-      } catch (e) {
-        setError('Ошибка загрузки');
-      } finally {
+  const fetchResumes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        setError('Не авторизовано');
         setLoading(false);
+        router.push('/login');
+        return;
       }
-    };
+      const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null;
+      if (userType !== 'job_seeker') {
+        setLoading(false);
+        router.push('/');
+        return;
+      }
+      const res = await getMyResumes(token);
+      if (res.error) {
+        if (res.error.includes('Job seeker profile not found')) {
+          router.push('/profile?from=resumeAdd');
+          return;
+        }
+        setError(res.error);
+      } else {
+        setResumes(res.data || []);
+      }
+    } catch (e) {
+      setError('Ошибка загрузки');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchResumes();
   }, [router]);
 
-  // Добавим обработчик клика вне выпадающего меню
+  const handleCopyResume = async (resumeId: number) => {
+    setCopyingResumeId(resumeId);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Не авторизовано');
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.resumes.copy(resumeId), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при копировании резюме');
+      }
+
+      await fetchResumes();
+    } catch (error) {
+      setError('Ошибка при копировании резюме');
+    } finally {
+      setCopyingResumeId(null);
+    }
+  };
+
+  const handleDeleteClick = (resume: Resume) => {
+    setResumeToDelete(resume);
+    setDeleteModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!resumeToDelete) return;
+    
+    setDeletingResumeId(resumeToDelete.resume_id);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Не авторизовано');
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.resumes.delete(resumeToDelete.resume_id), {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при удалении резюме');
+      }
+
+      await fetchResumes();
+    } catch (error) {
+      setError('Ошибка при удалении резюме');
+    } finally {
+      setDeletingResumeId(null);
+      setDeleteModalOpen(false);
+      setResumeToDelete(null);
+    }
+  };
+
+  const handleMenuClick = (e: React.MouseEvent, resumeId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Menu clicked for resume:', resumeId);
+    setOpenMenuId(openMenuId === resumeId ? null : resumeId);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.dropdown-container')) {
-        setOpenDropdownId(null);
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
       }
     };
 
@@ -84,66 +160,6 @@ export default function ResumePage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const toggleDropdown = (resumeId: number) => {
-    setOpenDropdownId(openDropdownId === resumeId ? null : resumeId);
-  };
-
-  const handleDeleteClick = (resume: Resume) => {
-    setResumeToDelete(resume);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!resumeToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      const response = await fetch(API_ENDPOINTS.RESUME_DELETE(resumeToDelete.resume_id), {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Произошла ошибка при удалении резюме';
-        switch (response.status) {
-          case 401:
-            localStorage.removeItem('token');
-            router.push('/login');
-            return;
-          case 403:
-            errorMessage = 'У вас нет прав для удаления этого резюме';
-            break;
-          case 404:
-            errorMessage = 'Резюме не найдено';
-            break;
-          case 500:
-            errorMessage = 'Произошла ошибка на сервере';
-            break;
-        }
-        setError(errorMessage);
-        return;
-      }
-
-      // Обновляем список резюме после успешного удаления
-      setResumes(resumes.filter(r => r.resume_id !== resumeToDelete.resume_id));
-    } catch (error) {
-      console.error('Error deleting resume:', error);
-      setError('Произошла ошибка при удалении резюме');
-    } finally {
-      setIsDeleting(false);
-      setIsDeleteModalOpen(false);
-      setResumeToDelete(null);
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto pt-12 pb-8 px-4">
@@ -182,24 +198,31 @@ export default function ResumePage() {
               <div className="flex flex-wrap items-center gap-4 mb-6">
                 <Link href={`/resume/${resume.resume_id}/edit`} className="text-blue-600 hover:underline font-medium">Редактировать</Link>
                 <span className="text-gray-400">•</span>
-                <Link href="#" className="text-blue-600 hover:underline font-medium">Копировать</Link>
+                <button 
+                  onClick={() => handleCopyResume(resume.resume_id)}
+                  disabled={copyingResumeId === resume.resume_id}
+                  className="text-blue-600 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {copyingResumeId === resume.resume_id ? 'Копирование...' : 'Копировать'}
+                </button>
                 <span className="text-gray-400">•</span>
-                <Link href="#" className="text-blue-600 hover:underline font-medium">Скачать</Link>
-                <span className="text-gray-400">•</span>
-                <div className="relative dropdown-container">
+                <div className="relative inline-block">
                   <button 
+                    type="button"
+                    onClick={() => setOpenMenuId(openMenuId === resume.resume_id ? null : resume.resume_id)}
                     className="text-blue-600 hover:underline font-medium flex items-center gap-1"
-                    onClick={() => toggleDropdown(resume.resume_id)}
                   >
                     Ещё <span className="align-middle">▼</span>
                   </button>
-                  {openDropdownId === resume.resume_id && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-10 transform translate-x-4">
+                  {openMenuId === resume.resume_id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                       <button
+                        type="button"
                         onClick={() => handleDeleteClick(resume)}
-                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+                        disabled={deletingResumeId === resume.resume_id}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Удалить
+                        {deletingResumeId === resume.resume_id ? 'Удаление...' : 'Удалить'}
                       </button>
                     </div>
                   )}
@@ -223,31 +246,31 @@ export default function ResumePage() {
         </div>
       )}
 
-      {/* Модальное окно подтверждения удаления */}
-      {isDeleteModalOpen && resumeToDelete && (
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && resumeToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold mb-4">Подтверждение удаления</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Подтверждение удаления</h3>
             <p className="text-gray-600 mb-6">
               Вы уверены, что хотите удалить резюме "{resumeToDelete.title}"?
             </p>
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => {
-                  setIsDeleteModalOpen(false);
+                  setDeleteModalOpen(false);
                   setResumeToDelete(null);
                 }}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                disabled={isDeleting}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                disabled={deletingResumeId === resumeToDelete.resume_id}
               >
                 Отмена
               </button>
               <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                disabled={deletingResumeId === resumeToDelete.resume_id}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isDeleting ? 'Удаление...' : 'Удалить'}
+                {deletingResumeId === resumeToDelete.resume_id ? 'Удаление...' : 'Удалить'}
               </button>
             </div>
           </div>

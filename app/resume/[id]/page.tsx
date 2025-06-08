@@ -792,11 +792,11 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                     {idx + 1}
                   </span>
                   {step.label}
-                </div>
+        </div>
               </li>
             ))}
           </ol>
-        </div>
+      </div>
       </aside>
 
       {/* Main content */}
@@ -828,7 +828,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                     ))}
                   </ul>
                 )}
-              </div>
+            </div>
               <div className="mt-6">
                 <label className="block text-lg font-medium mb-2">Желаемый уровень дохода (можно не указывать)</label>
                 <input
@@ -856,9 +856,9 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-gray-400">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                       </svg>
-                    </div>
-                  )}
-                </div>
+              </div>
+            )}
+            </div>
                 <label className="cursor-pointer bg-white text-[#2B81B0] border border-[#2B81B0] px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition">
                   {photoPreview ? 'Изменить фото' : 'Добавить фото'}
                   <input
@@ -868,7 +868,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                     onChange={handlePhotoChange}
                   />
                 </label>
-              </div>
+          </div>
               <div className="flex justify-between mt-12">
                 <button
                   className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
@@ -883,7 +883,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                 >
                   Далее
                 </button>
-              </div>
+        </div>
             </section>
           )}
 
@@ -892,7 +892,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               <h1 className="text-2xl font-bold mb-6">Условия работы</h1>
               
               {/* Тип занятости */}
-              <div className="mb-8">
+          <div className="mb-8">
                 <label className="block text-lg font-medium mb-4">Тип занятости <span className="text-red-500 ml-1">*</span></label>
                 <div className="space-y-3">
                   {employmentTypes.employment_types.map((type) => (
@@ -906,11 +906,11 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       <span className="text-base">{type.name}</span>
                     </label>
                   ))}
-                </div>
+          </div>
               </div>
 
               {/* Формат работы */}
-              <div className="mb-8">
+          <div className="mb-8">
                 <label className="block text-lg font-medium mb-4">Формат работы <span className="text-red-500 ml-1">*</span></label>
                 <div className="space-y-3">
                   {workFormats.work_formats.map((format) => (
@@ -924,7 +924,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       <span className="text-base">{format.name}</span>
                     </label>
                   ))}
-                </div>
+                  </div>
               </div>
 
               {/* Командировки */}
@@ -1015,8 +1015,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                           </li>
                         ))}
                       </ul>
-                    )}
-                  </div>
+                  )}
+                </div>
                   {/* Город */}
                   <div className="mb-4 relative">
                     <div className="relative">
@@ -1147,8 +1147,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                           value={exp.end_year}
                           onChange={e => handleWorkExpChange(idx, "end_year", e.target.value)}
                         />
-                      </div>
-                    </div>
+            </div>
+          </div>
                   )}
                   {/* Чекбокс "Продолжаю работать" */}
                   <div className="mb-4">
@@ -1207,7 +1207,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
           {currentStep === 3 && (
             <section>
               <h1 className="text-2xl font-bold mb-6">Уровень образования</h1>
-              <div className="mb-8">
+          <div className="mb-8">
                 <label className="block text-lg font-medium mb-2">
                   Образование
                   <span className="text-red-500 ml-1">*</span>
@@ -1222,7 +1222,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                     <option key={type.education_type_id} value={type.education_type_id}>{type.name}</option>
                   ))}
                 </select>
-              </div>
+                </div>
               <div className="mb-8">
                 <label className="block text-lg font-medium mb-2">Учебные заведения</label>
                 {form.educations.map((edu, idx) => (
@@ -1279,7 +1279,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                           ))}
                         </ul>
                       )}
-                    </div>
+            </div>
                     <div className="relative">
                       <input
                         type="text"
@@ -1320,7 +1320,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                           ))}
                         </ul>
                       )}
-                    </div>
+          </div>
                     <input
                       type="number"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1365,7 +1365,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
           {currentStep === 4 && (
             <section>
               <h1 className="text-2xl font-bold mb-6">О себе</h1>
-              <div className="mb-8">
+        <div className="mb-8">
                 <label className="block text-lg font-medium mb-2">Расскажите о себе</label>
                 <textarea
                   className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1403,7 +1403,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
               <h1 className="text-2xl font-bold mb-6">Контакты и настройки видимости</h1>
               <div className="mb-8">
                 <div className="space-y-4">
-                  <div>
+              <div>
                     <input
                       type="text"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1411,7 +1411,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       value={form.phone}
                       onChange={handlePhoneChange}
                     />
-                  </div>
+              </div>
                   <div className="flex items-center space-x-4">
                     <label className="flex items-center">
                       <input
@@ -1432,7 +1432,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       Есть Телеграм
                     </label>
                   </div>
-                  <div>
+              <div>
                     <input
                       type="text"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1440,7 +1440,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       value={form.phoneComment}
                       onChange={handlePhoneCommentChange}
                     />
-                  </div>               
+                </div>
                   <div>
                     <input
                       type="email"
@@ -1449,8 +1449,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       value={form.email}
                       onChange={handleEmailChange}
                     />
-                  </div>
-                  <div>
+              </div>
+            <div>
                     <input
                       type="text"
                       className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
@@ -1458,9 +1458,9 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                       value={form.website}
                       onChange={handleWebsiteChange}
                     />
-                  </div>
-                </div>
               </div>
+            </div>
+          </div>
               <div className="mb-8">
                 <h2 className="text-lg font-medium mb-4">Настройки приватности</h2>
                 <div className="space-y-4">
@@ -1531,8 +1531,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                           {option.label}
                         </label>
                       ))}
-                    </div>
-                  </div>
+        </div>
+      </div>
                 </div>
               </div>
               <div className="flex justify-between mt-12">

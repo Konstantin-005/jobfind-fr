@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
     my: `${API_BASE_URL}/api/resumes/my`,
     create: `${API_BASE_URL}/api/resumes`,
     update: (resumeId: number) => `${API_BASE_URL}/api/resumes/${resumeId}`,
+    copy: (resumeId: number) => `${API_BASE_URL}/api/resumes/${resumeId}/copy`,
+    delete: (resumeId: number) => `${API_BASE_URL}/api/resumes/${resumeId}`,
   },
   jobSeekerProfile: {
     create: `${API_BASE_URL}/api/job-seeker-profiles`,
@@ -30,5 +32,4 @@ export const API_ENDPOINTS = {
     update: `${API_BASE_URL}/api/job-seeker-profiles/me`,
   },
   citiesSearch: `${API_BASE_URL}/api/locations/cities/search`,
-  RESUME_DELETE: (resumeId: number) => `/api/resumes/${resumeId}`,
 }; 
