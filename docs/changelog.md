@@ -5,6 +5,7 @@
 ### Изменено
 - Перевод фронтенд API на относительные пути (`API_BASE_URL = ''`) для работы через rewrite.
 - Обновление `next.config.js`: rewrite `/api/:path* -> http://localhost:8081/api/:path*` через `afterFiles`.
+ - Триггер workflow изменён на ветку `master`.
 
 ### Исправлено
 - Исключены хардкоды `http://localhost:8080` в API-клиенте.
