@@ -4,20 +4,19 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
-  experimental: {
-    telemetry: false
-  },
   devIndicators: {
     buildActivity: false
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*',
-      },
-    ];
+    return {
+      afterFiles: [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:8081/api/:path*',
+        },
+      ],
+    };
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

@@ -1,0 +1,3215 @@
+definitions:
+  controllers.ApplyToJobRequest:
+    description: Данные отклика (resume_id, cover_letter)
+    properties:
+      cover_letter:
+        example: Хочу работать у вас!
+        type: string
+      resume_id:
+        example: 1
+        type: integer
+    type: object
+  controllers.CompanyAddressInput:
+    properties:
+      address:
+        type: string
+      city_id:
+        type: integer
+      district_id:
+        type: integer
+    required:
+    - address
+    - city_id
+    type: object
+  controllers.CompanyIndustryInput:
+    properties:
+      industry_id:
+        type: integer
+    type: object
+  controllers.CompanyProfileUpsertRequest:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/controllers.CompanyAddressInput'
+        type: array
+      brand_name:
+        type: string
+      company_name:
+        type: string
+      company_size:
+        type: string
+      company_type:
+        type: string
+      description:
+        type: string
+      email:
+        type: string
+      founded_year:
+        type: integer
+      industries:
+        items:
+          $ref: '#/definitions/controllers.CompanyIndustryInput'
+        type: array
+      inn:
+        type: string
+      is_it_company:
+        type: boolean
+      logo_url:
+        type: string
+      website_url:
+        type: string
+    required:
+    - company_name
+    type: object
+  controllers.EducationCreateRequest:
+    properties:
+      end_year:
+        type: integer
+      faculty_id:
+        type: integer
+      institution_id:
+        type: integer
+      is_current:
+        type: boolean
+      specialization_id:
+        type: integer
+    required:
+    - institution_id
+    type: object
+  controllers.EducationPatchRequest:
+    properties:
+      end_year:
+        type: integer
+      faculty_id:
+        type: integer
+      institution_id:
+        type: integer
+      is_current:
+        type: boolean
+      specialization_id:
+        type: integer
+    type: object
+  controllers.ErrorResponse:
+    description: Ответ с ошибкой
+    properties:
+      message:
+        example: Invalid credentials
+        type: string
+    type: object
+  controllers.ForgotPasswordRequest:
+    description: Email пользователя для восстановления пароля
+    properties:
+      email:
+        example: user@example.com
+        type: string
+    type: object
+  controllers.JobAddress:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      district:
+        type: string
+    type: object
+  controllers.JobListItem:
+    properties:
+      address:
+        $ref: '#/definitions/controllers.JobAddress'
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      is_promo:
+        type: boolean
+      job_id:
+        type: integer
+      logo_url:
+        type: string
+      publication_cities:
+        items:
+          type: string
+        type: array
+      salary_currency:
+        type: string
+      salary_max:
+        type: number
+      salary_min:
+        type: number
+      salary_period:
+        type: string
+      salary_type:
+        type: string
+      title:
+        type: string
+      work_experience:
+        type: string
+      work_format_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  controllers.JobUpsertRequest:
+    properties:
+      city_ids:
+        items:
+          type: integer
+        type: array
+      company_address_id:
+        type: integer
+      day_length_ids:
+        items:
+          type: integer
+        type: array
+      description:
+        type: string
+      education_type_ids:
+        items:
+          type: integer
+        type: array
+      employment_type_ids:
+        items:
+          type: integer
+        type: array
+      experience_level:
+        type: string
+      is_contract_possible:
+        type: boolean
+      profession_id:
+        type: integer
+      region_ids:
+        items:
+          type: integer
+        type: array
+      salary_currency:
+        type: string
+      salary_frequency:
+        type: string
+      salary_max:
+        type: number
+      salary_min:
+        type: number
+      salary_period:
+        type: string
+      salary_type:
+        type: string
+      shift_type_ids:
+        items:
+          type: integer
+        type: array
+      title:
+        type: string
+      work_experience:
+        type: string
+      work_format_ids:
+        items:
+          type: integer
+        type: array
+      work_schedule_ids:
+        items:
+          type: integer
+        type: array
+      work_schedule_type_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - description
+    - title
+    - work_experience
+    type: object
+  controllers.LoginRequest:
+    description: Данные для входа (email, password)
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+    type: object
+  controllers.LoginResponse:
+    description: Ответ на успешный вход
+    properties:
+      message:
+        example: Login successful
+        type: string
+      token:
+        example: jwt.token.here
+        type: string
+      user:
+        properties:
+          email:
+            example: user@example.com
+            type: string
+          user_id:
+            example: 550e8400-e29b-41d4-a716-446655440000
+            type: string
+          user_type:
+            example: job_seeker
+            type: string
+        type: object
+    type: object
+  controllers.MessageResponse:
+    description: Ответ с сообщением
+    properties:
+      message:
+        example: Password reset email sent
+        type: string
+    type: object
+  controllers.RegisterRequest:
+    description: Данные пользователя (email, password, user_type, phone_number)
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: password123
+        type: string
+      phone_number:
+        example: "79991234567"
+        type: string
+      user_type:
+        example: job_seeker
+        type: string
+    type: object
+  controllers.ResetPasswordRequest:
+    description: Токен и новый пароль для сброса пароля
+    properties:
+      password:
+        example: newpassword123
+        type: string
+      token:
+        example: reset-token-string
+        type: string
+    type: object
+  controllers.UpdateApplicationStatusRequest:
+    description: Новый статус заявки
+    properties:
+      status:
+        example: interview
+        type: string
+    type: object
+  controllers.UpdateJobSeekerProfileRequest:
+    description: Данные для обновления профиля соискателя
+    properties:
+      birth_date:
+        type: string
+      city_id:
+        type: integer
+      driving_licenses:
+        items:
+          properties:
+            category_id:
+              type: integer
+            expiry_date:
+              type: string
+            issue_date:
+              type: string
+          type: object
+        type: array
+      first_name:
+        type: string
+      gender:
+        type: string
+      job_search_status:
+        type: string
+      languages:
+        items:
+          properties:
+            language_id:
+              type: integer
+            proficiency_level:
+              type: string
+          type: object
+        type: array
+      last_name:
+        type: string
+      metro_station_id:
+        type: integer
+      middle_name:
+        type: string
+    type: object
+  controllers.UpdateUserProfileRequest:
+    description: Данные для обновления профиля пользователя
+    properties:
+      currentPassword:
+        example: oldpassword
+        type: string
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: newpassword
+        type: string
+      phone_number:
+        example: "+79991234567"
+        type: string
+    type: object
+  controllers.WorkExperienceCreateRequest:
+    properties:
+      city_id:
+        type: integer
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      end_month:
+        type: integer
+      end_year:
+        type: integer
+      is_current:
+        type: boolean
+      position:
+        type: string
+      profession_id:
+        type: integer
+      responsibilities:
+        type: string
+      start_month:
+        type: integer
+      start_year:
+        type: integer
+    required:
+    - company_name
+    - position
+    - start_month
+    - start_year
+    type: object
+  controllers.WorkExperiencePatchRequest:
+    properties:
+      city_id:
+        type: integer
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      end_month:
+        type: integer
+      end_year:
+        type: integer
+      is_current:
+        type: boolean
+      position:
+        type: string
+      profession_id:
+        type: integer
+      responsibilities:
+        type: string
+      start_month:
+        type: integer
+      start_year:
+        type: integer
+    type: object
+  models.ChatMessage:
+    properties:
+      is_read:
+        type: boolean
+      message_id:
+        type: integer
+      message_text:
+        type: string
+      room_id:
+        type: integer
+      sender_id:
+        type: string
+      sent_at:
+        type: string
+    type: object
+  models.ChatParticipant:
+    properties:
+      chat_room:
+        $ref: '#/definitions/models.ChatRoom'
+      is_active:
+        type: boolean
+      joined_at:
+        type: string
+      last_read_at:
+        type: string
+      participant_id:
+        type: integer
+      room_id:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  models.ChatRoom:
+    properties:
+      application_id:
+        type: integer
+      chat_messages:
+        items:
+          $ref: '#/definitions/models.ChatMessage'
+        type: array
+      chat_participants:
+        items:
+          $ref: '#/definitions/models.ChatParticipant'
+        type: array
+      created_at:
+        type: string
+      is_active:
+        type: boolean
+      last_message_at:
+        type: string
+      room_id:
+        type: integer
+    type: object
+  models.City:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/models.CompanyAddress'
+        type: array
+      city_id:
+        type: integer
+      districts:
+        items:
+          $ref: '#/definitions/models.District'
+        type: array
+      metro_stations:
+        items:
+          $ref: '#/definitions/models.MetroStation'
+        type: array
+      name:
+        type: string
+      region:
+        $ref: '#/definitions/models.Region'
+      region_id:
+        type: integer
+    type: object
+  models.CompanyAddress:
+    properties:
+      address:
+        type: string
+      address_id:
+        type: integer
+      city:
+        $ref: '#/definitions/models.City'
+      city_id:
+        type: integer
+      company_id:
+        type: integer
+      company_profile:
+        $ref: '#/definitions/models.CompanyProfile'
+      district:
+        $ref: '#/definitions/models.District'
+      district_id:
+        type: integer
+    type: object
+  models.CompanyEmployee:
+    properties:
+      company_id:
+        type: integer
+      department:
+        type: string
+      employee_id:
+        type: integer
+      hire_date:
+        type: string
+      is_admin:
+        type: boolean
+      position:
+        type: string
+      telegram:
+        type: string
+      user_id:
+        type: string
+      whatsapp:
+        type: string
+    type: object
+  models.CompanyProfile:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/models.CompanyAddress'
+        type: array
+      brand_name:
+        type: string
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      company_size:
+        type: string
+      company_type:
+        type: string
+      description:
+        type: string
+      email:
+        type: string
+      employees:
+        items:
+          $ref: '#/definitions/models.CompanyEmployee'
+        type: array
+      founded_year:
+        type: integer
+      industries:
+        items:
+          $ref: '#/definitions/models.Industry'
+        type: array
+      inn:
+        type: string
+      is_it_company:
+        type: boolean
+      job_postings:
+        items:
+          $ref: '#/definitions/models.JobPosting'
+        type: array
+      logo_url:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relations
+      user_id:
+        type: string
+      website_url:
+        type: string
+    type: object
+  models.District:
+    properties:
+      city:
+        $ref: '#/definitions/models.City'
+      city_id:
+        type: integer
+      district_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.Education:
+    properties:
+      education_id:
+        type: integer
+      end_year:
+        type: integer
+      faculty:
+        $ref: '#/definitions/models.Faculty'
+      faculty_id:
+        type: integer
+      institution:
+        $ref: '#/definitions/models.EducationalInstitution'
+      institution_id:
+        type: integer
+      is_current:
+        type: boolean
+      resume_id:
+        type: integer
+      specialization:
+        $ref: '#/definitions/models.Specialization'
+      specialization_id:
+        type: integer
+    type: object
+  models.EducationType:
+    properties:
+      education_type_id:
+        type: integer
+      name:
+        type: string
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+    type: object
+  models.EducationalInstitution:
+    properties:
+      educations:
+        items:
+          $ref: '#/definitions/models.Education'
+        type: array
+      full_name:
+        type: string
+      institution_id:
+        type: integer
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  models.EmploymentType:
+    properties:
+      employment_type_id:
+        type: integer
+      name:
+        type: string
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+    type: object
+  models.Faculty:
+    properties:
+      educations:
+        items:
+          $ref: '#/definitions/models.Education'
+        type: array
+      faculty_id:
+        type: integer
+      institution:
+        $ref: '#/definitions/models.EducationalInstitution'
+      institution_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.Industry:
+    properties:
+      companies:
+        description: Relations
+        items:
+          $ref: '#/definitions/models.CompanyProfile'
+        type: array
+      industry_id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+    type: object
+  models.JobApplication:
+    properties:
+      applicant_id:
+        type: string
+      application_id:
+        type: integer
+      applied_date:
+        type: string
+      chat_room_id:
+        type: integer
+      cover_letter:
+        type: string
+      job_id:
+        type: integer
+      last_updated:
+        type: string
+      resume_id:
+        type: integer
+      status:
+        type: string
+    type: object
+  models.JobPosting:
+    properties:
+      cities:
+        items:
+          $ref: '#/definitions/models.City'
+        type: array
+      company_address:
+        $ref: '#/definitions/models.CompanyAddress'
+      company_address_id:
+        type: integer
+      company_id:
+        type: integer
+      company_profile:
+        allOf:
+        - $ref: '#/definitions/models.CompanyProfile'
+        description: Relations
+      day_lengths:
+        items:
+          $ref: '#/definitions/models.WorkDayLength'
+        type: array
+      deleted:
+        type: boolean
+      description:
+        type: string
+      education_types:
+        items:
+          $ref: '#/definitions/models.EducationType'
+        type: array
+      employment_types:
+        items:
+          $ref: '#/definitions/models.EmploymentType'
+        type: array
+      experience_level:
+        type: string
+      expiration_date:
+        type: string
+      is_active:
+        type: boolean
+      is_contract_possible:
+        type: boolean
+      is_promo:
+        type: boolean
+      job_id:
+        type: integer
+      link:
+        type: string
+      posted_by:
+        type: string
+      posted_date:
+        type: string
+      profession:
+        $ref: '#/definitions/models.VacancyProfession'
+      profession_id:
+        type: integer
+      publish_in_all_cities:
+        type: boolean
+      regions:
+        items:
+          $ref: '#/definitions/models.Region'
+        type: array
+      salary_currency:
+        type: string
+      salary_frequency:
+        type: string
+      salary_max:
+        type: number
+      salary_min:
+        type: number
+      salary_period:
+        type: string
+      salary_type:
+        type: string
+      shift_types:
+        items:
+          $ref: '#/definitions/models.ShiftType'
+        type: array
+      skills:
+        items:
+          $ref: '#/definitions/models.Skill'
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      work_experience:
+        type: string
+      work_formats:
+        items:
+          $ref: '#/definitions/models.WorkFormat'
+        type: array
+      work_schedule_types:
+        items:
+          $ref: '#/definitions/models.WorkScheduleType'
+        type: array
+      work_schedules:
+        items:
+          $ref: '#/definitions/models.WorkSchedule'
+        type: array
+    type: object
+  models.JobSeekerProfile:
+    properties:
+      birth_date:
+        type: string
+      city_id:
+        type: integer
+      first_name:
+        type: string
+      gender:
+        type: string
+      job_search_status:
+        type: string
+      last_name:
+        type: string
+      metro_station_id:
+        type: integer
+      middle_name:
+        type: string
+      profile_id:
+        type: integer
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+      user:
+        $ref: '#/definitions/models.User'
+      user_id:
+        type: string
+    type: object
+  models.MetroStation:
+    properties:
+      city:
+        $ref: '#/definitions/models.City'
+      city_id:
+        type: integer
+      line_color:
+        type: string
+      line_name:
+        type: string
+      name:
+        type: string
+      station_id:
+        type: integer
+    type: object
+  models.Region:
+    properties:
+      cities:
+        items:
+          $ref: '#/definitions/models.City'
+        type: array
+      country_id:
+        type: integer
+      name:
+        type: string
+      region_id:
+        type: integer
+    type: object
+  models.Resume:
+    properties:
+      business_trips:
+        type: string
+      created_at:
+        type: string
+      education_type:
+        $ref: '#/definitions/models.EducationType'
+      education_type_id:
+        type: integer
+      educations:
+        items:
+          $ref: '#/definitions/models.Education'
+        type: array
+      email:
+        type: string
+      employment_types:
+        items:
+          $ref: '#/definitions/models.EmploymentType'
+        type: array
+      has_telegram:
+        type: boolean
+      has_whatsapp:
+        type: boolean
+      hide_email:
+        type: boolean
+      hide_experience:
+        type: boolean
+      hide_full_name:
+        type: boolean
+      hide_other_contacts:
+        type: boolean
+      hide_phone:
+        type: boolean
+      is_moderated:
+        type: boolean
+      job_seeker_profile:
+        allOf:
+        - $ref: '#/definitions/models.JobSeekerProfile'
+        description: Relations
+      link_uuid:
+        type: string
+      phone:
+        type: string
+      phone_comment:
+        type: string
+      photo_url:
+        type: string
+      profession:
+        $ref: '#/definitions/models.VacancyProfession'
+      profession_id:
+        type: integer
+      professional_summary:
+        type: string
+      profile_id:
+        type: integer
+      resume_id:
+        type: integer
+      resume_skills:
+        items:
+          $ref: '#/definitions/models.ResumeSkill'
+        type: array
+      salary_expectation:
+        type: number
+      title:
+        type: string
+      updated_at:
+        type: string
+      visibility:
+        type: string
+      website_url:
+        type: string
+      work_experiences:
+        items:
+          $ref: '#/definitions/models.WorkExperience'
+        type: array
+      work_formats:
+        items:
+          $ref: '#/definitions/models.WorkFormat'
+        type: array
+    type: object
+  models.ResumeSkill:
+    properties:
+      proficiency_level:
+        type: string
+      resume_id:
+        type: integer
+      skill_id:
+        type: integer
+    type: object
+  models.ShiftType:
+    properties:
+      name:
+        type: string
+      shift_type_id:
+        type: integer
+    type: object
+  models.Skill:
+    properties:
+      job_postings:
+        items:
+          $ref: '#/definitions/models.JobPosting'
+        type: array
+      name:
+        type: string
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+      skill_id:
+        type: integer
+    type: object
+  models.Specialization:
+    properties:
+      educations:
+        items:
+          $ref: '#/definitions/models.Education'
+        type: array
+      name:
+        type: string
+      specialization_id:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      company_profile:
+        allOf:
+        - $ref: '#/definitions/models.CompanyProfile'
+        description: Relations
+      created_at:
+        type: string
+      email:
+        type: string
+      is_active:
+        type: boolean
+      job_seeker_profile:
+        $ref: '#/definitions/models.JobSeekerProfile'
+      phone_number:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      user_type:
+        type: string
+    type: object
+  models.VacancyProfession:
+    properties:
+      group_id:
+        type: integer
+      job_postings:
+        items:
+          $ref: '#/definitions/models.JobPosting'
+        type: array
+      name:
+        type: string
+      profession_id:
+        type: integer
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+    type: object
+  models.VacancyProfessionGroup:
+    properties:
+      group_id:
+        type: integer
+      name:
+        type: string
+      professions:
+        items:
+          $ref: '#/definitions/models.VacancyProfession'
+        type: array
+    type: object
+  models.WorkDayLength:
+    properties:
+      day_length_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.WorkExperience:
+    properties:
+      city:
+        $ref: '#/definitions/models.City'
+      city_id:
+        type: integer
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      company_profile:
+        $ref: '#/definitions/models.CompanyProfile'
+      end_month:
+        type: integer
+      end_year:
+        type: integer
+      experience_id:
+        type: integer
+      is_current:
+        type: boolean
+      position:
+        type: string
+      profession:
+        $ref: '#/definitions/models.VacancyProfession'
+      profession_id:
+        type: integer
+      responsibilities:
+        type: string
+      resume_id:
+        type: integer
+      start_month:
+        type: integer
+      start_year:
+        type: integer
+    type: object
+  models.WorkFormat:
+    properties:
+      name:
+        type: string
+      resumes:
+        items:
+          $ref: '#/definitions/models.Resume'
+        type: array
+      work_format_id:
+        type: integer
+    type: object
+  models.WorkSchedule:
+    properties:
+      job_postings:
+        description: Связь с вакансиями через таблицу-связку vacancy_work_schedules(job_id,
+          schedule_id)
+        items:
+          $ref: '#/definitions/models.JobPosting'
+        type: array
+      name:
+        type: string
+      schedule_id:
+        type: integer
+    type: object
+  models.WorkScheduleType:
+    properties:
+      name:
+        type: string
+      schedule_type_id:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: REST API for JobFind, портированная с Node.js на Go (Gin + GORM)
+  title: JobFind Go API
+  version: "1.0"
+paths:
+  /api/applications/{application_id}:
+    get:
+      description: Возвращает заявку с JobPosting и Resume
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobApplication'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить заявку по ID
+      tags:
+      - Applications
+  /api/applications/{application_id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет статус заявки (только для employer), создаёт чат-рум
+        при переводе в interview
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: integer
+      - description: Новый статус
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateApplicationStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobApplication'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить статус заявки
+      tags:
+      - Applications
+  /api/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Отправляет письмо для сброса пароля на email пользователя
+      parameters:
+      - description: Email пользователя
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Запрос на восстановление пароля
+      tags:
+      - Auth
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя по email и паролю
+      parameters:
+      - description: Данные для входа (email, password)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Вход пользователя
+      tags:
+      - Auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует нового пользователя (job_seeker или employer)
+      parameters:
+      - description: Данные пользователя (email, password, user_type, phone_number)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/controllers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Регистрация пользователя
+      tags:
+      - Auth
+  /api/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Сброс пароля по токену из письма
+      parameters:
+      - description: Token и новый пароль
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Сброс пароля
+      tags:
+      - Auth
+  /api/chat/messages/{room_id}:
+    get:
+      description: Возвращает сообщения чата с вложениями и пагинацией
+      parameters:
+      - description: ID комнаты
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      - description: Лимит сообщений
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ChatMessage'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить сообщения чата
+      tags:
+      - Chat
+  /api/chat/read/{room_id}:
+    put:
+      description: Обновляет last_read_at для участника чата
+      parameters:
+      - description: ID комнаты
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить отметку о прочтении сообщений
+      tags:
+      - Chat
+  /api/chat/room/{application_id}:
+    get:
+      description: Возвращает чат-рум по application_id, только если пользователь
+        — участник
+      parameters:
+      - description: ID заявки (application_id)
+        in: path
+        name: application_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatRoom'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить чат-рум по application_id
+      tags:
+      - Chat
+  /api/chat/unread-count:
+    get:
+      description: Возвращает количество непрочитанных сообщений пользователя во всех
+        чатах
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить количество непрочитанных сообщений
+      tags:
+      - Chat
+  /api/companies/jobs:
+    get:
+      description: Получить краткий список вакансий компании текущего работодателя
+        с пагинацией и сортировкой
+      parameters:
+      - default: 1
+        description: Номер страницы (>=1)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Размер страницы (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - default: posted_date
+        description: Поле сортировки
+        enum:
+        - job_id
+        - posted_date
+        - expiration_date
+        in: query
+        name: sort_by
+        type: string
+      - default: desc
+        description: Направление сортировки
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_dir
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Объект с полями: data, page, page_size, total'
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить вакансии компании
+      tags:
+      - Companies
+    post:
+      consumes:
+      - application/json
+      description: Создать новую вакансию для компании (только для работодателя)
+      parameters:
+      - description: Данные вакансии
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.JobPosting'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать вакансию для компании
+      tags:
+      - Companies
+  /api/companies/jobs/{id}:
+    get:
+      description: Возвращает полную карточку вакансии с предзагрузкой связанных сущностей
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить полную информацию о вакансии компании по ID
+      tags:
+      - Companies
+  /api/companies/profile:
+    get:
+      description: Получить профиль компании текущего работодателя (с сотрудниками)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CompanyProfile'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль компании
+      tags:
+      - Companies
+    post:
+      consumes:
+      - application/json
+      description: Создаёт или обновляет профиль компании для текущего работодателя.
+        Поддерживает привязку отраслей компании (industries) и указание ИТ-статуса
+        (is_it_company).
+      parameters:
+      - description: Данные профиля компании (все поля, кроме company_name, опциональны)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CompanyProfileUpsertRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Возвращает обновленный профиль компании с привязанными отраслями
+          schema:
+            $ref: '#/definitions/models.CompanyProfile'
+        "400":
+          description: Некорректные данные запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Пользователь не аутентифицирован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Доступ запрещен (только для работодателей)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать или обновить профиль компании
+      tags:
+      - Companies
+  /api/dictionaries/cities-by-ids:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает список городов по массиву id
+      parameters:
+      - description: Массив city_ids
+        in: body
+        name: data
+        required: true
+        schema:
+          additionalProperties:
+            items:
+              type: integer
+            type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.City'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить города по id
+      tags:
+      - Dictionaries
+  /api/dictionaries/companies/search:
+    get:
+      description: Поиск компаний по названию или бренду
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CompanyProfile'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Поиск компаний
+      tags:
+      - Dictionaries
+  /api/dictionaries/educational-institutions/search:
+    get:
+      description: Поиск учебных заведений по названию
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.EducationalInstitution'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Поиск учебных заведений
+      tags:
+      - Dictionaries
+  /api/dictionaries/industries:
+    get:
+      description: Возвращает список индустрий
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Industry'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить индустрии
+      tags:
+      - Dictionaries
+  /api/dictionaries/professions:
+    get:
+      description: Возвращает список групп профессий с вложенными профессиями
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.VacancyProfessionGroup'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить группы профессий
+      tags:
+      - Dictionaries
+  /api/dictionaries/professions/search:
+    get:
+      description: Поиск профессий по подстроке
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.VacancyProfession'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Поиск профессий
+      tags:
+      - Dictionaries
+  /api/dictionaries/regions-by-ids:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает список регионов по массиву id
+      parameters:
+      - description: Массив region_ids
+        in: body
+        name: data
+        required: true
+        schema:
+          additionalProperties:
+            items:
+              type: integer
+            type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Region'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить регионы по id
+      tags:
+      - Dictionaries
+  /api/dictionaries/specializations/search:
+    get:
+      description: Поиск специализаций по названию
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Specialization'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Поиск специализаций
+      tags:
+      - Dictionaries
+  /api/job-seeker-profiles:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новый профиль job seeker (один на пользователя)
+      parameters:
+      - description: Данные профиля
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.JobSeekerProfile'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать профиль соискателя
+      tags:
+      - JobSeekerProfiles
+  /api/job-seeker-profiles/{id}:
+    get:
+      description: Возвращает профиль по ID
+      parameters:
+      - description: ID профиля
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль соискателя по ID
+      tags:
+      - JobSeekerProfiles
+  /api/job-seeker-profiles/me:
+    delete:
+      description: Удаляет профиль текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить свой профиль соискателя
+      tags:
+      - JobSeekerProfiles
+    get:
+      description: Возвращает профиль текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить свой профиль соискателя
+      tags:
+      - JobSeekerProfiles
+    put:
+      consumes:
+      - application/json
+      description: Обновляет профиль, водительские права и языки
+      parameters:
+      - description: Данные для обновления профиля
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateJobSeekerProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить свой профиль соискателя
+      tags:
+      - JobSeekerProfiles
+  /api/job-seekers/profile:
+    get:
+      description: Возвращает профиль job seeker с вложенными резюме, опытом, образованием
+        и скиллами
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль соискателя
+      tags:
+      - JobSeekers
+    post:
+      consumes:
+      - application/json
+      description: Создаёт или обновляет профиль job seeker
+      parameters:
+      - description: Данные профиля
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.JobSeekerProfile'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobSeekerProfile'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать или обновить профиль соискателя
+      tags:
+      - JobSeekers
+  /api/job-seekers/resumes:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новое резюме для профиля job seeker
+      parameters:
+      - description: Данные резюме
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.Resume'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Resume'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать резюме для соискателя
+      tags:
+      - JobSeekers
+  /api/jobs:
+    get:
+      description: Получить список вакансий с фильтрами (поиск, город, регион, профессия,
+        зарплата, сортировка)
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        type: string
+      - collectionFormat: csv
+        description: ID города
+        in: query
+        items:
+          type: integer
+        name: city_id
+        type: array
+      - collectionFormat: csv
+        description: ID региона
+        in: query
+        items:
+          type: integer
+        name: region_id
+        type: array
+      - collectionFormat: csv
+        description: ID профессии
+        in: query
+        items:
+          type: integer
+        name: profession_id
+        type: array
+      - description: Минимальная зарплата
+        in: query
+        name: salary
+        type: number
+      - description: Сортировка (date/salary)
+        in: query
+        name: sort
+        type: string
+      - description: Направление сортировки (ASC/DESC)
+        in: query
+        name: sort_direction
+        type: string
+      - description: Диапазон дат (all/month/week/day)
+        in: query
+        name: date_range
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.JobListItem'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Поиск вакансий
+      tags:
+      - Jobs
+    post:
+      consumes:
+      - application/json
+      description: Создать новую вакансию (только для работодателя)
+      parameters:
+      - description: Данные вакансии
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.JobUpsertRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать вакансию
+      tags:
+      - Jobs
+  /api/jobs/{job_id}:
+    get:
+      description: Получить подробную информацию о вакансии по её ID
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить вакансию по ID
+      tags:
+      - Jobs
+    put:
+      consumes:
+      - application/json
+      description: Обновить существующую вакансию (только для работодателя)
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Данные вакансии
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.JobUpsertRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить вакансию
+      tags:
+      - Jobs
+  /api/jobs/{job_id}/apply:
+    post:
+      consumes:
+      - application/json
+      description: Откликнуться на вакансию (только для соискателя)
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Данные отклика (resume_id, cover_letter)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ApplyToJobRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.JobApplication'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Откликнуться на вакансию
+      tags:
+      - Jobs
+  /api/locations:
+    get:
+      description: Поиск по регионам и городам по подстроке
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Поиск локаций (регионы и города)
+      tags:
+      - Locations
+  /api/locations/cities/search:
+    get:
+      description: Поиск городов по подстроке
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.City'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Поиск городов
+      tags:
+      - Locations
+  /api/resumes:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Создаёт новое резюме с поддержкой загрузки фото, связей и валидацией
+      parameters:
+      - description: Фото
+        in: formData
+        name: photo
+        type: file
+      - description: Заголовок
+        in: formData
+        name: title
+        type: string
+      - description: ID профессии
+        in: formData
+        name: profession_id
+        type: integer
+      - description: Ожидаемая зарплата
+        in: formData
+        name: salary_expectation
+        type: number
+      - description: ID типа образования
+        in: formData
+        name: education_type_id
+        type: integer
+      - collectionFormat: csv
+        description: ID типов занятости
+        in: formData
+        items:
+          type: integer
+        name: employment_type_ids[]
+        type: array
+      - collectionFormat: csv
+        description: ID форматов работы
+        in: formData
+        items:
+          type: integer
+        name: work_format_ids[]
+        type: array
+      - description: 'JSON-массив опыта работы. Пример: [{\'
+        in: formData
+        name: work_experiences
+        type: string
+      - description: 'JSON-массив образования. Пример: [{\'
+        in: formData
+        name: educations
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}:
+    delete:
+      description: Удаляет резюме и все связанные сущности, а также фото
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить резюме
+      tags:
+      - Resumes
+    get:
+      description: Возвращает резюме с полными связями (employment types, work formats,
+        experience, education и др.)
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить резюме по ID
+      tags:
+      - Resumes
+    patch:
+      consumes:
+      - application/json
+      - multipart/form-data
+      description: Обновляет только переданные поля резюме. Поддерживает JSON и multipart/form-data
+        (фото и связи).
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Фото
+        in: formData
+        name: photo
+        type: file
+      - description: Заголовок
+        in: formData
+        name: title
+        type: string
+      - description: Краткое описание профессиональных навыков
+        in: formData
+        name: professional_summary
+        type: string
+      - description: Ожидаемая зарплата
+        in: formData
+        name: salary_expectation
+        type: number
+      - description: Видимость резюме (public, private)
+        in: formData
+        name: visibility
+        type: string
+      - description: Скрыть полное имя
+        in: formData
+        name: hide_full_name
+        type: boolean
+      - description: Скрыть телефон
+        in: formData
+        name: hide_phone
+        type: boolean
+      - description: Скрыть email
+        in: formData
+        name: hide_email
+        type: boolean
+      - description: Скрыть опыт работы
+        in: formData
+        name: hide_experience
+        type: boolean
+      - description: Скрыть другие контакты
+        in: formData
+        name: hide_other_contacts
+        type: boolean
+      - description: Комментарий к телефону
+        in: formData
+        name: phone_comment
+        type: string
+      - description: Ссылка на сайт
+        in: formData
+        name: website_url
+        type: string
+      - description: Разрешить командировки
+        in: formData
+        name: business_trips
+        type: string
+      - description: Разрешить WhatsApp
+        in: formData
+        name: has_whatsapp
+        type: boolean
+      - description: Разрешить Telegram
+        in: formData
+        name: has_telegram
+        type: boolean
+      - description: Телефон
+        in: formData
+        name: phone
+        type: string
+      - description: Email
+        in: formData
+        name: email
+        type: string
+      - description: ID профессии
+        in: formData
+        name: profession_id
+        type: integer
+      - description: ID типа образования
+        in: formData
+        name: education_type_id
+        type: integer
+      - description: Фото резюме
+        in: formData
+        name: photo_url
+        type: file
+      - description: Массив ID типов занятости
+        in: formData
+        name: employment_type_ids[]
+        type: integer
+      - description: Массив ID форматов работы
+        in: formData
+        name: work_format_ids[]
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Resume'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Частичное обновление резюме
+      tags:
+      - Resumes
+    put:
+      consumes:
+      - multipart/form-data
+      description: Обновляет резюме, поддерживает обновление связей и фото
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Фото
+        in: formData
+        name: photo
+        type: file
+      - description: Заголовок
+        in: formData
+        name: title
+        type: string
+      - description: ID профессии
+        in: formData
+        name: profession_id
+        type: integer
+      - description: Ожидаемая зарплата
+        in: formData
+        name: salary_expectation
+        type: number
+      - description: ID типа образования
+        in: formData
+        name: education_type_id
+        type: integer
+      - collectionFormat: csv
+        description: ID типов занятости
+        in: formData
+        items:
+          type: integer
+        name: employment_type_ids[]
+        type: array
+      - collectionFormat: csv
+        description: ID форматов работы
+        in: formData
+        items:
+          type: integer
+        name: work_format_ids[]
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}/copy:
+    post:
+      description: Создаёт копию резюме со всеми связями и фото
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Копировать резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}/educations:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новую запись об образовании в резюме
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Данные об образовании
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.EducationCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Education'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить образование в резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}/educations/{education_id}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Удаляет запись об образовании
+        Добавляет новый опыт работы в резюме с проверкой на пересечение периодов
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: ID образования
+        in: path
+        name: education_id
+        required: true
+        type: integer
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Данные опыта работы
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.WorkExperienceCreateRequest'
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.WorkExperience'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Добавить опыт работы в резюме
+      tags:
+      - Resumes
+      - Resumes
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет запись об образовании
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: ID образования
+        in: path
+        name: education_id
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.EducationPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Education'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить образование в резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}/photo:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает или заменяет фото для резюме
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Фото
+        in: formData
+        name: photo
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить или заменить фото для резюме
+      tags:
+      - Resumes
+  /api/resumes/{resume_id}/work-experiences:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Удаляет запись об образовании
+        Добавляет новый опыт работы в резюме с проверкой на пересечение периодов
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: Данные опыта работы
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.WorkExperienceCreateRequest'
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.WorkExperience'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Добавить опыт работы в резюме
+      tags:
+      - Resumes
+      - Resumes
+  /api/resumes/{resume_id}/work-experiences/{experience_id}:
+    delete:
+      description: Удаляет опыт работы из резюме
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: ID опыта работы
+        in: path
+        name: experience_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить опыт работы из резюме
+      tags:
+      - Resumes
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет опыт работы, проверяет пересечение периодов
+      parameters:
+      - description: ID резюме
+        in: path
+        name: resume_id
+        required: true
+        type: integer
+      - description: ID опыта работы
+        in: path
+        name: experience_id
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.WorkExperiencePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WorkExperience'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить опыт работы в резюме
+      tags:
+      - Resumes
+  /api/resumes/my:
+    get:
+      description: Возвращает все резюме, связанные с профилем пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Resume'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список резюме текущего пользователя
+      tags:
+      - Resumes
+  /api/test:
+    get:
+      description: Проверка работоспособности API
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Test endpoint
+      tags:
+      - Test
+  /api/users/profile:
+    get:
+      description: Возвращает профиль текущего пользователя (email, user_type, phone_number)
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль пользователя
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Обновляет email, телефон или пароль пользователя (требует текущий
+        пароль для чувствительных изменений)
+      parameters:
+      - description: Данные для обновления профиля
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateUserProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль пользователя
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

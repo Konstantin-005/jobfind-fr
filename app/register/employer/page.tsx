@@ -34,14 +34,31 @@ export default function EmployerRegister() {
       const response = await authApi.register({ 
         email, 
         password,
-        user_type: 'employer' // Устанавливаем тип пользователя как работодатель
+        user_type: 'employer'
       });
       
       if (response.error) {
         setError(response.error);
-      } else if (response.data) {
-        localStorage.setItem('token', response.data.token);
-        router.push('/');
+      } else if (response.data?.token) {
+        try {
+          if (typeof window !== 'undefined') {
+            // Сохраняем токен и тип пользователя
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user_type', 'employer');
+            
+            // Пробуем оба способа редиректа на случай проблем с роутером
+            await router.push('/employer/addcompany');
+            window.location.href = '/employer/addcompany';
+          } else {
+            setError('Ошибка при сохранении сессии');
+          }
+        } catch (e) {
+          console.error('Ошибка при сохранении токена:', e);
+          setError('Ошибка при сохранении сессии');
+        }
+      } else {
+        console.error('Токен не найден в ответе:', response);
+        setError('Не удалось получить токен авторизации');
       }
     } catch (err) {
       setError('Произошла ошибка при регистрации');

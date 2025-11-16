@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from "../../config/api";
 import employmentTypes from "../../config/employment_types_202505222228.json";
 import workFormats from "../../config/work_formats_202505222228.json";
 import educationTypes from "../../config/education_types_202505242225.json";
+import { uploadFile } from "../../utils/api";
 
 const steps = [
   { label: "Должность" },
@@ -21,6 +22,8 @@ export default function ResumeAddPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     title: "",
     profession_id: undefined as number | undefined,
@@ -78,6 +81,7 @@ export default function ResumeAddPage() {
     hideCompanyNames: false,
     visibility: "public" as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only",
   });
+
   const [suggestions, setSuggestions] = useState<Array<{ profession_id: number; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -480,16 +484,22 @@ export default function ResumeAddPage() {
     setForm((prev) => ({ ...prev, visibility: e.target.value as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only" }));
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setPhoto(file);
+    // Превью
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    // Загрузка
+    const res = await uploadFile(file, 'photo');
+    if (res.error || !res.data?.fileName) {
+      console.error('Ошибка загрузки фото:', res.error);
+      return;
     }
+    setPhotoFileName(res.data.fileName);
   };
 
   const handleSave = async () => {
@@ -532,7 +542,8 @@ export default function ResumeAddPage() {
       formData.append('has_whatsapp', String(form.hasWhatsapp));
       formData.append('has_telegram', String(form.hasTelegram));
       formData.append('education_type_id', String(form.education_type_id));
-      if (photo) formData.append('photo', photo);
+      if (photoFileName) formData.append('photo_url', photoFileName);
+
       formData.append('hide_full_name', String(form.hideNameAndPhoto));
       formData.append('hide_phone', String(form.hidePhone));
       formData.append('hide_email', String(form.hideEmail));

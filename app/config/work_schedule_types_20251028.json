@@ -1,0 +1,9 @@
+{
+  "work_schedule_types": [
+    { "schedule_type_id": 1, "name": "Полный день" },
+    { "schedule_type_id": 2, "name": "Неполный день" },
+    { "schedule_type_id": 3, "name": "Гибкий график" },
+    { "schedule_type_id": 4, "name": "Сменный график" }
+  ]
+}
+

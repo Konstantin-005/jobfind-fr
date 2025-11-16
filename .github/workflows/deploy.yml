@@ -1,0 +1,93 @@
+name: Deploy to VPS (e77.top)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r .next public next.config.js package.json package-lock.json deploy/
+          tar -czf jobfind-fr-${{ github.sha }}.tar.gz -C deploy .
+
+      - name: Upload to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "jobfind-fr-${{ github.sha }}.tar.gz"
+          target: "/tmp"
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            APP_NAME="e77-top"
+            DEPLOY_DIR="/www/wwwroot/e77.top"
+            ARCHIVE_NAME="jobfind-fr-${{ github.sha }}.tar.gz"
+
+            # Prepare directory
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            # Extract new release
+            echo "Extracting new release"
+            tar -xzf "/tmp/${ARCHIVE_NAME}" -C .
+
+            # Ensure pm2 installed
+            if ! command -v pm2 >/dev/null 2>&1; then
+              echo "Installing pm2 globally"
+              npm i -g pm2
+            fi
+
+            # Install production dependencies
+            echo "Installing production dependencies"
+            npm ci --omit=dev
+
+            # Start or restart the application
+            echo "Starting or restarting the application"
+            pm2 restart "$APP_NAME" --update-env || pm2 start npm --name "$APP_NAME" -- start -- -p 4000
+
+            # Save PM2 process list and enable startup
+            pm2 save
+
+            # Check application status
+            echo "Checking application status"
+            if ! pm2 describe "$APP_NAME" | grep -qi 'status.*online'; then
+              echo "Error: Application failed to start"
+              pm2 logs "$APP_NAME" --lines 200 || true
+              exit 1
+            fi
+
+            # Cleanup
+            echo "Cleaning up temporary files"
+            rm -f "/tmp/${ARCHIVE_NAME}"
+
+            echo "Deployment completed successfully!"

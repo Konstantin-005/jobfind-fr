@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 interface City {
-  id: number;
+  city_id: number | undefined;
   name: string;
-  type: string;
 }
 
 interface CityAutocompleteProps {
@@ -45,11 +45,16 @@ export default function CityAutocomplete({ value, onChange, required = false, in
       if (query.length >= 2) {
         setLoading(true);
         try {
-          const response = await fetch(`http://localhost:3000/api/locations?query=${encodeURIComponent(query)}`);
-          const data = await response.json();
-          // Фильтруем только города
-          const cities = data.filter((item: City) => item.type === 'city');
-          setSuggestions(cities);
+          const response = await fetch(`${API_ENDPOINTS.citiesSearch}?query=${encodeURIComponent(query)}`);
+          let data = await response.json();
+          // Приводим к виду { city_id, name } и фильтруем валидные города
+          data = data
+            .map((city: any) => ({
+              city_id: city.city_id ?? city.id,
+              name: city.name
+            }))
+            .filter((city: any) => city.city_id != null && city.name);
+          setSuggestions(Array.isArray(data) ? data : []);
         } catch (error) {
           console.error('Error fetching cities:', error);
           setSuggestions([]);
@@ -76,7 +81,9 @@ export default function CityAutocomplete({ value, onChange, required = false, in
   const handleSuggestionClick = (city: City) => {
     setSelectedCity(city);
     setQuery(city.name);
-    onChange(city.id.toString());
+    // Гарантируем, что city_id существует и является числом
+    const cityIdStr = (city.city_id && typeof city.city_id === 'number') ? city.city_id.toString() : '';
+    onChange(cityIdStr);
     setShowSuggestions(false);
   };
 
@@ -97,7 +104,7 @@ export default function CityAutocomplete({ value, onChange, required = false, in
           ) : suggestions.length > 0 ? (
             suggestions.map((city) => (
               <div
-                key={city.id}
+                key={city.city_id}
                 className="px-4 py-2 hover:bg-blue-50 cursor-pointer"
                 onClick={() => handleSuggestionClick(city)}
               >

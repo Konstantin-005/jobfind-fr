@@ -1,19 +1,11 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { API_ENDPOINTS, API_BASE_URL } from "../../config/api";
 import employmentTypes from "../../config/employment_types_202505222228.json";
 import workFormats from "../../config/work_formats_202505222228.json";
 import educationTypes from "../../config/education_types_202505242225.json";
-
-const steps = [
-  { label: "Должность" },
-  { label: "Условия работы" },
-  { label: "Опыт работы" },
-  { label: "Уровень образования" },
-  { label: "О себе" },
-  { label: "Контакты и настройки видимости" },
-];
+import { uploadFile } from "../../utils/api";
 
 // Месяцы для select
 const months = [
@@ -21,12 +13,1226 @@ const months = [
   "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
 ];
 
+function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.788l-4 1.03 1.03-4 12.332-12.33z" />
+    </svg>
+  );
+}
+
+function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function WorkConditionsBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
+  // Маппинг значений для отображения
+  const employmentTypeNames = employmentTypes.employment_types.filter(et => form.employment_type_ids.includes(et.employment_type_id)).map(et => et.name).join(', ');
+  const workFormatNames = workFormats.work_formats.filter(wf => form.work_format_ids.includes(wf.work_format_id)).map(wf => wf.name).join(', ');
+  let businessTrips = 'Не указано';
+  if (form.business_trips === 'yes') businessTrips = 'Могу';
+  else if (form.business_trips === 'no') businessTrips = 'Не могу';
+  else if (form.business_trips === 'sometimes') businessTrips = 'Могу иногда';
+  return (
+    <div className="p-6 border rounded-xl relative mb-6 bg-white">
+      <div className="text-gray-400 text-sm mb-1">Тип занятости</div>
+      <div className="text-base font-medium mb-4">{employmentTypeNames || 'Не указано'}</div>
+      <div className="text-gray-400 text-sm mb-1">Формат работы</div>
+      <div className="text-base font-medium mb-4">{workFormatNames || 'Не указано'}</div>
+      <div className="text-gray-400 text-sm mb-1">Командировки</div>
+      <div className="text-base font-medium">{businessTrips}</div>
+      <button className="absolute top-4 right-4 text-gray-400 hover:text-blue-500" onClick={onEdit} aria-label="Редактировать условия">
+        <PencilIcon />
+      </button>
+    </div>
+  );
+}
+
+function WorkConditionsModal({ form, onClose, onSave }: { form: any, onClose: () => void, onSave: (data: any) => void }) {
+  const [employmentTypeIds, setEmploymentTypeIds] = useState<number[]>(form.employment_type_ids);
+  const [workFormatIds, setWorkFormatIds] = useState<number[]>(form.work_format_ids);
+  const [businessTrips, setBusinessTrips] = useState<string>(form.business_trips);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl p-8 w-full max-w-md relative">
+        <h2 className="text-xl font-bold mb-6">Редактировать условия работы</h2>
+        <div className="mb-6">
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Тип занятости</div>
+            <div className="space-y-2">
+              {employmentTypes.employment_types.map(type => (
+                <label key={type.employment_type_id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={employmentTypeIds.includes(type.employment_type_id)}
+                    onChange={() => setEmploymentTypeIds(ids => ids.includes(type.employment_type_id) ? ids.filter(id => id !== type.employment_type_id) : [...ids, type.employment_type_id])}
+                  />
+                  <span>{type.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Формат работы</div>
+            <div className="space-y-2">
+              {workFormats.work_formats.map(format => (
+                <label key={format.work_format_id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={workFormatIds.includes(format.work_format_id)}
+                    onChange={() => setWorkFormatIds(ids => ids.includes(format.work_format_id) ? ids.filter(id => id !== format.work_format_id) : [...ids, format.work_format_id])}
+                  />
+                  <span>{format.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Командировки</div>
+            <div className="space-y-2">
+              {[{ value: "yes", label: "Могу" }, { value: "no", label: "Не могу" }, { value: "sometimes", label: "Могу иногда" }].map(opt => (
+                <label key={opt.value} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="business_trips"
+                    checked={businessTrips === opt.value}
+                    onChange={() => setBusinessTrips(opt.value)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => onSave({ employment_type_ids: employmentTypeIds, work_format_ids: workFormatIds, business_trips: businessTrips })}>Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TitlePhotoBlock({ form, photoPreview, onEdit }: { form: any, photoPreview: string | null, onEdit: () => void }) {
+  return (
+    <div className="p-6 border rounded-xl relative mb-6 bg-white flex gap-6 items-center">
+      <div className="flex-shrink-0">
+        {photoPreview ? (
+          <img src={photoPreview} alt="Фото профиля" className="w-20 h-20 object-cover rounded-full border-2 border-[#2B81B0]" />
+        ) : (
+          <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-gray-400">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-gray-400 text-sm mb-1">Кем вы хотите работать</div>
+        <div className="text-base font-medium mb-4 break-words">{form.title || 'Не указано'}</div>
+        <div className="text-gray-400 text-sm mb-1">Желаемый уровень дохода</div>
+        <div className="text-base font-medium">{form.salary_expectation ? `${form.salary_expectation} ₽` : 'Не указано'}</div>
+      </div>
+      <button className="absolute top-4 right-4 text-gray-400 hover:text-blue-500" onClick={onEdit} aria-label="Редактировать должность и фото">
+        <PencilIcon />
+      </button>
+    </div>
+  );
+}
+
+function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, photoPreview: string | null, onClose: () => void, onSave: (data: any, photo: File | null) => void }) {
+  const [title, setTitle] = useState(form.title);
+  const [salary, setSalary] = useState(form.salary_expectation);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(photoPreview);
+
+  const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setPhoto(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => setPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setPreview(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl p-8 w-full max-w-md relative">
+        <h2 className="text-xl font-bold mb-6">Редактировать должность и фото</h2>
+        <div className="mb-6">
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Кем вы хотите работать</div>
+            <input
+              type="text"
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Желаемая должность"
+            />
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Желаемый уровень дохода (₽)</div>
+            <input
+              type="number"
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+              value={salary}
+              onChange={e => setSalary(e.target.value)}
+              placeholder="Сумма в месяц"
+            />
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Фото профиля</div>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 relative">
+                {preview ? (
+                  <img src={preview} alt="Фото профиля" className="w-20 h-20 object-cover rounded-full border-2 border-[#2B81B0]" />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-gray-400">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  </div>
+                )}
+                <label className="absolute bottom-0 right-0 bg-white border border-[#2B81B0] rounded-full p-1 cursor-pointer hover:bg-gray-50 transition">
+                  <PencilIcon className="w-4 h-4 text-[#2B81B0]" />
+                  <input type="file" className="hidden" accept="image/*" onChange={handlePhotoInput} />
+                </label>
+              </div>
+              {preview && (
+                <button className="text-sm text-red-500 underline ml-2" onClick={() => { setPhoto(null); setPreview(null); }}>Удалить фото</button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => {
+            onSave({ title, salary_expectation: salary }, photo);
+
+          }}>Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDeleted }: { experience: any, resumeId: number, onClose: () => void, onSaved: () => void, onDeleted: () => void }) {
+  const router = useRouter();
+  const [localExp, setLocalExp] = useState(() => {
+    // Установка текущего месяца и года по умолчанию для новой записи
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // getMonth() возвращает 0-11
+    const currentYear = currentDate.getFullYear();
+    
+    return {
+      experience_id: experience?.experience_id,
+      company_id: experience?.company_id,
+      company_name: experience?.company_name || '',
+      city_id: experience?.city_id,
+      city_name: experience?.city_name || '',
+      position: experience?.position || '',
+      profession_id: experience?.profession_id,
+      start_month: experience?.start_month || currentMonth,
+      start_year: experience?.start_year || currentYear,
+      end_month: experience?.end_month || null,
+      end_year: experience?.end_year || null,
+      is_current: experience?.is_current || true, // По умолчанию текущее место работы
+      responsibilities: experience?.responsibilities || '',
+      companySuggestions: [],
+      citySuggestions: [],
+      professionSuggestions: [],
+      isLoadingCompany: false,
+      isLoadingCity: false,
+      isLoadingProfession: false
+    };
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      // Валидация обязательных полей
+      if (!localExp.start_month || !localExp.start_year) {
+        throw new Error('Пожалуйста, укажите дату начала работы (месяц и год)');
+      }
+      
+      if (!localExp.is_current && (!localExp.end_month || !localExp.end_year)) {
+        throw new Error('Пожалуйста, укажите дату окончания работы (месяц и год) или отметьте "По настоящее время"');
+      }
+
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
+      // Подготовка данных для отправки
+      const body = {
+        company_id: localExp.company_id,
+        company_name: localExp.company_name,
+        city_id: localExp.city_id,
+        position: localExp.position,
+        profession_id: localExp.profession_id,
+        start_month: Number(localExp.start_month),
+        start_year: Number(localExp.start_year),
+        end_month: localExp.is_current ? null : Number(localExp.end_month),
+        end_year: localExp.is_current ? null : Number(localExp.end_year),
+        is_current: localExp.is_current,
+        responsibilities: localExp.responsibilities,
+      };
+
+      const isNew = !localExp.experience_id;
+      const url = isNew 
+        ? `${API_BASE_URL}/api/resumes/${resumeId}/work-experiences`
+        : `${API_BASE_URL}/api/resumes/${resumeId}/work-experiences/${localExp.experience_id}`;
+
+      const res = await fetch(url, {
+        method: isNew ? 'POST' : 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Ошибка сохранения');
+      }
+      
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ошибка');
+      setIsErrorModalOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Автокомплит для компании
+  const handleCompanyInput = async (value: string) => {
+    setLocalExp(exp => ({ ...exp, company_name: value, company_id: undefined }));
+    
+    if (!value.trim()) {
+      setLocalExp(exp => ({ ...exp, companySuggestions: [] }));
+      return;
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingCompany: true }));
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.companiesSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      setLocalExp(exp => ({ ...exp, companySuggestions: data }));
+    } catch (e) {
+      setLocalExp(exp => ({ ...exp, companySuggestions: [] }));
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingCompany: false }));
+  };
+
+  const handleCompanySelect = (company: { company_id: number; company_name: string; brand_name: string }) => {
+    setLocalExp(exp => ({ 
+      ...exp, 
+      company_id: company.company_id,
+      company_name: company.company_name,
+      companySuggestions: []
+    }));
+  };
+
+  // Автокомплит для города
+  const handleCityInput = async (value: string) => {
+    setLocalExp(exp => ({ ...exp, city_name: value, city_id: undefined }));
+    
+    if (!value.trim()) {
+      setLocalExp(exp => ({ ...exp, citySuggestions: [] }));
+      return;
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingCity: true }));
+    try {
+      const res = await fetch(`${API_ENDPOINTS.citiesSearch}?query=${encodeURIComponent(value)}`);
+      let data = await res.json();
+      data = data.map((city: any) => ({ city_id: city.city_id ?? city.id, name: city.name }));
+      setLocalExp(exp => ({ ...exp, citySuggestions: data }));
+    } catch (e) {
+      setLocalExp(exp => ({ ...exp, citySuggestions: [] }));
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingCity: false }));
+  };
+
+  const handleCitySelect = (city: { city_id: number; name: string }) => {
+    setLocalExp(exp => ({ 
+      ...exp, 
+      city_id: city.city_id,
+      city_name: city.name,
+      citySuggestions: []
+    }));
+  };
+
+  // Автокомплит для должности
+  const handleProfessionInput = async (value: string) => {
+    setLocalExp(exp => ({ ...exp, position: value, profession_id: undefined }));
+    
+    if (!value.trim()) {
+      setLocalExp(exp => ({ ...exp, professionSuggestions: [] }));
+      return;
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingProfession: true }));
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.professionsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      setLocalExp(exp => ({ ...exp, professionSuggestions: data }));
+    } catch (e) {
+      setLocalExp(exp => ({ ...exp, professionSuggestions: [] }));
+    }
+    setLocalExp(exp => ({ ...exp, isLoadingProfession: false }));
+  };
+
+  const handleProfessionSelect = (prof: { profession_id: number; name: string }) => {
+    setLocalExp(exp => ({ 
+      ...exp, 
+      profession_id: prof.profession_id,
+      position: prof.name,
+      professionSuggestions: []
+    }));
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Удалить этот опыт работы?')) return;
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(API_ENDPOINTS.resumes.workExperience(resumeId, localExp.experience_id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Ошибка удаления');
+      onDeleted();
+      onClose();
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ошибка');
+      setIsErrorModalOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 overflow-y-auto">
+      <div className="bg-white rounded-xl p-8 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6">Редактировать опыт работы</h2>
+        <div className="space-y-4 mb-6">
+          <div className="mb-4 relative z-10">
+            <div className="text-base font-medium mb-2">Компания</div>
+            <input 
+              type="text" 
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" 
+              value={localExp.company_name} 
+              onChange={e => handleCompanyInput(e.target.value)} 
+              placeholder="Название компании" 
+              autoComplete="off"
+            />
+            {localExp.isLoadingCompany && <div className="absolute right-4 top-3">...</div>}
+            {localExp.companySuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                {localExp.companySuggestions.map(company => (
+                  <li
+                    key={company.company_id}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleCompanySelect(company)}
+                  >
+                    {company.company_name} {company.brand_name && <span className="text-gray-400">({company.brand_name})</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mb-4 relative">
+            <div className="text-base font-medium mb-2">Город</div>
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base"
+                placeholder="Город или населенный пункт"
+                value={localExp.city_name}
+                onChange={e => handleCityInput(e.target.value)}
+                autoComplete="off"
+                readOnly={!!localExp.city_id}
+                style={{ wordBreak: 'break-word' }}
+              />
+              {localExp.city_id && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                  onClick={() => {
+                    setLocalExp(exp => ({ ...exp, city_name: "", city_id: undefined }));
+                  }}
+                  tabIndex={-1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              {localExp.isLoadingCity && <div className="absolute right-4 top-3">...</div>}
+              {localExp.citySuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                  {localExp.citySuggestions.map(city => (
+                    <li
+                      key={city.city_id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleCitySelect(city)}
+                    >
+                      {city.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div className="mb-4 relative">
+            <div className="text-base font-medium mb-2">Должность</div>
+            <input
+              type="text"
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base"
+              placeholder="Должность"
+              value={localExp.position}
+              onChange={e => handleProfessionInput(e.target.value)}
+              autoComplete="off"
+            />
+            {localExp.isLoadingProfession && <div className="absolute right-4 top-3">...</div>}
+            {localExp.professionSuggestions.length > 0 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                {localExp.professionSuggestions.map(prof => (
+                  <li
+                    key={prof.profession_id}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleProfessionSelect(prof)}
+                  >
+                    {prof.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Период работы</div>
+            <div className="flex items-center gap-4">
+              <select className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" value={localExp.start_year} onChange={e => setLocalExp(exp => ({ ...exp, start_year: e.target.value }))}>
+                {Array.from({ length: 66 }, (_, i) => new Date().getFullYear() - i).map(year => (<option key={year} value={year}>{year}</option>))}
+              </select>
+              <select className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" value={localExp.start_month} onChange={e => setLocalExp(exp => ({ ...exp, start_month: e.target.value }))}>
+                {months.map((month, index) => (<option key={month} value={index + 1}>{month}</option>))}
+              </select>
+              <span>—</span>
+              <select className={`w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base ${localExp.is_current ? 'opacity-50 cursor-not-allowed' : ''}`} value={localExp.end_year} onChange={e => setLocalExp(exp => ({ ...exp, end_year: e.target.value }))} disabled={localExp.is_current}>
+                {Array.from({ length: 66 }, (_, i) => new Date().getFullYear() - i).map(year => (<option key={year} value={year}>{year}</option>))}
+              </select>
+              <select className={`w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base ${localExp.is_current ? 'opacity-50 cursor-not-allowed' : ''}`} value={localExp.end_month} onChange={e => setLocalExp(exp => ({ ...exp, end_month: e.target.value }))} disabled={localExp.is_current}>
+                {months.map((month, index) => (<option key={month} value={index + 1}>{month}</option>))}
+              </select>
+              <label className="flex items-center">
+                <input type="checkbox" className="mr-2" checked={localExp.is_current} onChange={e => {
+                  const isCurrent = e.target.checked;
+                  setLocalExp(exp => ({ 
+                    ...exp, 
+                    is_current: isCurrent,
+                    end_year: isCurrent ? null : exp.end_year,
+                    end_month: isCurrent ? null : exp.end_month
+                  }));
+                }} />
+                По настоящее время
+              </label>
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Обязанности</div>
+            <textarea className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" rows={4} value={localExp.responsibilities} onChange={e => setLocalExp(exp => ({ ...exp, responsibilities: e.target.value }))} placeholder="Описание обязанностей" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={handleSave} disabled={isLoading}>{isLoading ? 'Сохранение...' : 'Сохранить'}</button>
+          {experience?.experience_id && <button className="px-6 py-2 rounded-lg bg-red-600 text-white" onClick={handleDelete} disabled={isLoading}>{isLoading ? 'Удаление...' : 'Удалить'}</button>}
+        </div>
+        {isErrorModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Ошибка</h3>
+                <button onClick={() => setIsErrorModalOpen(false)} className="text-gray-400 hover:text-gray-500">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-gray-600 mb-6">{errorMessage}</p>
+              <div className="flex justify-end">
+                <button onClick={() => setIsErrorModalOpen(false)} className="bg-[#2B81B0] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#18608a] transition">Понятно</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EducationItemModal({ education, resumeId, onClose, onSaved, onDeleted }: { education: any, resumeId: number, onClose: () => void, onSaved: () => void, onDeleted: () => void }) {
+  const router = useRouter();
+  const [localEdu, setLocalEdu] = useState(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    return {
+      ...(education || {}),
+      end_year: education?.end_year || null,
+      is_current: education?.is_current || true,
+      start_year: education?.start_year || currentYear,
+      start_month: education?.start_month || 1,
+      end_month: education?.end_month || null,
+      institution_id: education?.institution_id,
+      specialization_id: education?.specialization_id,
+      institutionSuggestions: [],
+      specializationSuggestions: [],
+      isLoadingInstitution: false,
+      isLoadingSpecialization: false
+    };
+  });
+
+  // Handle institution input with autocomplete
+  const handleInstitutionInput = async (value: string) => {
+    setLocalEdu(edu => ({ ...edu, institution: value, institution_id: undefined, institutionSuggestions: [] }));
+    
+    if (!value.trim()) {
+      setLocalEdu(edu => ({ ...edu, institutionSuggestions: [] }));
+      return;
+    }
+    
+    setLocalEdu(edu => ({ ...edu, isLoadingInstitution: true }));
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.educationalInstitutionsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      setLocalEdu(edu => ({ ...edu, institutionSuggestions: data }));
+    } catch (e) {
+      console.error('Error fetching institutions:', e);
+      setLocalEdu(edu => ({ ...edu, institutionSuggestions: [] }));
+    }
+    setLocalEdu(edu => ({ ...edu, isLoadingInstitution: false }));
+  };
+
+  // Handle institution selection
+  const handleInstitutionSelect = (institution: { institution_id: number; name: string }) => {
+    setLocalEdu(edu => ({
+      ...edu,
+      institution_id: institution.institution_id,
+      institution: institution.name,
+      institutionSuggestions: []
+    }));
+  };
+
+  // Handle specialization input with autocomplete
+  const handleSpecializationInput = async (value: string) => {
+    setLocalEdu(edu => ({ ...edu, specialization: value, specialization_id: undefined, specializationSuggestions: [] }));
+    
+    if (!value.trim()) {
+      setLocalEdu(edu => ({ ...edu, specializationSuggestions: [] }));
+      return;
+    }
+    
+    setLocalEdu(edu => ({ ...edu, isLoadingSpecialization: true }));
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.specializationsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      setLocalEdu(edu => ({ ...edu, specializationSuggestions: data }));
+    } catch (e) {
+      console.error('Error fetching specializations:', e);
+      setLocalEdu(edu => ({ ...edu, specializationSuggestions: [] }));
+    }
+    setLocalEdu(edu => ({ ...edu, isLoadingSpecialization: false }));
+  };
+
+  // Handle specialization selection
+  const handleSpecializationSelect = (specialization: { specialization_id: number; name: string }) => {
+    setLocalEdu(edu => ({
+      ...edu,
+      specialization_id: specialization.specialization_id,
+      specialization: specialization.name,
+      specializationSuggestions: []
+    }));
+  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const body = {
+        institution_id: localEdu.institution_id,
+        specialization_id: localEdu.specialization_id,
+        end_year: localEdu.end_year ? Number(localEdu.end_year) : null,
+      };
+
+      // Determine if we're creating a new education or updating an existing one
+      const isNewEducation = !localEdu.education_id;
+      const url = isNewEducation 
+        ? API_ENDPOINTS.resumes.educations(resumeId)
+        : API_ENDPOINTS.resumes.education(resumeId, localEdu.education_id);
+      
+      const res = await fetch(url, {
+        method: isNewEducation ? 'POST' : 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Ошибка сохранения');
+      }
+      
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ошибка при сохранении образования');
+      setIsErrorModalOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Удалить этот период обучения?')) return;
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch(API_ENDPOINTS.resumes.education(resumeId, localEdu.education_id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Ошибка удаления');
+      onDeleted();
+      onClose();
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ошибка');
+      setIsErrorModalOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSave();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 overflow-y-auto">
+      <div className="bg-white rounded-xl p-8 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6">Редактировать образование</h2>
+        <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
+          <div className="space-y-4">
+            <div className="mb-4">
+            <div className="text-base font-medium mb-2">Учебное заведение</div>
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
+                placeholder="Учебное заведение"
+                value={localEdu.institution}
+                onChange={e => handleInstitutionInput(e.target.value)}
+                autoComplete="off"
+                readOnly={!!localEdu.institution_id}
+                style={{ wordBreak: 'break-word' }}
+              />
+              {localEdu.institution_id && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                  onClick={() => {
+                    setLocalEdu(edu => ({ ...edu, institution: "", institution_id: undefined }));
+                  }}
+                  tabIndex={-1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              {localEdu.isLoadingInstitution && <div className="absolute right-4 top-3">...</div>}
+              {localEdu.institutionSuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                  {localEdu.institutionSuggestions.map((institution: any) => (
+                    <li
+                      key={institution.institution_id || institution.id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleInstitutionSelect(institution)}
+                    >
+                      {institution.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Специальность</div>
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
+                placeholder="Специальность"
+                value={localEdu.specialization}
+                onChange={e => handleSpecializationInput(e.target.value)}
+                autoComplete="off"
+                readOnly={!!localEdu.specialization_id}
+                style={{ wordBreak: 'break-word' }}
+              />
+              {localEdu.specialization_id && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                  onClick={() => {
+                    setLocalEdu(edu => ({ ...edu, specialization: "", specialization_id: undefined }));
+                  }}
+                  tabIndex={-1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              {localEdu.isLoadingSpecialization && <div className="absolute right-4 top-3">...</div>}
+              {localEdu.specializationSuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                  {localEdu.specializationSuggestions.map((specialization: any) => (
+                    <li
+                      key={specialization.specialization_id || specialization.id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleSpecializationSelect(specialization)}
+                    >
+                      {specialization.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div className="mb-4">
+            <div className="text-base font-medium mb-2">Год окончания</div>
+            <select className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" value={localEdu.end_year} onChange={e => setLocalEdu(edu => ({ ...edu, end_year: e.target.value }))} >
+              <option value="">Год окончания</option>
+              {Array.from({ length: 66 }, (_, i) => new Date().getFullYear() - i).map(year => (<option key={year} value={year}>{year}</option>))}
+            </select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={handleSave} disabled={isLoading}>{isLoading ? 'Сохранение...' : 'Сохранить'}</button>
+            {localEdu?.education_id && (
+              <button 
+                type="button"
+                className="px-6 py-2 rounded-lg bg-red-600 text-white" 
+                onClick={handleDelete} 
+                disabled={isLoading}
+              >
+                {isLoading ? 'Удаление...' : 'Удалить'}
+              </button>
+            )}
+          </div>
+        </form>
+        {isErrorModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Ошибка</h3>
+                <button onClick={() => setIsErrorModalOpen(false)} className="text-gray-400 hover:text-gray-500">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-gray-600 mb-6">{errorMessage}</p>
+              <div className="flex justify-end">
+                <button onClick={() => setIsErrorModalOpen(false)} className="bg-[#2B81B0] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#18608a] transition">Понятно</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WorkExperienceBlock({ workExperiences, resumeId, onUpdated }: { workExperiences: any[], resumeId: number, onUpdated: () => void }) {
+  const [showModal, setShowModal] = useState(false);
+  const [selectedExperience, setSelectedExperience] = useState<any>(null);
+
+  const handleEdit = (exp: any) => {
+    setSelectedExperience(exp);
+    setShowModal(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedExperience(null);
+    setShowModal(true);
+  };
+
+  return (
+    <div className="mb-8">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Опыт работы</h2>
+        <button
+          onClick={handleAddNew}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+        >
+          + Добавить место работы
+        </button>
+      </div>
+      
+      {workExperiences.length === 0 ? (
+        <div className="text-gray-500 text-sm">Нет добавленного опыта работы</div>
+      ) : (
+        <div className="space-y-4">
+          {workExperiences.map((exp) => (
+            <div key={exp.experience_id} className="border rounded-lg p-4 relative">
+              <div className="font-medium">{exp.position || 'Должность не указана'}</div>
+              <div className="text-gray-600">{exp.company_name || 'Компания не указана'}</div>
+              <div className="text-sm text-gray-500">
+                {exp.start_month ? `${months[exp.start_month - 1]} ` : ''}
+                {exp.start_year || ''} - 
+                {exp.is_current ? ' Настоящее время' : 
+                  `${exp.end_month ? months[exp.end_month - 1] + ' ' : ''}${exp.end_year || ''}`}
+              </div>
+              <button 
+                onClick={() => handleEdit(exp)}
+                className="absolute top-2 right-2 text-gray-400 hover:text-blue-600"
+                aria-label="Редактировать"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <WorkExperienceItemModal
+          experience={selectedExperience}
+          resumeId={resumeId}
+          onClose={() => setShowModal(false)}
+          onSaved={() => {
+            setShowModal(false);
+            onUpdated();
+          }}
+          onDeleted={() => {
+            setShowModal(false);
+            onUpdated();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EducationBlock({ educations, resumeId, onUpdated }: { educations: any[], resumeId: number, onUpdated: () => void }) {
+  const [showModal, setShowModal] = useState(false);
+  const [selectedEducation, setSelectedEducation] = useState<any>(null);
+
+  const handleEdit = (edu: any) => {
+    setSelectedEducation(edu);
+    setShowModal(true);
+  };
+
+  const handleAddNew = () => {
+    setSelectedEducation(null);
+    setShowModal(true);
+  };
+
+  return (
+    <div className="mb-8">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Образование</h2>
+        <button
+          onClick={handleAddNew}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+        >
+          + Добавить образование
+        </button>
+      </div>
+      
+      {educations.length === 0 ? (
+        <div className="text-gray-500 text-sm">Нет добавленного образования</div>
+      ) : (
+        <div className="space-y-4">
+          {educations.map((edu) => (
+            <div key={edu.education_id} className="border rounded-lg p-4 relative">
+              <div className="font-medium">{edu.institution || 'Учебное заведение не указано'}</div>
+              <div className="text-gray-600">{edu.specialization || 'Специальность не указана'}</div>
+              {edu.end_year && (
+                <div className="text-sm text-gray-500">Год окончания: {edu.end_year}</div>
+              )}
+              <button 
+                onClick={() => handleEdit(edu)}
+                className="absolute top-2 right-2 text-gray-400 hover:text-blue-600"
+                aria-label="Редактировать"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <EducationItemModal
+          education={selectedEducation}
+          resumeId={resumeId}
+          onClose={() => setShowModal(false)}
+          onSaved={() => {
+            setShowModal(false);
+            onUpdated();
+          }}
+          onDeleted={() => {
+            setShowModal(false);
+            onUpdated();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AboutBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
+  return (
+    <div className="p-6 border rounded-xl relative mb-6 bg-white">
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-gray-900 text-lg font-bold">О себе</div>
+        <button className="text-gray-400 hover:text-blue-500" onClick={onEdit} aria-label="Редактировать о себе">
+          <PencilIcon />
+        </button>
+      </div>
+      <div className="text-base text-gray-800 whitespace-pre-line min-h-[40px]">{form.professional_summary || <span className="text-gray-400">Нет информации</span>}</div>
+    </div>
+  );
+}
+
+function AboutModal({ form, onClose, onSave }: { form: any, onClose: () => void, onSave: (data: any) => void }) {
+  const [summary, setSummary] = useState(form.professional_summary || '');
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl p-8 w-full max-w-md relative">
+        <h2 className="text-xl font-bold mb-6">Редактировать о себе</h2>
+        <textarea
+          className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition mb-6"
+          rows={8}
+          value={summary}
+          onChange={e => setSummary(e.target.value)}
+          placeholder="Опишите свой опыт, навыки и достижения"
+        />
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => { onSave({ professional_summary: summary }); onClose(); }}>Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactsBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
+  const privacy = [
+    form.hideNameAndPhoto && 'Скрыть ФИО и фото',
+    form.hidePhone && 'Скрыть номер телефона',
+    form.hideEmail && 'Скрыть Емайл',
+    form.hideOtherContacts && 'Скрыть остальные контакты',
+    form.hideCompanyNames && 'Скрыть названия компаний в опыте работы',
+  ].filter(Boolean).join(', ');
+  const visibilityMap: Record<string, string> = {
+    public: 'Видно всем зарегистрированным работодателям на сайте',
+    excluded_companies: 'Видно всем, кроме работодателей из черного списка',
+    selected_companies: 'Видно только работодателям из белого списка',
+    link_only: 'Доступ только по прямой ссылке',
+    private: 'Не видно никому',
+  };
+  return (
+    <div className="p-6 border rounded-xl relative mb-6 bg-white">
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-gray-900 text-lg font-bold">Контакты и настройки видимости</div>
+        <button className="text-gray-400 hover:text-blue-500" onClick={onEdit} aria-label="Редактировать контакты и видимость">
+          <PencilIcon />
+        </button>
+      </div>
+      <div className="mb-2"><span className="text-gray-400">Телефон:</span> {form.phone || <span className="text-gray-400">Не указано</span>} {form.hasWhatsapp && <span className="ml-2 text-green-600">WhatsApp</span>} {form.hasTelegram && <span className="ml-2 text-blue-500">Telegram</span>}</div>
+      {form.phoneComment && <div className="mb-2 text-gray-500 text-sm">{form.phoneComment}</div>}
+      <div className="mb-2"><span className="text-gray-400">Email:</span> {form.email || <span className="text-gray-400">Не указано</span>}</div>
+      <div className="mb-2"><span className="text-gray-400">Веб-сайт:</span> {form.website || <span className="text-gray-400">Не указано</span>}</div>
+      <div className="mb-2"><span className="text-gray-400">Приватность:</span> {privacy || <span className="text-gray-400">Нет</span>}</div>
+      <div className="mb-2"><span className="text-gray-400">Видимость резюме:</span> {visibilityMap[form.visibility] || 'Не указано'}</div>
+    </div>
+  );
+}
+
+function ContactsModal({ form, onClose, onSave }: { form: any, onClose: () => void, onSave: (data: any) => void }) {
+  // Format phone number for display (with +7)
+  const formatPhone = (phoneNumber: string) => {
+    if (!phoneNumber) return '';
+    // Remove all non-digit characters
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    // If it starts with 7 or 8, replace with +7
+    if (cleaned.startsWith('7') || cleaned.startsWith('8')) {
+      return `+7${cleaned.substring(1)}`;
+    }
+    // Otherwise, just add +7
+    return `+7${cleaned}`;
+  };
+
+  // Get clean phone number (digits only) for saving
+  const getCleanPhone = (phoneNumber: string) => {
+    if (!phoneNumber) return '';
+    // Remove all non-digit characters
+    const cleaned = phoneNumber.replace(/\D/g, '');
+    // If it starts with 7 or 8, keep the rest
+    if (cleaned.startsWith('7') || cleaned.startsWith('8')) {
+      return cleaned.substring(1);
+    }
+    return cleaned;
+  };
+
+  const [phone, setPhone] = useState(form.phone ? formatPhone(form.phone) : '');
+  const [hasWhatsapp, setHasWhatsapp] = useState(form.hasWhatsapp || false);
+  const [hasTelegram, setHasTelegram] = useState(form.hasTelegram || false);
+  const [phoneComment, setPhoneComment] = useState(form.phoneComment || '');
+  const [email, setEmail] = useState(form.email || '');
+  const [website, setWebsite] = useState(form.website || '');
+  const [hideNameAndPhoto, setHideNameAndPhoto] = useState(form.hideNameAndPhoto || false);
+  const [hidePhone, setHidePhone] = useState(form.hidePhone || false);
+  const [hideEmail, setHideEmail] = useState(form.hideEmail || false);
+  const [hideOtherContacts, setHideOtherContacts] = useState(form.hideOtherContacts || false);
+  const [hideCompanyNames, setHideCompanyNames] = useState(form.hideCompanyNames || false);
+  const [visibility, setVisibility] = useState(form.visibility || 'public');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 overflow-y-auto">
+      <div className="bg-white rounded-xl p-8 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold mb-6">Редактировать контакты и видимость</h2>
+        <div className="space-y-4 mb-6">
+          <input 
+            type="tel" 
+            className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" 
+            placeholder="+7XXXXXXXXXX" 
+            value={phone} 
+            onChange={e => {
+              const input = e.target;
+              const cursorPosition = input.selectionStart || 0;
+              
+              // Получаем только цифры из введенного значения, исключая +7
+              let value = input.value.replace(/[^\d]/g, '');
+              if (value.startsWith('7')) {
+                value = value.slice(1);
+              }
+              
+              // Ограничиваем длину до 10 цифр
+              if (value.length > 10) {
+                value = value.slice(0, 10);
+              }
+              
+              // Форматируем номер
+              const formattedValue = value.length > 0 ? `+7${value}` : '';
+              
+              setPhone(formattedValue);
+
+              // Восстанавливаем позицию курсора
+              requestAnimationFrame(() => {
+                // Всегда ставим курсор в конец, если вводим новую цифру
+                const newPosition = formattedValue.length;
+                input.setSelectionRange(newPosition, newPosition);
+              });
+            }}
+          />
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hasWhatsapp} onChange={e => setHasWhatsapp(e.target.checked)} />Есть WhatsApp</label>
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hasTelegram} onChange={e => setHasTelegram(e.target.checked)} />Есть Telegram</label>
+          </div>
+          <input type="text" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Комментарий к номеру телефона" value={phoneComment} onChange={e => setPhoneComment(e.target.value)} />
+          <input type="email" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input type="text" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Веб-сайт" value={website} onChange={e => setWebsite(e.target.value)} />
+        </div>
+        <div className="mb-6">
+          <h3 className="text-base font-medium mb-2">Настройки приватности</h3>
+          <div className="space-y-2">
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hideNameAndPhoto} onChange={e => setHideNameAndPhoto(e.target.checked)} />Скрыть ФИО и фото</label>
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hidePhone} onChange={e => setHidePhone(e.target.checked)} />Скрыть номер телефона</label>
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hideEmail} onChange={e => setHideEmail(e.target.checked)} />Скрыть Емайл</label>
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hideOtherContacts} onChange={e => setHideOtherContacts(e.target.checked)} />Скрыть остальные контакты</label>
+            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hideCompanyNames} onChange={e => setHideCompanyNames(e.target.checked)} />Скрыть названия компаний в опыте работы</label>
+          </div>
+        </div>
+        <div className="mb-6">
+          <h3 className="text-base font-medium mb-2">Видимость резюме</h3>
+          <div className="space-y-2">
+            {[
+              { value: "public", label: "Видно всем зарегистрированным работодателям на сайте" },
+              { value: "excluded_companies", label: "Видно всем, кроме работодателей из черного списка" },
+              { value: "selected_companies", label: "Видно только работодателям из белого списка" },
+              { value: "link_only", label: "Доступ только по прямой ссылке" },
+              { value: "private", label: "Не видно никому" },
+            ].map(opt => (
+              <label key={opt.value} className="flex items-center">
+                <input type="radio" name="visibility" className="mr-2" value={opt.value} checked={visibility === opt.value} onChange={() => setVisibility(opt.value)} />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end gap-4 mt-8">
+          <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
+          <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => {
+            // Remove +7 when saving to backend
+            const cleanPhone = getCleanPhone(phone);
+            onSave({ 
+              phone: cleanPhone,
+              hasWhatsapp, 
+              hasTelegram, 
+              phoneComment, 
+              email, 
+              website, 
+              hideNameAndPhoto, 
+              hidePhone, 
+              hideEmail, 
+              hideOtherContacts, 
+              hideCompanyNames, 
+              visibility 
+            });
+            onClose();
+          }}>Сохранить</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     profession_id: undefined as number | undefined,
@@ -89,6 +1295,170 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const [suggestions, setSuggestions] = useState<Array<{ profession_id: number; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [isWorkCondModalOpen, setIsWorkCondModalOpen] = useState(false);
+  
+  const fetchResumeData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login?redirect=/resume/' + params.id + '/edit');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки резюме');
+      }
+
+      const data = await response.json();
+      const resume = data.resume;
+      setForm({
+        ...form,
+        work_experiences: (data.work_experiences || []).map((exp: any) => ({
+          experience_id: exp.experience_id,
+          company_id: exp.company_id,
+          company_name: exp.company_name || "",
+          city_id: exp.city_id,
+          city_name: exp.city?.name || exp.city_name || "",
+          position: exp.position || "",
+          profession_id: exp.profession_id,
+          profession_name: exp.profession?.name || "",
+          start_month: exp.start_month,
+          start_year: exp.start_year?.toString() || "",
+          end_month: exp.end_month,
+          end_year: exp.end_year?.toString() || "",
+          is_current: exp.is_current || false,
+          responsibilities: exp.responsibilities || "",
+          companySuggestions: [],
+          citySuggestions: [],
+          professionSuggestions: [],
+          isLoadingCompany: false,
+          isLoadingCity: false,
+          isLoadingProfession: false,
+        })),
+        educations: (data.educations || []).map((edu: any) => ({
+          education_id: edu.education_id,
+          institution: edu.institution?.name || edu.institution || "",
+          institution_id: edu.institution_id,
+          specialization: edu.specialization?.name || edu.specialization || "",
+          specialization_id: edu.specialization_id,
+          end_year: edu.end_year?.toString() || "",
+          institutionSuggestions: [],
+          specializationSuggestions: [],
+          isLoadingInstitution: false,
+          isLoadingSpecialization: false,
+        })),
+      });
+    } catch (error) {
+      console.error('Error fetching resume:', error);
+      setErrorMessage('Ошибка загрузки резюме');
+      setIsErrorModalOpen(true);
+    }
+  }, [params.id, router, form]);
+  const [isTitlePhotoModalOpen, setIsTitlePhotoModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+  const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
+  const [showWorkExpModal, setShowWorkExpModal] = useState(false);
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [selectedWorkExp, setSelectedWorkExp] = useState<any>(null);
+  const [selectedEducation, setSelectedEducation] = useState<any>(null);
+
+  const handleSaveDraft = async () => {
+    await handlePartialSave({}, null);
+    setIsErrorModalOpen(false);
+  };
+
+  const handlePublish = async () => {
+    await handlePartialSave({}, null);
+    setIsErrorModalOpen(false);
+    router.push(`/resume/${params.id}`);
+  };
+
+  const handlePartialSave = async (updatedData: any, newPhoto: File | null) => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+
+    const keyMap: { [key: string]: string } = {
+      hideNameAndPhoto: 'hide_full_name',
+      hidePhone: 'hide_phone',
+      hideEmail: 'hide_email',
+      hideCompanyNames: 'hide_experience',
+      hideOtherContacts: 'hide_other_contacts',
+      phoneComment: 'phone_comment',
+      website: 'website_url',
+      hasWhatsapp: 'has_whatsapp',
+      hasTelegram: 'has_telegram',
+    };
+
+    // Добавляем данные формы
+    const resumeData = { ...form, ...updatedData };
+    Object.keys(resumeData).forEach(key => {
+      const backendKey = keyMap[key] || key;
+      const value = resumeData[key as keyof typeof resumeData];
+
+      if (key === 'work_experiences' || key === 'educations' || key === 'photo') {
+        // Исключаем сложные объекты и фото, которое обрабатывается отдельно
+      } else if (Array.isArray(value)) {
+        value.forEach(item => formData.append(`${backendKey}[]`, String(item)));
+      } else if (value !== null && value !== undefined) {
+        formData.append(backendKey, String(value));
+      }
+    });
+
+    // Добавляем новое фото, если оно есть: сначала загружаем через /api/upload и передаем только имя файла
+    if (newPhoto) {
+      try {
+        const uploadRes = await uploadFile(newPhoto, 'photo');
+        if (uploadRes.error || !uploadRes.data?.fileName) {
+          throw new Error(uploadRes.error || 'Не удалось загрузить фото');
+        }
+        formData.append('photo_url', uploadRes.data.fileName);
+      } catch (e: any) {
+        setErrorMessage(e.message || 'Ошибка загрузки фото');
+        setIsErrorModalOpen(true);
+        return;
+      }
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка сохранения резюме');
+      }
+
+      // Обновляем состояние формы и фото после успешного сохранения
+      setForm(resumeData);
+      if (newPhoto) {
+        setPhoto(newPhoto);
+        const reader = new FileReader();
+        reader.onload = e => setPhotoPreview(e.target?.result as string);
+        reader.readAsDataURL(newPhoto);
+      } else if (photo && !newPhoto) {
+        // Если фото было удалено
+        setPhoto(null);
+        setPhotoPreview(null);
+      }
+
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      setIsErrorModalOpen(true);
+    }
+  };
 
   // Загрузка данных резюме при монтировании компонента
   useEffect(() => {
@@ -100,7 +1470,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
           return;
         }
 
-        const response = await fetch(`/api/resumes/${params.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -111,23 +1481,23 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         }
 
         const data = await response.json();
-        
-        // Преобразуем данные в формат формы
+        const resume = data.resume;
         setForm({
-          title: data.title || "",
-          profession_id: data.profession_id,
-          salary_expectation: data.salary_expectation?.toString() || "",
-          employment_type_ids: data.employmentTypes?.map((et: any) => et.employment_type_id) || [],
-          work_format_ids: data.workFormats?.map((wf: any) => wf.work_format_id) || [],
-          business_trips: data.business_trips || "",
-          work_experiences: data.workExperiences?.map((exp: any) => ({
+          title: resume.title || "",
+          profession_id: resume.profession_id,
+          salary_expectation: resume.salary_expectation?.toString() || "",
+          employment_type_ids: resume.employment_types?.map((et: any) => et.employment_type_id) || [],
+          work_format_ids: resume.work_formats?.map((wf: any) => wf.work_format_id) || [],
+          business_trips: resume.business_trips || "",
+          work_experiences: (data.work_experiences || []).map((exp: any) => ({
             experience_id: exp.experience_id,
             company_id: exp.company_id,
             company_name: exp.company_name || "",
             city_id: exp.city_id,
-            city_name: exp.City?.name || "",
+            city_name: exp.city?.name || exp.city_name || "",
             position: exp.position || "",
             profession_id: exp.profession_id,
+            profession_name: exp.profession?.name || "",
             start_month: exp.start_month,
             start_year: exp.start_year?.toString() || "",
             end_month: exp.end_month,
@@ -140,68 +1510,39 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
             isLoadingCompany: false,
             isLoadingCity: false,
             isLoadingProfession: false,
-          })) || [{
-            experience_id: undefined,
-            company_id: undefined,
-            company_name: "",
-            city_id: undefined,
-            city_name: "",
-            position: "",
-            profession_id: undefined,
-            start_month: undefined,
-            start_year: "",
-            end_month: undefined,
-            end_year: "",
-            is_current: false,
-            responsibilities: "",
-            companySuggestions: [],
-            citySuggestions: [],
-            professionSuggestions: [],
-            isLoadingCompany: false,
-            isLoadingCity: false,
-            isLoadingProfession: false,
-          }],
-          education_type_id: data.education_type_id,
-          educations: data.education?.map((edu: any) => ({
+          })),
+          education_type_id: resume.education_type_id,
+          educations: (data.educations || []).map((edu: any) => ({
             education_id: edu.education_id,
-            institution: edu.EducationalInstitution?.name || "",
+            institution: edu.institution?.name || edu.institution || "",
             institution_id: edu.institution_id,
-            specialization: edu.Specialization?.name || "",
+            specialization: edu.specialization?.name || edu.specialization || "",
             specialization_id: edu.specialization_id,
             end_year: edu.end_year?.toString() || "",
             institutionSuggestions: [],
             specializationSuggestions: [],
             isLoadingInstitution: false,
             isLoadingSpecialization: false,
-          })) || [{
-            education_id: undefined,
-            institution: "",
-            institution_id: undefined,
-            specialization: "",
-            specialization_id: undefined,
-            end_year: "",
-            institutionSuggestions: [],
-            specializationSuggestions: [],
-            isLoadingInstitution: false,
-            isLoadingSpecialization: false,
-          }],
-          professional_summary: data.professional_summary || "",
-          phone: data.phone || "",
-          phoneComment: data.phone_comment || "",
-          hasWhatsapp: data.has_whatsapp || false,
-          hasTelegram: data.has_telegram || false,
-          email: data.email || "",
-          website: data.website_url || "",
-          hideNameAndPhoto: data.hide_full_name || false,
-          hidePhone: data.hide_phone || false,
-          hideEmail: data.hide_email || false,
-          hideOtherContacts: data.hide_other_contacts || false,
-          hideCompanyNames: data.hide_experience || false,
-          visibility: data.visibility || "public",
+          })),
+          professional_summary: resume.professional_summary || "",
+          phone: resume.phone || "",
+          phoneComment: resume.phone_comment || "",
+          hasWhatsapp: resume.has_whatsapp || false,
+          hasTelegram: resume.has_telegram || false,
+          email: resume.email || "",
+          website: resume.website_url || "",
+          hideNameAndPhoto: resume.hide_full_name || false,
+          hidePhone: resume.hide_phone || false,
+          hideEmail: resume.hide_email || false,
+          hideOtherContacts: resume.hide_other_contacts || false,
+          hideCompanyNames: resume.hide_experience || false,
+          visibility: resume.visibility || "public",
         });
-
-        if (data.photo_url) {
-          const photoUrl = `${API_BASE_URL}/${data.photo_url}`;
+        if (resume.photo_url) {
+          const isPath = typeof resume.photo_url === 'string' && resume.photo_url.includes('/');
+          const photoUrl = isPath
+            ? `${API_BASE_URL}/${resume.photo_url}`
+            : `/uploads/photo/${resume.photo_url}`;
           setPhotoPreview(photoUrl);
         }
       } catch (error) {
@@ -386,27 +1727,6 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     handleWorkExpChange(idx, "professionSuggestions", []);
   };
 
-  // Переход к следующему шагу
-  const handleNext = () => {
-    if (currentStep === 0) {
-      if (!form.title.trim()) {
-        setErrorMessage('Укажите желаемую должность');
-        setIsErrorModalOpen(true);
-        return;
-      }
-    }
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  // Переход к предыдущему шагу
-  const handlePrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   // Образование
   const handleEducationTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, education_type_id: Number(e.target.value) }));
@@ -496,7 +1816,31 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
 
   // Контакты
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, phone: e.target.value }));
+    const input = e.target;
+    const cursorPosition = input.selectionStart || 0;
+    
+    // Получаем только цифры из введенного значения, исключая +7
+    let value = input.value.replace(/[^\d]/g, '');
+    if (value.startsWith('7')) {
+      value = value.slice(1);
+    }
+    
+    // Ограничиваем длину до 10 цифр
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    
+    // Форматируем номер
+    const formattedValue = value.length > 0 ? `+7${value}` : '';
+    
+    setForm((prev) => ({ ...prev, phone: formattedValue }));
+
+    // Восстанавливаем позицию курсора
+    requestAnimationFrame(() => {
+      // Всегда ставим курсор в конец, если вводим новую цифру
+      const newPosition = formattedValue.length;
+      input.setSelectionRange(newPosition, newPosition);
+    });
   };
   const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, hasWhatsapp: e.target.checked }));
@@ -535,16 +1879,23 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   };
 
   // Фото
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setPhoto(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setPhoto(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Загрузка файла и сохранение имени
+    const res = await uploadFile(file, 'photo');
+    if (res.error || !res.data?.fileName) {
+      console.error('Ошибка загрузки фото:', res.error);
+      return;
     }
+    setPhotoFileName(res.data.fileName);
   };
 
   // Изменяем функцию handleSave для отправки PUT запроса
@@ -590,7 +1941,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       formData.append('has_whatsapp', String(form.hasWhatsapp));
       formData.append('has_telegram', String(form.hasTelegram));
       formData.append('education_type_id', String(form.education_type_id));
-      if (photo) formData.append('photo', photo);
+      if (photoFileName) formData.append('photo_url', photoFileName);
       formData.append('hide_full_name', String(form.hideNameAndPhoto));
       formData.append('hide_phone', String(form.hidePhone));
       formData.append('hide_email', String(form.hideEmail));
@@ -627,7 +1978,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         if (edu.end_year) formData.append(`educations[${index}][end_year]`, edu.end_year);
       });
 
-      const response = await fetch(`/api/resumes/${params.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -725,7 +2076,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         if (edu.end_year) formData.append(`educations[${index}][end_year]`, edu.end_year);
       });
 
-      const response = await fetch(`/api/resumes/${params.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -768,821 +2119,253 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="flex min-h-screen bg-[#FAFCFE]">
-      {/* Sidebar */}
-      <aside className="w-72 bg-gray-200 flex flex-col justify-between py-8 px-4 border-r border-gray-100 pt-16">
-        <div>
-          <h2 className="text-lg font-bold mb-8 text-gray-900">Редактирование резюме</h2>
-          <ol className="space-y-2">
-            {steps.map((step, idx) => (
-              <li key={step.label}>
-                <div
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition font-medium text-base ${
-                    idx === currentStep
-                      ? "bg-white text-[#2B81B0] shadow-sm"
-                      : "text-gray-500"
-                  }`}
-                >
-                  <span
-                    className={`w-7 h-7 flex items-center justify-center rounded-full border text-base font-bold mr-2 ${
-                      idx === currentStep
-                        ? "bg-[#2B81B0] text-white border-[#2B81B0]"
-                        : "bg-gray-100 border-gray-200 text-gray-400"
-                    }`}
-                  >
-                    {idx + 1}
-                  </span>
-                  {step.label}
-        </div>
-              </li>
-            ))}
-          </ol>
-      </div>
-      </aside>
-
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-start pt-16 bg-white">
         <div className="w-full max-w-2xl">
-          {currentStep === 0 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">Кем вы хотите работать?</h1>
-              
-              <div className="relative">
-                <input
-                  type="text"
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-4 text-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                  placeholder="Желаемая должность"
-                  value={form.title}
-                  onChange={handleTitleChange}
-                />
-                {isLoading && <div className="absolute right-4 top-4">Loading...</div>}
-                {suggestions.length > 0 && (
-                  <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                    {suggestions.map((suggestion) => (
-                      <li
-                        key={suggestion.profession_id}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => handleSuggestionClick(suggestion.name, suggestion.profession_id)}
-                      >
-                        {suggestion.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-            </div>
-              <div className="mt-6">
-                <label className="block text-lg font-medium mb-2">Желаемый уровень дохода (можно не указывать)</label>
-                <input
-                  type="number"
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                  placeholder="Сумма в месяц"
-                  value={form.salary_expectation}
-                  onChange={handleSalaryChange}
-                />
-              </div>
-              {/* Фото профиля */}
-              <div className="mt-6">
-                <label className="block text-lg font-medium mb-2">Ваше фото (не обязательно)</label>
-              </div>
-              <div className="mb-8 flex flex-col items-center">
-                <div className="relative w-32 h-32 mb-4">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt="Фото профиля"
-                      className="w-full h-full object-cover rounded-full border-2 border-[#2B81B0]"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-gray-400">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      </svg>
-              </div>
-            )}
-            </div>
-                <label className="cursor-pointer bg-white text-[#2B81B0] border border-[#2B81B0] px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition">
-                  {photoPreview ? 'Изменить фото' : 'Добавить фото'}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                  />
-                </label>
-          </div>
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleNext}
-                  disabled={currentStep === 0 && !form.title.trim()}
-                >
-                  Далее
-                </button>
+          <TitlePhotoBlock form={form} photoPreview={photoPreview} onEdit={() => setIsTitlePhotoModalOpen(true)} />
+          <WorkConditionsBlock form={form} onEdit={() => setIsWorkCondModalOpen(true)} />
+          
+          <WorkExperienceBlock 
+            workExperiences={form.work_experiences || []} 
+            resumeId={Number(params.id)} 
+            onUpdated={fetchResumeData} 
+          />
+          
+          <EducationBlock 
+            educations={form.educations || []} 
+            resumeId={Number(params.id)} 
+            onUpdated={fetchResumeData} 
+          />
+          
+          <AboutBlock form={form} onEdit={() => setIsAboutModalOpen(true)} />
+          <ContactsBlock form={form} onEdit={() => setIsContactsModalOpen(true)} />
         </div>
-            </section>
-          )}
-
-          {currentStep === 1 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">Условия работы</h1>
-              
-              {/* Тип занятости */}
-          <div className="mb-8">
-                <label className="block text-lg font-medium mb-4">Тип занятости <span className="text-red-500 ml-1">*</span></label>
-                <div className="space-y-3">
-                  {employmentTypes.employment_types.map((type) => (
-                    <label key={type.employment_type_id} className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        className="w-5 h-5 text-[#2B81B0] border-gray-300 rounded focus:ring-[#2B81B0]"
-                        checked={form.employment_type_ids.includes(type.employment_type_id)}
-                        onChange={() => handleEmploymentTypeChange(type.employment_type_id)}
-                      />
-                      <span className="text-base">{type.name}</span>
-                    </label>
-                  ))}
-          </div>
-              </div>
-
-              {/* Формат работы */}
-          <div className="mb-8">
-                <label className="block text-lg font-medium mb-4">Формат работы <span className="text-red-500 ml-1">*</span></label>
-                <div className="space-y-3">
-                  {workFormats.work_formats.map((format) => (
-                    <label key={format.work_format_id} className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        className="w-5 h-5 text-[#2B81B0] border-gray-300 rounded focus:ring-[#2B81B0]"
-                        checked={form.work_format_ids.includes(format.work_format_id)}
-                        onChange={() => handleWorkFormatChange(format.work_format_id)}
-                      />
-                      <span className="text-base">{format.name}</span>
-                    </label>
-                  ))}
-                  </div>
-              </div>
-
-              {/* Командировки */}
-              <div className="mb-8">
-                <label className="block text-lg font-medium mb-4">Готовность к командировкам</label>
-                <div className="space-y-3">
-                  {[
-                    { value: "yes", label: "Да" },
-                    { value: "no", label: "Нет" },
-                    { value: "sometimes", label: "Иногда" },
-                  ].map((option) => (
-                    <label key={option.value} className="flex items-center space-x-3">
-                      <input
-                        type="radio"
-                        name="business_trips"
-                        className="w-5 h-5 text-[#2B81B0] border-gray-300 focus:ring-[#2B81B0]"
-                        checked={form.business_trips === option.value}
-                        onChange={() => handleBusinessTripsChange(option.value as "yes" | "no" | "sometimes")}
-                      />
-                      <span className="text-base">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handlePrev}
-                >
-                  Назад
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleNext}
-                  disabled={form.employment_type_ids.length === 0 || form.work_format_ids.length === 0}
-                >
-                  Далее
-                </button>
-              </div>
-            </section>
-          )}
-
-          {currentStep === 2 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">Опыт работы</h1>
-              {form.work_experiences.map((exp, idx) => (
-                <div key={idx} className="mb-10 p-6 bg-white rounded-xl border border-gray-400 relative">
-                  {/* Кнопка удалить */}
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      className="absolute top-4 right-4 p-2 rounded-full bg-white z-20 hover:bg-gray-300 transition"
-                      onClick={() => handleRemoveWorkExp(idx)}
-                      aria-label="Удалить опыт работы"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-500">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 7.5V19a2 2 0 002 2h8a2 2 0 002-2V7.5M9.75 11.25v4.5m4.5-4.5v4.5M4.5 7.5h15m-10.125 0V5.25A1.5 1.5 0 0110.875 3.75h2.25a1.5 1.5 0 011.5 1.5V7.5" />
-                      </svg>
-                    </button>
-                  )}
-                  {/* Название компании */}
-                  <div className="mb-4 relative z-10">
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Название компании"
-                      value={exp.company_name}
-                      onChange={e => handleCompanyInput(idx, e.target.value)}
-                      autoComplete="off"
-                    />
-                    {exp.isLoadingCompany && <div className="absolute right-4 top-3">...</div>}
-                    {exp.companySuggestions.length > 0 && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                        {exp.companySuggestions.map(company => (
-                          <li
-                            key={company.company_id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleCompanySelect(idx, company)}
-                          >
-                            {company.company_name} {company.brand_name && <span className="text-gray-400">({company.brand_name})</span>}
-                          </li>
-                        ))}
-                      </ul>
-                  )}
-                </div>
-                  {/* Город */}
-                  <div className="mb-4 relative">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
-                        placeholder="Город или населенный пункт"
-                        value={exp.city_name}
-                        onChange={e => {
-                          handleWorkExpChange(idx, "city_name", e.target.value);
-                          handleWorkExpChange(idx, "city_id", undefined);
-                          handleCityInput(idx, e.target.value);
-                        }}
-                        autoComplete="off"
-                        readOnly={!!exp.city_id}
-                        style={{ wordBreak: 'break-word' }}
-                      />
-                      {exp.city_id && (
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
-                          onClick={() => {
-                            handleWorkExpChange(idx, "city_name", "");
-                            handleWorkExpChange(idx, "city_id", undefined);
-                          }}
-                          tabIndex={-1}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                      {exp.isLoadingCity && <div className="absolute right-4 top-3">...</div>}
-                      {exp.citySuggestions.length > 0 && (
-                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                          {exp.citySuggestions.map(cityRaw => {
-                            const city = {
-                              city_id: (cityRaw as any).city_id ?? (cityRaw as any).id,
-                              name: cityRaw.name,
-                            };
-                            return (
-                              <li
-                                key={city.city_id}
-                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleWorkExpChange(idx, "city_id", city.city_id);
-                                  handleWorkExpChange(idx, "city_name", city.name);
-                                  handleWorkExpChange(idx, "citySuggestions", []);
-                                }}
-                              >
-                                {city.name}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                  {/* Должность */}
-                  <div className="mb-4 relative">
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Должность"
-                      value={exp.position}
-                      onChange={e => handleProfessionInput(idx, e.target.value)}
-                      autoComplete="off"
-                    />
-                    {exp.isLoadingProfession && <div className="absolute right-4 top-3">...</div>}
-                    {exp.professionSuggestions.length > 0 && (
-                      <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                        {exp.professionSuggestions.map(prof => (
-                          <li
-                            key={prof.profession_id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleProfessionSelect(idx, prof)}
-                          >
-                            {prof.name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {/* Начало работы */}
-                  <div className="flex gap-4 mb-4">
-                    <div className="flex-1">
-                      <select
-                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-3 py-2"
-                        value={exp.start_month || ""}
-                        onChange={e => handleWorkExpChange(idx, "start_month", Number(e.target.value))}
-                      >
-                        <option value="">Месяц начала работы</option>
-                        {months.map((m, i) => (
-                          <option key={i} value={i + 1}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="number"
-                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-3 py-2"
-                        placeholder="Год начала работы"
-                        value={exp.start_year}
-                        onChange={e => handleWorkExpChange(idx, "start_year", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  {/* Окончание работы */}
-                  {!exp.is_current && (
-                    <div className="flex gap-4 mb-4">
-                      <div className="flex-1">
-                        <select
-                          className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-3 py-2"
-                          value={exp.end_month || ""}
-                          onChange={e => handleWorkExpChange(idx, "end_month", Number(e.target.value))}
-                        >
-                          <option value="">Месяц окончания</option>
-                          {months.map((m, i) => (
-                            <option key={i} value={i + 1}>{m}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="number"
-                          className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-3 py-2"
-                          placeholder="Год окончания"
-                          value={exp.end_year}
-                          onChange={e => handleWorkExpChange(idx, "end_year", e.target.value)}
-                        />
-            </div>
-          </div>
-                  )}
-                  {/* Чекбокс "Продолжаю работать" */}
-                  <div className="mb-4">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={exp.is_current}
-                        onChange={e => handleWorkExpChange(idx, "is_current", e.target.checked)}
-                      />
-                      Работаю сейчас
-                    </label>
-                  </div>
-                  {/* Описание обязанностей */}
-                  <div className="mb-4">
-                    <textarea
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Описание"
-                      value={exp.responsibilities}
-                      onChange={e => handleWorkExpChange(idx, "responsibilities", e.target.value)}
-                      rows={4}
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-lg py-4 text-xl font-semibold shadow hover:bg-gray-400 transition"
-                onClick={handleAddWorkExp}
-              >
-                + Добавить еще компанию
-              </button>
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handlePrev}
-                >
-                  Назад
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleNext}
-                >
-                  Далее
-                </button>
-              </div>
-            </section>
-          )}
-
-          {currentStep === 3 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">Уровень образования</h1>
-          <div className="mb-8">
-                <label className="block text-lg font-medium mb-2">
-                  Образование
-                  <span className="text-red-500 ml-1">*</span>
-                </label>
-                <select
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                  value={form.education_type_id || ""}
-                  onChange={handleEducationTypeChange}
-                >
-                  <option value="">Выберите уровень образования</option>
-                  {educationTypes.education_types.map((type) => (
-                    <option key={type.education_type_id} value={type.education_type_id}>{type.name}</option>
-                  ))}
-                </select>
-                </div>
-              <div className="mb-8">
-                <label className="block text-lg font-medium mb-2">Учебные заведения</label>
-                {form.educations.map((edu, idx) => (
-                  <div key={idx} className="mb-6 p-4 rounded-lg border border-gray-400 relative">
-                    {idx > 0 && (
-                      <button
-                        type="button"
-                        className="absolute top-2 right-2 p-1 rounded-full bg-white z-20 hover:bg-gray-300 transition"
-                        onClick={() => handleRemoveEducation(idx)}
-                        aria-label="Удалить учебное заведение"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-500">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 7.5V19a2 2 0 002 2h8a2 2 0 002-2V7.5M9.75 11.25v4.5m4.5-4.5v4.5M4.5 7.5h15m-10.125 0V5.25A1.5 1.5 0 0110.875 3.75h2.25a1.5 1.5 0 011.5 1.5V7.5" />
-                        </svg>
-                      </button>
-                    )}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
-                        placeholder="Учебное заведение"
-                        value={edu.institution}
-                        onChange={e => handleInstitutionInput(idx, e.target.value)}
-                        autoComplete="off"
-                        readOnly={!!edu.institution_id}
-                        style={{ wordBreak: 'break-word' }}
-                      />
-                      {edu.institution_id && (
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
-                          onClick={() => {
-                            handleEducationChange(idx, "institution", "");
-                            handleEducationChange(idx, "institution_id", undefined);
-                          }}
-                          tabIndex={-1}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                      {edu.isLoadingInstitution && <div className="absolute right-4 top-3">...</div>}
-                      {edu.institutionSuggestions.length > 0 && (
-                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                          {edu.institutionSuggestions.map(inst => (
-                            <li
-                              key={inst.institution_id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleInstitutionSelect(idx, inst)}
-                            >
-                              {inst.name}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-            </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base mb-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition whitespace-pre-line break-words"
-                        placeholder="Специальность"
-                        value={edu.specialization}
-                        onChange={e => handleSpecializationInput(idx, e.target.value)}
-                        autoComplete="off"
-                        readOnly={!!edu.specialization_id}
-                        style={{ wordBreak: 'break-word' }}
-                      />
-                      {edu.specialization_id && (
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
-                          onClick={() => {
-                            handleEducationChange(idx, "specialization", "");
-                            handleEducationChange(idx, "specialization_id", undefined);
-                          }}
-                          tabIndex={-1}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                      {edu.isLoadingSpecialization && <div className="absolute right-4 top-3">...</div>}
-                      {edu.specializationSuggestions.length > 0 && (
-                        <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                          {edu.specializationSuggestions.map(spec => (
-                            <li
-                              key={spec.specialization_id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleSpecializationSelect(idx, spec)}
-                            >
-                              {spec.name}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-          </div>
-                    <input
-                      type="number"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Год окончания"
-                      value={edu.end_year}
-                      onChange={e => handleEducationChange(idx, "end_year", e.target.value)}
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="w-full bg-gray-300 border border-gray-400 text-[#2B81B0] rounded-lg py-3 text-lg font-semibold shadow hover:bg-gray-400 transition"
-                  onClick={handleAddEducation}
-                >
-                  + Добавить учебное заведение
-                </button>
-              </div>
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handlePrev}
-                >
-                  Назад
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={handleNext}
-                  disabled={!form.education_type_id}
-                >
-                  Далее
-                </button>
-              </div>
-            </section>
-          )}
-
-          {currentStep === 4 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">О себе</h1>
-        <div className="mb-8">
-                <label className="block text-lg font-medium mb-2">Расскажите о себе</label>
-                <textarea
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                  placeholder="Опишите свой опыт, навыки и достижения"
-                  value={form.professional_summary}
-                  onChange={handleProfessionalSummaryChange}
-                  rows={8}
-                />
-              </div>
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handlePrev}
-                >
-                  Назад
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleNext}
-                >
-                  Далее
-                </button>
-              </div>
-            </section>
-          )}
-
-          {currentStep === 5 && (
-            <section>
-              <h1 className="text-2xl font-bold mb-6">Контакты и настройки видимости</h1>
-              <div className="mb-8">
-                <div className="space-y-4">
-              <div>
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Телефон в формате +7XXXXXXXXXX"
-                      value={form.phone}
-                      onChange={handlePhoneChange}
-                    />
-              </div>
-                  <div className="flex items-center space-x-4">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={form.hasWhatsapp}
-                        onChange={handleHasWhatsappChange}
-                      />
-                      Есть Вотсап
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={form.hasTelegram}
-                        onChange={handleHasTelegramChange}
-                      />
-                      Есть Телеграм
-                    </label>
-                  </div>
-              <div>
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Комментарий к номеру телефона"
-                      value={form.phoneComment}
-                      onChange={handlePhoneCommentChange}
-                    />
-                </div>
-                  <div>
-                    <input
-                      type="email"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Email"
-                      value={form.email}
-                      onChange={handleEmailChange}
-                    />
-              </div>
-            <div>
-                    <input
-                      type="text"
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                      placeholder="Веб-сайт"
-                      value={form.website}
-                      onChange={handleWebsiteChange}
-                    />
-              </div>
-            </div>
-          </div>
-              <div className="mb-8">
-                <h2 className="text-lg font-medium mb-4">Настройки приватности</h2>
-                <div className="space-y-4">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={form.hideNameAndPhoto}
-                      onChange={handleHideNameAndPhotoChange}
-                    />
-                    Скрыть ФИО и фото
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={form.hidePhone}
-                      onChange={handleHidePhoneChange}
-                    />
-                    Скрыть номер телефона
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={form.hideEmail}
-                      onChange={handleHideEmailChange}
-                    />
-                    Скрыть Емайл
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={form.hideOtherContacts}
-                      onChange={handleHideOtherContactsChange}
-                    />
-                    Скрыть остальные контакты
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      className="mr-2"
-                      checked={form.hideCompanyNames}
-                      onChange={handleHideCompanyNamesChange}
-                    />
-                    Скрыть названия компаний в опыте работы
-                  </label>
-                  <div>
-                    <label className="block text-base mb-2">Видимость резюме</label>
-                    <div className="space-y-2">
-                      {[
-                        { value: "public", label: "Видно всем зарегистрированным работодателям на сайте" },
-                        { value: "excluded_companies", label: "Видно всем, кроме работодателей из черного списка" },
-                        { value: "selected_companies", label: "Видно только работодателям из белого списка" },
-                        { value: "link_only", label: "Доступ только по прямой ссылке" },
-                        { value: "private", label: "Не видно никому" },
-                      ].map((option) => (
-                        <label key={option.value} className="flex items-center">
-                          <input
-                            type="radio"
-                            name="visibility"
-                            className="mr-2"
-                            value={option.value}
-                            checked={form.visibility === option.value}
-                            onChange={handleVisibilityChange}
-                          />
-                          {option.label}
-                        </label>
-                      ))}
-        </div>
-      </div>
-                </div>
-              </div>
-              <div className="flex justify-between mt-12">
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handleSaveAndClose}
-                >
-                  Сохранить и закрыть
-                </button>
-                <button
-                  className="bg-white text-[#2B81B0] border border-[#2B81B0] px-10 py-3 rounded-lg font-semibold shadow hover:bg-gray-50 transition text-lg"
-                  onClick={handlePrev}
-                >
-                  Назад
-                </button>
-                <button
-                  className="bg-[#2B81B0] text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] transition text-lg"
-                  onClick={handleNext}
-                >
-                  Далее
-                </button>
-              </div>
-            </section>
-          )}
-        </div>
+        {isTitlePhotoModalOpen && (
+          <TitlePhotoModal
+            form={form}
+            photoPreview={photoPreview}
+            onClose={() => setIsTitlePhotoModalOpen(false)}
+            onSave={(data, newPhoto) => {
+              handlePartialSave(data, newPhoto);
+              setIsTitlePhotoModalOpen(false);
+            }}
+          />
+        )}
+        {isWorkCondModalOpen && (
+          <WorkConditionsModal
+            form={form}
+            onClose={() => setIsWorkCondModalOpen(false)}
+            onSave={data => {
+              handlePartialSave(data, null);
+              setIsWorkCondModalOpen(false);
+            }}
+          />
+        )}
+        {isAboutModalOpen && (
+          <AboutModal
+            form={form}
+            onClose={() => setIsAboutModalOpen(false)}
+            onSave={data => {
+              handlePartialSave(data, null);
+              setIsAboutModalOpen(false);
+            }}
+          />
+        )}
+        {isContactsModalOpen && (
+          <ContactsModal
+            form={form}
+            onClose={() => setIsContactsModalOpen(false)}
+            onSave={data => {
+              handlePartialSave(data, null);
+              setIsContactsModalOpen(false);
+            }}
+          />
+        )}
       </main>
 
       {/* Модальное окно с ошибкой */}
       {isErrorModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Ошибка</h3>
-              <button
-                onClick={() => setIsErrorModalOpen(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <p className="text-gray-600 mb-6">{errorMessage}</p>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setIsErrorModalOpen(false)}
-                className="bg-[#2B81B0] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#18608a] transition"
-              >
-                Понятно
-              </button>
+          <div className="min-h-screen bg-gray-50 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center mb-8">
+                <h1 className="text-2xl font-bold text-gray-900">Редактирование резюме</h1>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleSaveDraft}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Сохранить черновик
+                  </button>
+                  <button
+                    onClick={handlePublish}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    Опубликовать
+                  </button>
+                </div>
+              </div>
+              
+              {/* Work Experience Modal */}
+              {showWorkExpModal && (
+                <WorkExperienceItemModal
+                  experience={null}
+                  resumeId={Number(params.id)}
+                  onClose={() => {
+                    setShowWorkExpModal(false);
+                    setSelectedWorkExp(null);
+                  }}
+                  onSaved={() => {
+                    setShowWorkExpModal(false);
+                    setSelectedWorkExp(null);
+                    // Refresh work experiences
+                    const token = localStorage.getItem('token');
+                    fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      setForm(f => ({
+                        ...f,
+                        work_experiences: (data.work_experiences || []).map((exp: any) => ({
+                          experience_id: exp.experience_id,
+                          company_id: exp.company_id,
+                          company_name: exp.company_name || "",
+                          city_id: exp.city_id,
+                          city_name: exp.city?.name || "",
+                          position: exp.position || "",
+                          profession_id: exp.profession_id,
+                          profession_name: exp.profession?.name || "",
+                          start_month: exp.start_month,
+                          start_year: exp.start_year?.toString() || "",
+                          end_month: exp.end_month,
+                          end_year: exp.end_year?.toString() || "",
+                          is_current: exp.is_current || false,
+                          responsibilities: exp.responsibilities || "",
+                          companySuggestions: [],
+                          citySuggestions: [],
+                          professionSuggestions: [],
+                          isLoadingCompany: false,
+                          isLoadingCity: false,
+                          isLoadingProfession: false,
+                        }))
+                      }));
+                    });
+                  }}
+                  onDeleted={() => {
+                    setShowWorkExpModal(false);
+                    setSelectedWorkExp(null);
+                    // Refresh work experiences
+                    const token = localStorage.getItem('token');
+                    fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      setForm(f => ({
+                        ...f,
+                        work_experiences: (data.work_experiences || []).map((exp: any) => ({
+                          experience_id: exp.experience_id,
+                          company_id: exp.company_id,
+                          company_name: exp.company_name || "",
+                          city_id: exp.city_id,
+                          city_name: exp.city?.name || "",
+                          position: exp.position || "",
+                          profession_id: exp.profession_id,
+                          profession_name: exp.profession?.name || "",
+                          start_month: exp.start_month,
+                          start_year: exp.start_year?.toString() || "",
+                          end_month: exp.end_month,
+                          end_year: exp.end_year?.toString() || "",
+                          is_current: exp.is_current || false,
+                          responsibilities: exp.responsibilities || "",
+                          companySuggestions: [],
+                          citySuggestions: [],
+                          professionSuggestions: [],
+                          isLoadingCompany: false,
+                          isLoadingCity: false,
+                          isLoadingProfession: false,
+                        }))
+                      }));
+                    });
+                  }}
+                />
+              )}
+              
+              {/* Education Modal */}
+              {showEducationModal && (
+                <EducationItemModal
+                  education={null}
+                  resumeId={Number(params.id)}
+                  onClose={() => {
+                    setShowEducationModal(false);
+                    setSelectedEducation(null);
+                  }}
+                  onSaved={() => {
+                    setShowEducationModal(false);
+                    setSelectedEducation(null);
+                    // Refresh educations
+                    const token = localStorage.getItem('token');
+                    fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      setForm(f => ({
+                        ...f,
+                        educations: (data.educations || []).map((edu: any) => ({
+                          education_id: edu.education_id,
+                          institution: edu.institution?.name || edu.institution || "",
+                          institution_id: edu.institution_id,
+                          specialization: edu.specialization?.name || edu.specialization || "",
+                          specialization_id: edu.specialization_id,
+                          end_year: edu.end_year?.toString() || "",
+                          institutionSuggestions: [],
+                          specializationSuggestions: [],
+                          isLoadingInstitution: false,
+                          isLoadingSpecialization: false,
+                        }))
+                      }));
+                    });
+                  }}
+                  onDeleted={() => {
+                    setShowEducationModal(false);
+                    setSelectedEducation(null);
+                    // Refresh educations
+                    const token = localStorage.getItem('token');
+                    fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                      setForm(f => ({
+                        ...f,
+                        educations: (data.educations || []).map((edu: any) => ({
+                          education_id: edu.education_id,
+                          institution: edu.institution?.name || edu.institution || "",
+                          institution_id: edu.institution_id,
+                          specialization: edu.specialization?.name || edu.specialization || "",
+                          specialization_id: edu.specialization_id,
+                          end_year: edu.end_year?.toString() || "",
+                          institutionSuggestions: [],
+                          specializationSuggestions: [],
+                          isLoadingInstitution: false,
+                          isLoadingSpecialization: false,
+                        }))
+                      }));
+                    });
+                  }}
+                />
+              )}
+              <p className="text-gray-600 mb-6">{errorMessage}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsErrorModalOpen(false)}
+                  className="bg-[#2B81B0] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#18608a] transition"
+                >
+                  Понятно
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from "../../../config/api";
 import employmentTypes from "../../../config/employment_types_202505222228.json";
 import workFormats from "../../../config/work_formats_202505222228.json";
 import educationTypes from "../../../config/education_types_202505242225.json";
+import { uploadFile } from "../../../utils/api";
 
 const steps = [
   { label: "Должность" },
@@ -21,6 +22,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFileName, setPhotoFileName] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     profession_id: undefined as number | undefined,
@@ -83,6 +85,21 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const [suggestions, setSuggestions] = useState<Array<{ profession_id: number; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const months = [
+    "Январь",
+    "Февраль",
+    "Март",
+    "Апрель",
+    "Май",
+    "Июнь",
+    "Июль",
+    "Август",
+    "Сентябрь",
+    "Октябрь",
+    "Ноябрь",
+    "Декабрь",
+  ];
 
   // Загрузка данных резюме при монтировании компонента
   useEffect(() => {
@@ -195,7 +212,10 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         });
 
         if (data.photo_url) {
-          setPhotoPreview(data.photo_url);
+          const isPath = typeof data.photo_url === 'string' && data.photo_url.includes('/');
+          const photoUrl = isPath ? data.photo_url : `/uploads/photo/${data.photo_url}`;
+          setPhotoPreview(photoUrl);
+          if (!isPath) setPhotoFileName(data.photo_url);
         }
       } catch (error) {
         console.error('Error fetching resume:', error);
@@ -208,6 +228,388 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   }, [params.id, router]);
 
   // ... [Оставляем все обработчики из формы создания резюме] ...
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setForm(prev => ({ ...prev, title: value }));
+
+    if (value.trim()) {
+      setIsLoading(true);
+      fetch(`${API_ENDPOINTS.dictionaries.professionsSearch}?query=${encodeURIComponent(value)}`)
+        .then(res => res.json())
+        .then(data => {
+          setSuggestions(data);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error('Error fetching suggestions:', err);
+          setIsLoading(false);
+        });
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleSuggestionClick = (name: string, id?: number) => {
+    setForm(prev => ({ ...prev, title: name, profession_id: id }));
+    setSuggestions([]);
+  };
+
+  const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, salary_expectation: e.target.value }));
+  };
+
+  const handleEmploymentTypeChange = (typeId: number) => {
+    setForm(prev => ({
+      ...prev,
+      employment_type_ids: prev.employment_type_ids.includes(typeId)
+        ? prev.employment_type_ids.filter(id => id !== typeId)
+        : [...prev.employment_type_ids, typeId],
+    }));
+  };
+
+  const handleWorkFormatChange = (formatId: number) => {
+    setForm(prev => ({
+      ...prev,
+      work_format_ids: prev.work_format_ids.includes(formatId)
+        ? prev.work_format_ids.filter(id => id !== formatId)
+        : [...prev.work_format_ids, formatId],
+    }));
+  };
+
+  const handleBusinessTripsChange = (value: "yes" | "no" | "sometimes") => {
+    setForm(prev => ({ ...prev, business_trips: value }));
+  };
+
+  const handleWorkExpChange = (idx: number, field: string, value: any) => {
+    setForm(prev => {
+      const updated = [...prev.work_experiences];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...prev, work_experiences: updated };
+    });
+  };
+
+  const handleAddWorkExp = () => {
+    setForm(prev => ({
+      ...prev,
+      work_experiences: [
+        ...prev.work_experiences,
+        {
+          experience_id: undefined,
+          company_id: undefined,
+          company_name: '',
+          city_id: undefined,
+          city_name: '',
+          position: '',
+          profession_id: undefined,
+          start_month: undefined,
+          start_year: '',
+          end_month: undefined,
+          end_year: '',
+          is_current: false,
+          responsibilities: '',
+          companySuggestions: [],
+          citySuggestions: [],
+          professionSuggestions: [],
+          isLoadingCompany: false,
+          isLoadingCity: false,
+          isLoadingProfession: false,
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveWorkExp = (idx: number) => {
+    setForm(prev => ({
+      ...prev,
+      work_experiences: prev.work_experiences.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleCompanyInput = async (idx: number, value: string) => {
+    handleWorkExpChange(idx, 'company_name', value);
+    handleWorkExpChange(idx, 'company_id', undefined);
+
+    if (!value.trim()) {
+      handleWorkExpChange(idx, 'companySuggestions', []);
+      return;
+    }
+
+    handleWorkExpChange(idx, 'isLoadingCompany', true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.companiesSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleWorkExpChange(idx, 'companySuggestions', data);
+    } catch (e) {
+      handleWorkExpChange(idx, 'companySuggestions', []);
+    }
+    handleWorkExpChange(idx, 'isLoadingCompany', false);
+  };
+
+  const handleCompanySelect = (idx: number, company: { company_id: number; company_name: string; brand_name: string }) => {
+    handleWorkExpChange(idx, 'company_id', company.company_id);
+    handleWorkExpChange(idx, 'company_name', company.company_name);
+    handleWorkExpChange(idx, 'companySuggestions', []);
+  };
+
+  const handleCityInput = async (idx: number, value: string) => {
+    handleWorkExpChange(idx, 'city_name', value);
+    handleWorkExpChange(idx, 'city_id', undefined);
+
+    if (!value.trim()) {
+      handleWorkExpChange(idx, 'citySuggestions', []);
+      return;
+    }
+
+    handleWorkExpChange(idx, 'isLoadingCity', true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.citiesSearch}?query=${encodeURIComponent(value)}`);
+      let data = await res.json();
+      data = data.map((city: any) => ({ city_id: city.city_id ?? city.id, name: city.name }));
+      handleWorkExpChange(idx, 'citySuggestions', data);
+    } catch (e) {
+      handleWorkExpChange(idx, 'citySuggestions', []);
+    }
+    handleWorkExpChange(idx, 'isLoadingCity', false);
+  };
+
+  const handleCitySelect = (idx: number, city: { city_id: number; name: string }) => {
+    handleWorkExpChange(idx, 'city_id', city.city_id);
+    handleWorkExpChange(idx, 'city_name', city.name);
+    handleWorkExpChange(idx, 'citySuggestions', []);
+  };
+
+  const handleProfessionInput = async (idx: number, value: string) => {
+    handleWorkExpChange(idx, 'position', value);
+    handleWorkExpChange(idx, 'profession_id', undefined);
+
+    if (!value.trim()) {
+      handleWorkExpChange(idx, 'professionSuggestions', []);
+      return;
+    }
+
+    handleWorkExpChange(idx, 'isLoadingProfession', true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.professionsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleWorkExpChange(idx, 'professionSuggestions', data);
+    } catch (e) {
+      handleWorkExpChange(idx, 'professionSuggestions', []);
+    }
+    handleWorkExpChange(idx, 'isLoadingProfession', false);
+  };
+
+  const handleProfessionSelect = (idx: number, prof: { profession_id: number; name: string }) => {
+    handleWorkExpChange(idx, 'profession_id', prof.profession_id);
+    handleWorkExpChange(idx, 'position', prof.name);
+    handleWorkExpChange(idx, 'professionSuggestions', []);
+  };
+
+  const handleEducationTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value ? Number(e.target.value) : undefined;
+    setForm(prev => ({ ...prev, education_type_id: value }));
+  };
+
+  const handleEducationChange = (idx: number, field: string, value: any) => {
+    setForm(prev => {
+      const updated = [...prev.educations];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...prev, educations: updated };
+    });
+  };
+
+  const handleAddEducation = () => {
+    setForm(prev => ({
+      ...prev,
+      educations: [
+        ...prev.educations,
+        {
+          education_id: undefined,
+          institution: '',
+          institution_id: undefined,
+          institutionSuggestions: [],
+          isLoadingInstitution: false,
+          specialization: '',
+          specialization_id: undefined,
+          specializationSuggestions: [],
+          isLoadingSpecialization: false,
+          end_year: '',
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveEducation = (idx: number) => {
+    setForm(prev => ({
+      ...prev,
+      educations: prev.educations.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleInstitutionInput = async (idx: number, value: string) => {
+    handleEducationChange(idx, 'institution', value);
+    handleEducationChange(idx, 'institution_id', undefined);
+
+    if (!value.trim()) {
+      handleEducationChange(idx, 'institutionSuggestions', []);
+      return;
+    }
+
+    handleEducationChange(idx, 'isLoadingInstitution', true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.educationalInstitutionsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleEducationChange(idx, 'institutionSuggestions', data);
+    } catch (e) {
+      handleEducationChange(idx, 'institutionSuggestions', []);
+    }
+    handleEducationChange(idx, 'isLoadingInstitution', false);
+  };
+
+  const handleInstitutionSelect = (idx: number, inst: { institution_id: number; name: string }) => {
+    handleEducationChange(idx, 'institution_id', inst.institution_id);
+    handleEducationChange(idx, 'institution', inst.name);
+    handleEducationChange(idx, 'institutionSuggestions', []);
+  };
+
+  const handleSpecializationInput = async (idx: number, value: string) => {
+    handleEducationChange(idx, 'specialization', value);
+    handleEducationChange(idx, 'specialization_id', undefined);
+
+    if (!value.trim()) {
+      handleEducationChange(idx, 'specializationSuggestions', []);
+      return;
+    }
+
+    handleEducationChange(idx, 'isLoadingSpecialization', true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.specializationsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleEducationChange(idx, 'specializationSuggestions', data);
+    } catch (e) {
+      handleEducationChange(idx, 'specializationSuggestions', []);
+    }
+    handleEducationChange(idx, 'isLoadingSpecialization', false);
+  };
+
+  const handleSpecializationSelect = (idx: number, spec: { specialization_id: number; name: string }) => {
+    handleEducationChange(idx, 'specialization_id', spec.specialization_id);
+    handleEducationChange(idx, 'specialization', spec.name);
+    handleEducationChange(idx, 'specializationSuggestions', []);
+  };
+
+  const handleProfessionalSummaryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setForm(prev => ({ ...prev, professional_summary: e.target.value }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, phone: e.target.value }));
+  };
+
+  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hasWhatsapp: e.target.checked }));
+  };
+
+  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hasTelegram: e.target.checked }));
+  };
+
+  const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, phoneComment: e.target.value }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, email: e.target.value }));
+  };
+
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, website: e.target.value }));
+  };
+
+  const handleHideNameAndPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hideNameAndPhoto: e.target.checked }));
+  };
+
+  const handleHidePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hidePhone: e.target.checked }));
+  };
+
+  const handleHideEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hideEmail: e.target.checked }));
+  };
+
+  const handleHideOtherContactsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hideOtherContacts: e.target.checked }));
+  };
+
+  const handleHideCompanyNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, hideCompanyNames: e.target.checked }));
+  };
+
+  const handleVisibilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => ({ ...prev, visibility: e.target.value as typeof prev.visibility }));
+  };
+
+  const handleEducationTypeStepValidation = () => {
+    if (!form.education_type_id) {
+      setErrorMessage('Укажите уровень образования');
+      setIsErrorModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (currentStep === 0) {
+      if (!form.title.trim()) {
+        setErrorMessage('Укажите желаемую должность');
+        setIsErrorModalOpen(true);
+        return;
+      }
+    }
+
+    if (currentStep === 1) {
+      if (form.employment_type_ids.length === 0) {
+        setErrorMessage('Выберите хотя бы один тип занятости');
+        setIsErrorModalOpen(true);
+        return;
+      }
+      if (form.work_format_ids.length === 0) {
+        setErrorMessage('Выберите хотя бы один формат работы');
+        setIsErrorModalOpen(true);
+        return;
+      }
+    }
+
+    if (currentStep === 3 && !handleEducationTypeStepValidation()) {
+      return;
+    }
+
+    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+  };
+
+  const handlePrev = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  // Фото: выбор файла, загрузка через /api/upload, установка превью и имени файла
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhoto(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    const res = await uploadFile(file, 'photo');
+    if (res.error || !res.data?.fileName) {
+      console.error('Ошибка загрузки фото:', res.error);
+      setErrorMessage(res.error || 'Ошибка загрузки фото');
+      setIsErrorModalOpen(true);
+      return;
+    }
+    setPhotoFileName(res.data.fileName);
+  };
 
   // Изменяем функцию handleSave для отправки PUT запроса
   const handleSave = async () => {
@@ -252,7 +654,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       formData.append('has_whatsapp', String(form.hasWhatsapp));
       formData.append('has_telegram', String(form.hasTelegram));
       formData.append('education_type_id', String(form.education_type_id));
-      if (photo) formData.append('photo', photo);
+      if (photoFileName) formData.append('photo_url', photoFileName);
       formData.append('hide_full_name', String(form.hideNameAndPhoto));
       formData.append('hide_phone', String(form.hidePhone));
       formData.append('hide_email', String(form.hideEmail));

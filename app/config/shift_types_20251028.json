@@ -1,0 +1,8 @@
+{
+  "shift_types": [
+    { "shift_type_id": 1, "name": "Дневные смены" },
+    { "shift_type_id": 2, "name": "Ночные смены" },
+    { "shift_type_id": 3, "name": "Смешанные смены" }
+  ]
+}
+

@@ -82,7 +82,7 @@ export default function Footer() {
         <div className="border-t border-gray-200 pt-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-600">
-              © 2024 JobFind. Все права защищены
+              © 2026 E77.top Все права защищены
             </div>
             <div className="flex gap-4">
               <a href="#" className="text-gray-600 hover:text-blue-600 transition">

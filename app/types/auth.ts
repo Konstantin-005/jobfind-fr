@@ -21,7 +21,7 @@ export interface ResetPasswordRequest {
 export interface AuthResponse {
   token: string;
   user: {
-    id: string;
+    user_id: string; // UUID
     email: string;
     user_type?: 'job_seeker' | 'employer';
   };
@@ -35,18 +35,20 @@ export interface MessageResponse {
 export interface LoginResponse {
   token: string;
   user: {
-    id: string;
+    user_id: string; // UUID
     name: string;
     email: string;
+    user_type?: 'job_seeker' | 'employer';
   };
 }
 
 export interface RegisterResponse {
   token: string;
   user: {
-    id: string;
+    user_id: string; // UUID
     name: string;
     email: string;
+    user_type?: 'job_seeker' | 'employer';
   };
 }
 
