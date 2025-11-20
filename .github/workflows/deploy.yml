@@ -57,6 +57,10 @@ jobs:
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
+            # Ensure uploads directories exist
+            echo "Ensuring uploads directories exist"
+            mkdir -p "$DEPLOY_DIR/public/uploads/companyLogo"
+
             # Extract new release
             echo "Extracting new release"
             tar -xzf "/tmp/${ARCHIVE_NAME}" -C .
@@ -71,9 +75,10 @@ jobs:
             echo "Installing production dependencies"
             npm ci --omit=dev
 
-            # Start or restart the application
-            echo "Starting or restarting the application"
-            pm2 restart "$APP_NAME" --update-env || pm2 start npm --name "$APP_NAME" -- start -- -p 4000
+            # Start or restart the application from correct directory
+            echo "Starting or restarting the application from $DEPLOY_DIR"
+            pm2 delete "$APP_NAME" || true
+            pm2 start npm --name "$APP_NAME" --cwd "$DEPLOY_DIR" -- start -- -p 4000
 
             # Save PM2 process list and enable startup
             pm2 save
