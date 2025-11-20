@@ -1126,7 +1126,7 @@ export default function EmployerVacanciesPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="relative" ref={addressDropdownRef}>
-                    <label className="block text-xs text-gray-500 mb-1">Адрес компании </label>
+                    <label className="block text-xs text-gray-500 mb-1">Адрес компании (необязательно)</label>
                     <button
                       type="button"
                       onClick={() => setIsAddressDropdownOpen((v) => !v)}
