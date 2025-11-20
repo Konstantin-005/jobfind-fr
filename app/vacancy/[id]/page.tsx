@@ -9,6 +9,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { API_ENDPOINTS } from '../../config/api'
+import { headers } from 'next/headers'
 
 interface City { name?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
@@ -80,7 +81,11 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     notFound()
   }
 
-  const res = await fetch(API_ENDPOINTS.jobById(idNum), { cache: 'no-store' })
+  const h = headers()
+  const proto = h.get('x-forwarded-proto') || 'http'
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
+  const res = await fetch(absUrl.toString(), { cache: 'no-store' })
   if (res.status === 404) {
     notFound()
   }
@@ -227,7 +232,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     return { title: 'Вакансия | JobFind' }
   }
   try {
-    const res = await fetch(API_ENDPOINTS.jobById(idNum), { cache: 'no-store' })
+    const h = headers()
+    const proto = h.get('x-forwarded-proto') || 'http'
+    const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+    const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
+    const res = await fetch(absUrl.toString(), { cache: 'no-store' })
     if (!res.ok) return { title: 'Вакансия | JobFind' }
     const job: JobPosting = await res.json()
     const city = job.company_address?.city?.name

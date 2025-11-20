@@ -186,25 +186,31 @@ export default function EmployerVacanciesPage() {
     const titleMissing = !form.title || !form.title.trim();
     const descMissing = !form.description || !form.description.trim();
     const noProfession = !form.profession_id;
-    const noAddress = !form.company_address_id;
     const salaryInvalid = typeof form.salary_min === 'number' && typeof form.salary_max === 'number' && (form.salary_min > form.salary_max);
     const citiesOver = publicationCityIds.length > 10;
     const regionsOver = regionIds.length > 10;
     const noCity = !(Array.isArray(publicationCityIds) && publicationCityIds.length > 0) && !form.publication_city_id;
-    return titleMissing || descMissing || noProfession || noAddress || noCity || salaryInvalid || citiesOver || regionsOver;
-  }, [form.title, form.description, form.profession_id, form.company_address_id, form.salary_min, form.salary_max, publicationCityIds, regionIds]);
+    return titleMissing || descMissing || noProfession || noCity || salaryInvalid || citiesOver || regionsOver;
+  }, [form.title, form.description, form.profession_id, form.salary_min, form.salary_max, publicationCityIds, regionIds]);
 
   async function load() {
     setLoading(true);
     setError(null);
-    const res = await jobsApi.listCompanyJobs();
-    if (res.error) setError(res.error);
-    const payload: any = res.data ?? [];
-    const rows: JobPosting[] = Array.isArray(payload)
-      ? payload
-      : (payload?.items || payload?.data || payload?.job_postings || []);
-    setItems(Array.isArray(rows) ? rows : []);
-    setLoading(false);
+    try {
+      const res = await jobsApi.listCompanyJobs();
+      if (res.error) {
+        setError(res.error);
+      }
+      const payload: any = res.data ?? [];
+      const rows: JobPosting[] = Array.isArray(payload)
+        ? payload
+        : (payload?.items || payload?.data || payload?.job_postings || []);
+      setItems(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      setError('Не удалось загрузить вакансии компании. Попробуйте обновить страницу позже.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function validate(): boolean {
@@ -212,7 +218,6 @@ export default function EmployerVacanciesPage() {
     if (!form.title || !form.title.trim()) nextErrors.title = 'Укажите название вакансии';
     if (!form.description || !form.description.trim()) nextErrors.description = 'Укажите описание вакансии';
     if (!form.profession_id) nextErrors.profession_id = 'Выберите профессию из списка';
-    if (!form.company_address_id) nextErrors.company_address_id = 'Выберите адрес компании из списка';
     if (!((Array.isArray(publicationCityIds) && publicationCityIds.length > 0) || form.publication_city_id)) {
       nextErrors.city_ids = 'Выберите хотя бы один город публикации';
     }

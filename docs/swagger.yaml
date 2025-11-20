@@ -150,6 +150,7 @@ definitions:
         type: array
     type: object
   controllers.JobUpsertRequest:
+    description: Получить подробную информацию о вакансии по её ID
     properties:
       city_ids:
         items:
@@ -472,10 +473,16 @@ definitions:
         type: array
       name:
         type: string
+      name_prepositional:
+        type: string
+      population:
+        type: integer
       region:
         $ref: '#/definitions/models.Region'
       region_id:
         type: integer
+      slug:
+        type: string
     type: object
   models.CompanyAddress:
     properties:
@@ -665,6 +672,10 @@ definitions:
         type: boolean
       name:
         type: string
+      name_prepositional:
+        type: string
+      slug:
+        type: string
     type: object
   models.JobApplication:
     properties:
@@ -829,6 +840,8 @@ definitions:
         type: string
       name:
         type: string
+      name_prepositional:
+        type: string
       station_id:
         type: integer
     type: object
@@ -842,8 +855,12 @@ definitions:
         type: integer
       name:
         type: string
+      name_prepositional:
+        type: string
       region_id:
         type: integer
+      slug:
+        type: string
     type: object
   models.Resume:
     properties:
@@ -1001,12 +1018,16 @@ definitions:
         type: array
       name:
         type: string
+      name_prepositional:
+        type: string
       profession_id:
         type: integer
       resumes:
         items:
           $ref: '#/definitions/models.Resume'
         type: array
+      slug:
+        type: string
     type: object
   models.VacancyProfessionGroup:
     properties:
@@ -1014,10 +1035,14 @@ definitions:
         type: integer
       name:
         type: string
+      name_prepositional:
+        type: string
       professions:
         items:
           $ref: '#/definitions/models.VacancyProfession'
         type: array
+      slug:
+        type: string
     type: object
   models.WorkDayLength:
     properties:
@@ -1091,6 +1116,15 @@ definitions:
         type: string
       schedule_type_id:
         type: integer
+    type: object
+  repository.NeighborCity:
+    properties:
+      CityID:
+        type: integer
+      Name:
+        type: string
+      Slug:
+        type: string
     type: object
 info:
   contact: {}
@@ -1679,6 +1713,85 @@ paths:
               type: string
             type: object
       summary: Получить города по id
+      tags:
+      - Dictionaries
+  /api/dictionaries/cities/{id}/neighbors:
+    get:
+      description: Возвращает список ближайших городов по соседним city_id в том же
+        регионе, исключая исходный город
+      parameters:
+      - description: ID города
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Минимальное население (>=)
+        in: query
+        name: population
+        type: integer
+      - description: Количество соседних городов
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repository.NeighborCity'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить соседние города по ID
+      tags:
+      - Dictionaries
+  /api/dictionaries/cities/by-slug/{slug}:
+    get:
+      description: Возвращает город по его slug
+      parameters:
+      - description: Slug города
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.City'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить город по slug
       tags:
       - Dictionaries
   /api/dictionaries/companies/search:
@@ -2340,6 +2453,42 @@ paths:
       security:
       - BearerAuth: []
       summary: Откликнуться на вакансию
+      tags:
+      - Jobs
+  /api/jobs/searchBySlug:
+    get:
+      description: 'Получить список вакансий по slug параметрам (логическое И между
+        переданными): profession_slug, city_slug, industry_slug. При city_slug учитываются
+        вакансии с publish_in_all_cities = true'
+      parameters:
+      - description: Slug профессии
+        in: query
+        name: profession_slug
+        type: string
+      - description: Slug города
+        in: query
+        name: city_slug
+        type: string
+      - description: Slug индустрии компании
+        in: query
+        name: industry_slug
+        type: string
+      - description: ID компании
+        in: query
+        name: company_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.JobListItem'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Поиск вакансий по slug
       tags:
       - Jobs
   /api/locations:

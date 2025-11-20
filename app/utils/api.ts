@@ -192,13 +192,14 @@ export type JobPosting = {
 
 export const jobsApi = {
   async listCompanyJobs(params?: { page?: number; page_size?: number; search?: string }) {
-    const url = new URL(API_ENDPOINTS.companies.jobs);
+    const qs = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+        if (v !== undefined && v !== null && v !== '') qs.set(k, String(v));
       });
     }
-    return apiRequest<JobPosting[]>(url.toString(), { method: 'GET' });
+    const endpoint = `${API_ENDPOINTS.companies.jobs}${qs.toString() ? `?${qs.toString()}` : ''}`;
+    return apiRequest<JobPosting[]>(endpoint, { method: 'GET' });
   },
 
   async get(jobId: number) {

@@ -345,7 +345,9 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
   }, [])
 
   const updateURL = (filters: any) => {
-    if (pathname === '/vacancy') {
+    const onVacancyList = pathname === '/vacancy'
+    const onCitySlug = pathname.startsWith('/vakansii/')
+    if (onVacancyList || onCitySlug) {
       // Собираем все фильтры из состояния и searchParams
       const allFilters: any = {
         salaryFrom,
@@ -381,7 +383,9 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
         .map(([key, value]) => `${key}=${value}`)
         .join('&')
 
-      router.replace(`/vacancy${queryString ? '?' + queryString : ''}`, { scroll: false })
+      // Всегда ведём на общую страницу списка вакансий
+      const targetPath = '/vacancy'
+      router.replace(`${targetPath}${queryString ? '?' + queryString : ''}`, { scroll: false })
     }
   }
 

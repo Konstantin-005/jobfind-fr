@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -20,6 +21,20 @@ export default function Home() {
     'DevOps инженер',
     'UX/UI дизайнер',
     'Product Manager'
+  ]
+
+  const cityLinks = [
+    { name: 'Москве', slug: 'moskva' },
+    { name: 'Санкт-Петербурге', slug: 'sankt-peterburg' },
+    { name: 'Новосибирске', slug: 'novosibirsk' },
+    { name: 'Екатеринбурге', slug: 'ekaterinburg' },
+    { name: 'Казани', slug: 'kazan' },
+    { name: 'Нижнем Новгороде', slug: 'nizhniy-novgorod' },
+    { name: 'Челябинске', slug: 'chelyabinsk' },
+    { name: 'Самаре', slug: 'samara' },
+    { name: 'Ростове-на-Дону', slug: 'rostov-na-donu' },
+    { name: 'Уфе', slug: 'ufa' },
+    { name: 'Красноярске', slug: 'krasnoyarsk' },
   ]
 
   return (
@@ -163,6 +178,25 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Работа в других городах */}
+      <div className="bg-slate-900 text-slate-100 py-12 md:py-16">
+        <div className="max-w-6xl mx-auto px-4">
+          <h3 className="text-2xl md:text-3xl font-bold mb-6">Работа в городах РФ</h3>
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            {cityLinks.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/vakansii/${c.slug}`}
+                className="text-slate-200 hover:text-white underline decoration-slate-500/60 hover:decoration-white underline-offset-4 transition"
+              >
+                В {c.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
     </div>
   )
-} 
+}

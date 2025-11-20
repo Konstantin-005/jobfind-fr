@@ -10,14 +10,20 @@ const Footer = dynamic(() => import('./components/Footer'), { ssr: true })
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'JobFind - Поиск вакансий',
-  description: 'Найдите свою идеальную работу с JobFind',
+  title: 'Поиск свежих вакансий от прямых работодателей - E77.top',
+  description: 'Найдите свою идеальную работу с E77.top ',
   keywords: 'вакансии, работа, поиск работы, карьера',
   openGraph: {
-    title: 'JobFind - Поиск вакансий',
-    description: 'Найдите свою идеальную работу с JobFind',
+    title: 'Поиск свежих вакансий от прямых работодателей - E77.top',
+    description: 'Найдите свою идеальную работу с E77.top ',
     type: 'website',
     locale: 'ru_RU',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon-48x48.ico', sizes: '48x48', type: 'image/x-icon' },
+      { url: '/favicon-120x120.png', sizes: '120x120', type: 'image/png' },
+    ],
   },
 }
 
