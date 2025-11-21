@@ -53,17 +53,24 @@ jobs:
             DEPLOY_DIR="/www/wwwroot/e77.top"
             ARCHIVE_NAME="jobfind-fr-${{ github.sha }}.tar.gz"
 
-            # Prepare directory
+            # Ensure directory exists
             mkdir -p "$DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
-
-            # Ensure uploads directories exist
+            
+            # Ensure uploads directories exist (preserve them)
             echo "Ensuring uploads directories exist"
             mkdir -p "$DEPLOY_DIR/public/uploads/companyLogo"
 
-            # Extract new release
-            echo "Extracting new release"
-            tar -xzf "/tmp/${ARCHIVE_NAME}" -C .
+            # Clean old files but preserve uploads and node_modules if possible (for speed)
+            # But for clean install, we remove node_modules. We MUST preserve public/uploads.
+            # Using rsync logic or just careful removal could be better, but tar overwrite is usually fine.
+            # Let's trust tar overwrite, but we might want to clear old .next folder to be sure.
+            rm -rf "$DEPLOY_DIR/.next"
+
+            # Extract new release (will overwrite existing files)
+            echo "Extracting new release to $DEPLOY_DIR"
+            tar -xzf "/tmp/${ARCHIVE_NAME}" -C "$DEPLOY_DIR"
+
+            cd "$DEPLOY_DIR"
 
             # Ensure pm2 installed
             if ! command -v pm2 >/dev/null 2>&1; then
@@ -73,14 +80,18 @@ jobs:
 
             # Install production dependencies
             echo "Installing production dependencies"
+            # Remove old node_modules to ensure clean slate if needed, or just ci
+            # npm ci is good.
             npm ci --omit=dev
 
             # Start or restart the application from correct directory
             echo "Starting or restarting the application from $DEPLOY_DIR"
+            
+            # Reload logic: delete old process to ensure new CWD and ENV are picked up
             pm2 delete "$APP_NAME" || true
             pm2 start npm --name "$APP_NAME" --cwd "$DEPLOY_DIR" -- start -- -p 4000
 
-            # Save PM2 process list and enable startup
+            # Save PM2 process list
             pm2 save
 
             # Check application status
