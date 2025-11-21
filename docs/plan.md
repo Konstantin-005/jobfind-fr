@@ -8,7 +8,7 @@
   - [ ] Создать страницу `app/vakansii/[slug]/page.tsx` (SSR)
   - [ ] Обновить ссылки на главной с `/vacancy/{slug}` на `/vakansii/{slug}`
   - [ ] (Опционально) Настроить редирект/удалить `app/vacancy/[slug]`
-- **Зависимости**: `/api/jobs/searchBySlug`
+- **Зависимости**: `/api/jobs/searchBySlug` 
 
 ## Задача: Страница списка по городу `/vakansii/[slug]`
 - **Статус**: В процессе
