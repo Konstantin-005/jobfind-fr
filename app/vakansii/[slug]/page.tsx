@@ -1,13 +1,14 @@
 /**
  * @file: app/vakansii/[slug]/page.tsx
- * @description: SSR-страница списка вакансий по городу (city_slug) для маршрута /vakansii/{slug}.
+ * @description: SSR-страница списка вакансий по городу (city_slug) для маршрута /vakansii/{slug} с пагинацией.
  * @dependencies: none (серверная загрузка через fetch)
  * @created: 2025-11-18
  */
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import JobFilters from '../../components/JobFilters'
+import JobFilters from '@/app/components/JobFilters'
+import Pagination from '@/app/components/Pagination'
 
 interface JobAddress {
   city?: string
@@ -30,6 +31,15 @@ interface JobListItem {
   address?: JobAddress
   publication_cities?: string[]
   work_format_ids?: number[]
+  is_promo?: boolean
+}
+
+interface PaginatedResponse {
+  data: JobListItem[]
+  limit: number
+  page: number
+  total: number
+  total_pages: number
 }
 
 function formatSalary(job: JobListItem) {
@@ -102,9 +112,14 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     ? `Легко найти работу в ${cityPrepositional} с удобным и понятным поиском. Все вакансии только от проверенных работодателей на E77.top.`
     : baseDescription
 
+  const canonicalUrl = `${origin}/vakansii/${slug}`
+
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
@@ -114,15 +129,26 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function VacancyBySlugPage({ params }: { params: { slug: string } }) {
+export default async function VacancyBySlugPage({ 
+  params,
+  searchParams
+}: { 
+  params: { slug: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const { slug } = params
+  const page = Number(searchParams.page) || 1
+  const limit = 50
+  
   const h = headers()
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
   const proto = h.get('x-forwarded-proto') || 'http'
   const origin = `${proto}://${host}`
-  const res = await fetch(`${origin}/api/jobs/searchBySlug?city_slug=${encodeURIComponent(slug)}`, {
+
+  const res = await fetch(`${origin}/api/jobs/searchBySlug?city_slug=${encodeURIComponent(slug)}&page=${page}&limit=${limit}`, {
     cache: 'no-store',
   })
+
   if (!res.ok) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -130,21 +156,46 @@ export default async function VacancyBySlugPage({ params }: { params: { slug: st
       </div>
     )
   }
-  const jobs: JobListItem[] = await res.json()
+  
+  const responseData = await res.json()
+  let jobs: JobListItem[] = []
+  let totalPages = 1
+  let total = 0
+
+  if (Array.isArray(responseData)) {
+     jobs = responseData
+     total = jobs.length
+  } else {
+     const paginated = responseData as PaginatedResponse
+     jobs = paginated.data || []
+     totalPages = paginated.total_pages || 1
+     total = paginated.total || 0
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 pt-16">
       <div className="flex gap-8">
         <JobFilters />
         <div className="flex-1">
-          <div className="bg-white rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="bg-white rounded-lg p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div className="text-gray-700 font-medium">
-              Найдено <span className="font-bold">{jobs.length}</span> вакансий
+              Найдено <span className="font-bold">{total}</span> вакансий
             </div>
+            {total > 0 && (
+              <div className="text-gray-500 text-sm">
+                {(() => {
+                  const pageSize = limit
+                  const from = (page - 1) * pageSize + 1
+                  const to = Math.min(page * pageSize, total)
+                  return `Показаны ${from}–${to} из ${total}`
+                })()}
+              </div>
+            )}
           </div>
           {jobs.length === 0 ? (
             <div className="text-center text-gray-500">По вашему запросу вакансий не найдено</div>
           ) : (
+            <>
             <div className="grid gap-6">
               {jobs.map((job) => (
                 <div key={job.job_id} className="bg-white rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -183,11 +234,28 @@ export default async function VacancyBySlugPage({ params }: { params: { slug: st
                         <img src={job.logo_url} alt={job.company_name} className="max-w-full max-h-full object-contain" />
                       </div>
                     )}
-                    <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">Откликнуться</button>
+                    {job.is_promo ? (
+                      <Link
+                        href={`/vacancy/${job.job_id}/to`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
+                      >
+                        Откликнуться
+                      </Link>
+                    ) : (
+                      <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">Откликнуться</button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
+            <Pagination 
+              currentPage={page} 
+              totalPages={totalPages} 
+              basePath={`/vakansii/${slug}`} 
+            />
+            </>
           )}
         </div>
       </div>

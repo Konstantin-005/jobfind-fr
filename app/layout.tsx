@@ -12,7 +12,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Поиск свежих вакансий от прямых работодателей - E77.top',
   description: 'Найдите свою идеальную работу с E77.top ',
-  keywords: 'вакансии, работа, поиск работы, карьера',
   openGraph: {
     title: 'Поиск свежих вакансий от прямых работодателей - E77.top',
     description: 'Найдите свою идеальную работу с E77.top ',

@@ -11,31 +11,78 @@ import { notFound } from 'next/navigation'
 import { API_ENDPOINTS } from '../../config/api'
 import { headers } from 'next/headers'
 
-interface City { name?: string }
+interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
 interface CompanyAddress { address?: string; city?: City | null }
-interface NamedId { name?: string; [key: string]: any }
+interface VacancyAddress { city?: string; city_name_prepositional?: string; address?: string }
+interface Region { region_id?: number; name?: string }
+interface Skill { skill_id?: number; name?: string }
+interface NamedId {
+  id?: number
+  name?: string
+  [key: string]: any
+}
+interface VacancyProfession extends NamedId {
+  profession_id?: number
+}
+interface JobUser {
+  user_id?: string
+  email?: string
+  name?: string
+}
 interface JobPosting {
   job_id: number
   title: string
   description?: string
   company_profile?: CompanyProfile | null
   company_address?: CompanyAddress | null
+  company_address_id?: number
+  company_id?: number
   salary_min?: number
   salary_max?: number
   salary_currency?: string
   salary_period?: string
   salary_type?: string
+  salary_frequency?: string
   work_experience?: string
   work_formats?: NamedId[]
   employment_types?: NamedId[]
   work_schedules?: NamedId[]
   day_lengths?: NamedId[]
   shift_types?: NamedId[]
+  education_types?: NamedId[]
+  posted_date?: string
+  created_at?: string
+  expiration_date?: string
+  updated_at?: string
+  experience_level?: string
+  is_active?: boolean
+  is_contract_possible?: boolean
+  is_promo?: boolean
+  deleted?: boolean
+  publish_in_all_cities?: boolean
+  link?: string
+  posted_by?: string
+  profession?: VacancyProfession | null
+  profession_id?: number
+  address?: VacancyAddress | null
+  cities?: City[]
+  regions?: Region[]
+  skills?: Skill[]
+  user?: JobUser | null
+  work_schedule_types?: NamedId[]
+}
+
+const EMPLOYMENT_TYPE_SCHEMA_MAP: Record<number, string> = {
+  1: 'FULL_TIME',
+  2: 'PART_TIME',
+  3: 'CONTRACTOR',
+  4: 'INTERN',
+  5: 'VOLUNTEER',
 }
 
 const salaryPeriodMap: Record<string, string> = {
-  month: 'за месяц',
+  month: 'в месяц',
   hour: 'в час',
   shift: 'смена',
   vahta: 'вахта',
@@ -44,6 +91,16 @@ const salaryPeriodMap: Record<string, string> = {
 const salaryTypeMap: Record<string, string> = {
   after_tax: 'на руки',
   before_tax: 'до вычета налогов',
+}
+const salaryFrequencyMap: Record<string, string> = {
+  month: 'раз в месяц',
+  'раз в месяц': 'раз в месяц',
+  '2_month': 'два раза в месяц',
+  '2 раза в месяц': 'два раза в месяц',
+  day: 'ежедневно',
+  ежедневно: 'ежедневно',
+  other: 'по договоренности',
+  другое: 'по договоренности',
 }
 const workExperienceMap: Record<string, string> = {
   '0': 'без опыта',
@@ -71,8 +128,121 @@ function getSalaryDetails(job: JobPosting) {
   return [period, stype].filter(Boolean).join(', ')
 }
 
+function formatSalaryFrequency(value?: string) {
+  if (!value) return undefined
+  const normalized = value.toLowerCase()
+  if (salaryFrequencyMap[normalized]) {
+    return salaryFrequencyMap[normalized]
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 function chipsFrom(names?: NamedId[]) {
   return (names || []).map(n => n?.name).filter(Boolean) as string[]
+}
+
+function getPrimaryCity(job: JobPosting) {
+  const cityFromAddress = job.address?.city || ''
+  const cityFromCompanyAddress = job.company_address?.city?.name || ''
+  const cityFromList = (job.cities || []).find(city => city?.name)?.name || ''
+  return cityFromAddress || cityFromCompanyAddress || cityFromList || ''
+}
+
+function getCityPrepositional(job: JobPosting) {
+  const cityFromAddress = job.address?.city_name_prepositional || job.address?.city || ''
+  const companyCity = job.company_address?.city
+  const cityFromCompanyAddress = companyCity?.name_prepositional || companyCity?.name || ''
+  const cityFromList = (job.cities || []).find(city => (city?.name_prepositional || city?.name))
+  const listValue = cityFromList?.name_prepositional || cityFromList?.name || ''
+  return cityFromAddress || cityFromCompanyAddress || listValue
+}
+
+function formatMoney(value?: number, currency?: string) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined
+  }
+  const normalizedCurrency = currency === 'RUB' || currency === 'RUR' ? '₽' : (currency || '')
+  const formattedValue = value.toLocaleString('ru-RU')
+  return [formattedValue, normalizedCurrency].filter(Boolean).join(' ').trim()
+}
+
+function formatMetaDate(value?: string) {
+  if (!value) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return undefined
+  }
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+}
+
+function buildTitleSalarySegment(job: JobPosting) {
+  const salaryCurrency = job.salary_currency
+  const max = formatMoney(job.salary_max, salaryCurrency)
+  if (max) {
+    return `с зарплатой до ${max}`
+  }
+  const min = formatMoney(job.salary_min, salaryCurrency)
+  if (min) {
+    return `с зарплатой ${min}`
+  }
+  return undefined
+}
+
+function getDescriptionSalaryValue(job: JobPosting) {
+  const salaryCurrency = job.salary_currency
+  return formatMoney(
+    typeof job.salary_max === 'number' ? job.salary_max : job.salary_min,
+    salaryCurrency,
+  )
+}
+
+function buildVacancyMetaTitle(job: JobPosting) {
+  const city = getCityPrepositional(job)
+  const companyName = job.company_profile?.company_name?.trim()
+  const salarySegment = buildTitleSalarySegment(job)
+  const parts = [`Вакансия ${job.title}`]
+  if (city) {
+    parts.push(`в ${city}`)
+  }
+  if (salarySegment) {
+    parts.push(salarySegment)
+  }
+  const baseTitle = parts.join(' ')
+  const companyPart = companyName ? `, работа в компании ${companyName}` : ''
+  return `${baseTitle}${companyPart}`.trim()
+}
+
+function buildVacancyMetaDescription(job: JobPosting) {
+  const city = getCityPrepositional(job)
+  const companyName = job.company_profile?.company_name?.trim()
+  const dateLabel = formatMetaDate(job.updated_at || job.posted_date)
+  const experience = job.work_experience ? workExperienceMap[job.work_experience] : undefined
+  const firstSentenceParts = [
+    `Вакансия ${job.title}`,
+    companyName ? `от компании ${companyName}` : undefined,
+    city ? `в ${city}` : undefined,
+    dateLabel ? `от ${dateLabel}` : undefined,
+  ].filter(Boolean)
+  const firstSentence = firstSentenceParts.join(' ')
+
+  const salaryValue = getDescriptionSalaryValue(job)
+  const salarySentence = salaryValue
+    ? `Предлагаемая зарплата ${salaryValue}`
+    : 'Предлагаемая зарплата не указана'
+  const experienceSentence = experience
+    ? `требуется опыт работы ${experience}`
+    : 'требуется опыт работы не указан'
+
+  const secondSentence = `${salarySentence}, ${experienceSentence}`
+  return `${firstSentence}. ${secondSentence}`.trim()
+}
+
+function buildVacancyKeywords(job: JobPosting) {
+  const keywords = ['вакансия', 'работа']
+  if (job.title) keywords.push(job.title)
+  if (job.company_profile?.company_name) keywords.push(job.company_profile.company_name)
+  if (job.address?.city) keywords.push(job.address.city)
+  return keywords
 }
 
 export default async function VacancyPage({ params }: { params: { id: string } }) {
@@ -83,31 +253,174 @@ export default async function VacancyPage({ params }: { params: { id: string } }
 
   const h = headers()
   const proto = h.get('x-forwarded-proto') || 'http'
-  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+  const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
   const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
-  const res = await fetch(absUrl.toString(), { cache: 'no-store' })
-  if (res.status === 404) {
-    notFound()
+  let job: JobPosting | null = null
+  let loadError = false
+  try {
+    const res = await fetch(absUrl.toString(), { cache: 'no-store' })
+    if (res.status === 404) {
+      notFound()
+    }
+    if (!res.ok) {
+      throw new Error('Failed to load job')
+    }
+    job = await res.json()
+  } catch (error) {
+    console.error('[VacancyPage] job load failed', error)
+    loadError = true
   }
-  if (!res.ok) {
-    throw new Error('Failed to load job')
+
+  if (loadError || !job) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 py-10 pt-20">
+            <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
+              <h1 className="text-2xl font-bold mb-3">Вакансия недоступна</h1>
+              <p className="text-gray-600 text-sm md:text-base">
+                Не удалось получить данные вакансии. Пожалуйста, попробуйте позже или обновите страницу.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
-  const job: JobPosting = await res.json()
 
   const title = job.title
   const salary = formatSalary(job)
   const salaryDetails = getSalaryDetails(job)
+  const salaryFrequency = formatSalaryFrequency(job.salary_frequency)
   const companyName = job.company_profile?.company_name || ''
   const logoUrl = job.company_profile?.logo_url
-  const city = job.company_address?.city?.name || ''
-  const addr = job.company_address?.address || ''
-  const addressLine = [city, addr].filter(Boolean).join(', ')
+  const city = getPrimaryCity(job)
+  const streetAddress = job.address?.address || job.company_address?.address || ''
+  const addressLine = [city, streetAddress].filter(Boolean).join(', ')
   const experience = job.work_experience ? workExperienceMap[job.work_experience] : undefined
   const workFormats = chipsFrom(job.work_formats)
   const employment = chipsFrom(job.employment_types)
+  const workScheduleTypes = chipsFrom(job.work_schedule_types)
+  const workSchedules = chipsFrom(job.work_schedules)
+  const workDayLengths = chipsFrom(job.day_lengths)
+  const shiftTypes = chipsFrom(job.shift_types)
+  const educationTypes = chipsFrom(job.education_types)
+  const isPromo = Boolean(job.is_promo && job.link)
+  const promoRedirectPath = isPromo ? `/vacancy/${job.job_id}/to` : null
+  const remoteFormatId = 1
+  const hasRemoteFormat = (job.work_formats || []).some((format) => {
+    if (!format) return false
+    if (format.work_format_id && Number(format.work_format_id) === remoteFormatId) return true
+    if (format.id && Number(format.id) === remoteFormatId) return true
+    return typeof format.name === 'string' && format.name.toLowerCase().includes('удал')
+  })
+
+  const employmentSchemaValues = Array.from(
+    new Set(
+      (job.employment_types || [])
+        .map((item) => {
+          if (!item) return undefined
+          const rawId = item.employment_type_id ?? item.id
+          if (typeof rawId === 'number' || typeof rawId === 'string') {
+            const normalizedId = Number(rawId)
+            if (Number.isFinite(normalizedId)) {
+              return EMPLOYMENT_TYPE_SCHEMA_MAP[normalizedId]
+            }
+          }
+          const label = item.name?.toLowerCase()
+          if (!label) return undefined
+          if (label.includes('полная')) return 'FULL_TIME'
+          if (label.includes('частич')) return 'PART_TIME'
+          if (label.includes('проект')) return 'CONTRACTOR'
+          if (label.includes('стаж')) return 'INTERN'
+          if (label.includes('волонт')) return 'VOLUNTEER'
+          return undefined
+        })
+        .filter(Boolean) as string[]
+    )
+  )
+
+  const salaryUnitMap: Record<string, string> = {
+    hour: 'HOUR',
+    day: 'DAY',
+    week: 'WEEK',
+    month: 'MONTH',
+    year: 'YEAR',
+  }
+  const salaryUnit = job.salary_period ? salaryUnitMap[job.salary_period] : undefined
+  const salaryValue: Record<string, number | string> = { '@type': 'QuantitativeValue' }
+  if (job.salary_min && job.salary_max) {
+    salaryValue.minValue = job.salary_min
+    salaryValue.maxValue = job.salary_max
+  } else if (job.salary_min) {
+    salaryValue.value = job.salary_min
+  } else if (job.salary_max) {
+    salaryValue.value = job.salary_max
+  }
+  if (salaryUnit) {
+    salaryValue.unitText = salaryUnit
+  }
+  const baseSalary = salaryValue.value || salaryValue.minValue || salaryValue.maxValue
+    ? {
+        '@type': 'MonetaryAmount',
+        currency: job.salary_currency || 'RUB',
+        value: salaryValue,
+      }
+    : undefined
+
+  const postalAddress = (streetAddress || city)
+    ? {
+        '@type': 'PostalAddress',
+        streetAddress: streetAddress || undefined,
+        addressLocality: city || undefined,
+        addressCountry: 'RU',
+      }
+    : undefined
+
+  const jobLocation = postalAddress
+    ? {
+        '@type': 'Place',
+        address: postalAddress,
+      }
+    : undefined
+
+  const schemaDescription = [job.description, hasRemoteFormat ? 'Вакансия, связанная с работой из дома.' : undefined]
+    .filter(Boolean)
+    .join(' ')
+
+  const protocol = proto
+  const hostname = host
+  const jobUrl = `${protocol}://${hostname}/vacancy/${idNum}`
+  const datePosted = (() => {
+    const base = new Date()
+    base.setDate(base.getDate() - 1)
+    return base.toISOString()
+  })()
+
+  const jobPostingSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'JobPosting',
+    title,
+    description: schemaDescription || undefined,
+    datePosted,
+    validThrough: job.expiration_date || undefined,
+    employmentType: employmentSchemaValues.length ? employmentSchemaValues : undefined,
+    hiringOrganization: {
+      '@type': 'Organization',
+      name: companyName || 'confidential',
+    },
+    jobLocation,
+    jobLocationType: hasRemoteFormat ? 'TELECOMMUTE' : undefined,
+    baseSalary,
+    url: jobUrl,
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
+      />
       <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-10 pt-20">
       {/* Хлебные крошки */}
@@ -130,18 +443,44 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         <h1 className="text-[22px] md:text-[28px] leading-tight font-bold mb-3">{title}</h1>
         {salary && (
           <div className="text-lg md:text-xl text-gray-900 font-semibold">
-            {salary} {salaryDetails && <span className="text-gray-600 font-normal">({salaryDetails})</span>}
+            {salary}{' '}
+            {(salaryDetails || salaryFrequency) && (
+              <span className="text-gray-600 font-normal text-base md:text-lg">
+                {salaryDetails && `${salaryDetails}.`}
+                {salaryFrequency && (
+                  <>
+                    {' '}Выплаты: {salaryFrequency}
+                  </>
+                )}
+              </span>
+            )}
           </div>
         )}
-        {(companyName || experience || workFormats.length > 0) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] md:text-sm">
-            {companyName && <span className="text-gray-700">{companyName}</span>}
+        {(experience || workFormats.length > 0 || workScheduleTypes.length > 0 || workSchedules.length > 0 || workDayLengths.length > 0 || shiftTypes.length > 0 || employment.length > 0 || educationTypes.length > 0) && (
+          <div className="mt-3 text-sm md:text-base text-gray-700 space-y-1">
             {experience && (
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">{experience}</span>
+              <div><span>Опыт работы:</span> {experience}</div>
             )}
-            {workFormats.map((w) => (
-              <span key={w} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full">{w}</span>
-            ))}
+            {educationTypes.length > 0 && (
+              <div><span>Образование:</span> {educationTypes.join(', ')}</div>
+            )}     
+            {employment.length > 0 && (
+              <div>{employment.join(', ')}</div>
+            )}                   
+            {workFormats.length > 0 && (
+              <div><span>Формат работы:</span> {workFormats.join(', ')}</div>
+            )}
+            {workSchedules.length > 0 && (
+              <div><span>График:</span> {workSchedules.join(', ')}</div>
+            )}
+            {workDayLengths.length > 0 && (
+              <div><span>Часов в день:</span> {workDayLengths.join(', ')}</div>
+            )}
+            {shiftTypes.length > 0 && (
+              <div><span>Смены:</span> {shiftTypes.join(', ')}</div>
+            )}
+
+
           </div>
         )}
         {addressLine && (
@@ -164,19 +503,6 @@ export default async function VacancyPage({ params }: { params: { id: string } }
             )}
             <div className="text-gray-800">
               <div className="font-semibold">{companyName}</div>
-              {city && <div className="text-sm text-gray-600">{city}</div>}
-            </div>
-          </div>
-        )}
-
-        {/* Ключевые параметры */}
-        {(employment.length > 0) && (
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <div className="text-gray-900 font-semibold mb-3">Условия</div>
-            <div className="flex flex-wrap gap-2 text-[13px] md:text-sm">
-              {employment.map((e) => (
-                <span key={e} className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full">{e}</span>
-              ))}
             </div>
           </div>
         )}
@@ -184,21 +510,30 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         {/* Обязанности / описание */}
         {job.description && (
           <div className="mt-6 pt-6 border-t border-gray-100">
-            <div className="text-gray-900 font-semibold mb-3">Обязанности</div>
-            <div className="prose prose-sm max-w-none">
-              {job.description.split(/\n+/).map((p, i) => (
-                <p key={i} className="text-gray-800 leading-relaxed">{p}</p>
-              ))}
-            </div>
+            <div
+              className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: job.description }}
+            />
           </div>
         )}
 
         {/* Панель действий (sticky внутри карточки) */}
         <div className="sticky bottom-0 -mx-6 md:-mx-8 border-t bg-white/90 backdrop-blur">
           <div className="px-6 md:px-8 py-3 flex flex-wrap items-center gap-3">
-            <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">
-              Откликнуться
-            </button>
+            {isPromo ? (
+              <Link
+                href={promoRedirectPath!}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
+              >
+                Откликнуться
+              </Link>
+            ) : (
+              <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">
+                Откликнуться
+              </button>
+            )}
             <button type="button" aria-label="Добавить в избранное" className="bg-gray-100 text-gray-800 p-2 rounded-md border border-gray-300 hover:bg-gray-200 transition">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
                 <path d="M11.645 20.91l-.007-.003-.022-.01a15.247 15.247 0 01-.383-.18 25.18 25.18 0 01-4.244-2.63C4.688 16.227 2.25 13.157 2.25 9.75 2.25 7.093 4.343 5 7 5c1.6 0 3.09.744 4.095 1.993A5.376 5.376 0 0115.19 5C17.846 5 19.94 7.093 19.94 9.75c0 3.407-2.438 6.477-4.74 8.337a25.175 25.175 0 01-4.244 2.63 15.247 15.247 0 01-.383.18l-.022.01-.007.003a.75.75 0 01-.6 0z" />
@@ -229,32 +564,33 @@ export default async function VacancyPage({ params }: { params: { id: string } }
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const idNum = Number(params.id)
   if (!Number.isFinite(idNum)) {
-    return { title: 'Вакансия | JobFind' }
+    return { title: 'Вакансия | E77.top' }
   }
   try {
     const h = headers()
     const proto = h.get('x-forwarded-proto') || 'http'
-    const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:3000'
+    const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
     const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
     const res = await fetch(absUrl.toString(), { cache: 'no-store' })
-    if (!res.ok) return { title: 'Вакансия | JobFind' }
+    if (!res.ok) return { title: 'Вакансия | E77.top' }
     const job: JobPosting = await res.json()
-    const city = job.company_address?.city?.name
-    const title = `${job.title}${city ? ' — ' + city : ''} | Вакансия`
-    const descBase = job.description?.replace(/\s+/g, ' ').slice(0, 160) || undefined
+    const title = buildVacancyMetaTitle(job)
+    const description = buildVacancyMetaDescription(job)
+    const keywords = buildVacancyKeywords(job)
     return {
       title,
-      description: descBase,
+      description,
+      keywords,
       openGraph: {
         title,
-        description: descBase,
+        description,
       },
       twitter: {
         title,
-        description: descBase,
+        description,
       },
     }
   } catch {
-    return { title: 'Вакансия | JobFind' }
+    return { title: 'Вакансия | E77.top' }
   }
 }

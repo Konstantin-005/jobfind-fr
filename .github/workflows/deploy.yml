@@ -94,6 +94,18 @@ jobs:
             # Save PM2 process list
             pm2 save
 
+            # Clear nginx proxy cache to avoid stale HTML and reload nginx
+            CACHE_DIR="/www/server/nginx/proxy_cache_dir"
+            if [ -d "$CACHE_DIR" ]; then
+              echo "Clearing nginx proxy cache in $CACHE_DIR"
+              rm -rf "$CACHE_DIR"/* || true
+            fi
+
+            if [ -x "/www/server/nginx/sbin/nginx" ]; then
+              echo "Reloading nginx"
+              /www/server/nginx/sbin/nginx -s reload || true
+            fi
+
             # Check application status
             echo "Checking application status"
             if ! pm2 describe "$APP_NAME" | grep -qi 'status.*online'; then

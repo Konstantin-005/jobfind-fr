@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import RichTextEditor from '../../components/RichTextEditor';
 import { useRouter } from 'next/navigation';
 import { jobsApi, type JobPosting } from '../../utils/api';
 import { API_ENDPOINTS } from '../../config/api';
@@ -902,12 +903,13 @@ export default function EmployerVacanciesPage() {
 
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Описание</label>
-                  <textarea
-                    value={form.description || ''}
-                    onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[100px]"
-                    placeholder="Краткое описание вакансии"
-                  />
+                  <div className="border border-gray-200 rounded-lg resizable-editor">
+                    <RichTextEditor
+                      value={form.description || ''}
+                      onChange={(val) => setForm((s) => ({ ...s, description: val }))}
+                      placeholder="Краткое описание вакансии"
+                    />
+                  </div>
                   {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description}</p>}
                 </div>
 

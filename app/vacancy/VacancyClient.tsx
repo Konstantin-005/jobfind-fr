@@ -11,6 +11,7 @@ import { API_ENDPOINTS } from '../config/api'
 import workFormatsConfig from '../config/work_formats_202505222228.json'
 import { useSearchParams } from 'next/navigation'
 import JobFilters from '../components/JobFilters'
+import Pagination from '../components/Pagination'
   const salaryPeriodOptions = [
     { label: 'за месяц', value: 'month' },
     { label: 'в час', value: 'hour' },
@@ -75,9 +76,20 @@ interface JobListItem {
   work_format_ids?: number[]
 }
 
+interface PaginatedJobsResponse {
+  data: JobListItem[]
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
 export default function VacancyClient() {
   const searchParams = useSearchParams()
+  const currentPage = Number(searchParams.get('page') || '1') || 1
   const [jobs, setJobs] = useState<JobListItem[]>([])
+  const [total, setTotal] = useState<number>(0)
+  const [totalPages, setTotalPages] = useState<number>(1)
   const [selectedCityNames, setSelectedCityNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,11 +103,19 @@ export default function VacancyClient() {
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const periodMenuRef = useRef<HTMLDivElement>(null);
 
+  // Скролл к началу списка при смене страницы
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentPage])
+
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoading(true)
         const params = new URLSearchParams()
+
+        // Копируем все текущие параметры поиска
         searchParams.forEach((value, key) => {
           if (params.has(key)) {
             params.append(key, value)
@@ -103,6 +123,15 @@ export default function VacancyClient() {
             params.set(key, value)
           }
         })
+
+        // Гарантируем лимит 50 вакансий на страницу
+        params.set('limit', '50')
+
+        // Если page не задан, считаем, что это первая страница
+        const currentPageFromQuery = searchParams.get('page')
+        if (!currentPageFromQuery) {
+          params.delete('page')
+        }
 
         if (abortControllerRef.current) {
           abortControllerRef.current.abort()
@@ -116,7 +145,19 @@ export default function VacancyClient() {
           throw new Error('Failed to fetch jobs')
         }
         const data = await response.json()
-        setJobs(data)
+
+        if (Array.isArray(data)) {
+          // Без явной пагинации: работаем с массивом как с одной страницей
+          setJobs(data)
+          setTotal(data.length)
+          setTotalPages(1)
+        } else {
+          const paginated = data as PaginatedJobsResponse
+          const pageJobs = paginated.data || []
+          setJobs(pageJobs)
+          setTotal(typeof paginated.total === 'number' ? paginated.total : pageJobs.length)
+          setTotalPages(paginated.total_pages || 1)
+        }
         setError(null)
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -307,8 +348,18 @@ export default function VacancyClient() {
             </form>
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2 md:mt-0">
               <div className="text-gray-700 font-medium">
-                {pluralizeFound(jobs.length)} <span className="font-bold">{jobs.length}</span> {pluralizeVacancy(jobs.length)}
+                {pluralizeFound(total)} <span className="font-bold">{total}</span> {pluralizeVacancy(total)}
               </div>
+              {total > 0 && (
+                <div className="text-gray-500 text-sm">
+                  {(() => {
+                    const pageSize = 50
+                    const from = (currentPage - 1) * pageSize + 1
+                    const to = Math.min(currentPage * pageSize, total)
+                    return `Показаны ${from}–${to} из ${total}`
+                  })()}
+                </div>
+              )}
               <div className="relative" ref={sortMenuRef}>
                 <span className="text-gray-700 mr-1">Сортировать:</span>
                 <button
@@ -362,6 +413,7 @@ export default function VacancyClient() {
               По вашему запросу вакансий не найдено
             </div>
           ) : (
+            <>
             <div className="grid gap-6">
               {jobs.map((job) => (
                 <div key={job.job_id} className="bg-white rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -415,6 +467,8 @@ export default function VacancyClient() {
                 </div>
               ))}
             </div>
+            <Pagination currentPage={currentPage} totalPages={totalPages} />
+            </>
           )}
         </div>
       </div>

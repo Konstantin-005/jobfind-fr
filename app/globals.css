@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import 'react-quill/dist/quill.snow.css';
 
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -10,4 +11,29 @@
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
-} 
+}
+
+.resizable-editor {
+  resize: vertical;
+  overflow: auto;
+  min-height: 220px;
+}
+
+.resizable-editor .rich-text-editor {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.resizable-editor .rich-text-editor .ql-toolbar {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.resizable-editor .rich-text-editor .ql-container {
+  flex: 1 1 auto;
+  min-height: 160px;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}

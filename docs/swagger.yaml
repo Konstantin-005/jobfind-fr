@@ -109,8 +109,113 @@ definitions:
         type: string
       city:
         type: string
+      city_name_prepositional:
+        type: string
       district:
         type: string
+    type: object
+  controllers.JobDetailResponse:
+    properties:
+      address:
+        $ref: '#/definitions/controllers.JobAddress'
+      cities:
+        items:
+          $ref: '#/definitions/models.City'
+        type: array
+      company_address:
+        $ref: '#/definitions/models.CompanyAddress'
+      company_address_id:
+        type: integer
+      company_id:
+        type: integer
+      company_profile:
+        allOf:
+        - $ref: '#/definitions/models.CompanyProfile'
+        description: Relations
+      day_lengths:
+        items:
+          $ref: '#/definitions/models.WorkDayLength'
+        type: array
+      deleted:
+        type: boolean
+      description:
+        type: string
+      education_types:
+        items:
+          $ref: '#/definitions/models.EducationType'
+        type: array
+      employment_types:
+        items:
+          $ref: '#/definitions/models.EmploymentType'
+        type: array
+      experience_level:
+        type: string
+      expiration_date:
+        type: string
+      is_active:
+        type: boolean
+      is_contract_possible:
+        type: boolean
+      is_promo:
+        type: boolean
+      job_id:
+        type: integer
+      link:
+        type: string
+      posted_by:
+        type: string
+      posted_date:
+        type: string
+      profession:
+        $ref: '#/definitions/models.VacancyProfession'
+      profession_id:
+        type: integer
+      publish_in_all_cities:
+        type: boolean
+      regions:
+        items:
+          $ref: '#/definitions/models.Region'
+        type: array
+      salary_currency:
+        type: string
+      salary_frequency:
+        type: string
+      salary_max:
+        type: number
+      salary_min:
+        type: number
+      salary_period:
+        type: string
+      salary_type:
+        type: string
+      shift_types:
+        items:
+          $ref: '#/definitions/models.ShiftType'
+        type: array
+      skills:
+        items:
+          $ref: '#/definitions/models.Skill'
+        type: array
+      title:
+        type: string
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+      work_experience:
+        type: string
+      work_formats:
+        items:
+          $ref: '#/definitions/models.WorkFormat'
+        type: array
+      work_schedule_types:
+        items:
+          $ref: '#/definitions/models.WorkScheduleType'
+        type: array
+      work_schedules:
+        items:
+          $ref: '#/definitions/models.WorkSchedule'
+        type: array
     type: object
   controllers.JobListItem:
     properties:
@@ -2288,6 +2393,14 @@ paths:
         in: query
         name: date_range
         type: string
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Количество элементов на странице (default: 50)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
@@ -2352,7 +2465,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.JobPosting'
+            $ref: '#/definitions/controllers.JobDetailResponse'
         "404":
           description: Not Found
           schema:
@@ -2476,6 +2589,14 @@ paths:
       - description: ID компании
         in: query
         name: company_id
+        type: integer
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Количество элементов на странице (default: 50)'
+        in: query
+        name: limit
         type: integer
       produces:
       - application/json
