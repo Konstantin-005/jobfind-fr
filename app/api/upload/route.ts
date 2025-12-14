@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import { NextResponse } from 'next/server';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +8,51 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/svg+xml', 'application/pdf'];
 const ALLOWED_FOLDERS = ['companyLogo', 'photo'] as const;
 type AllowedFolder = typeof ALLOWED_FOLDERS[number];
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const fileName = searchParams.get('fileName');
+    const requestedFolder = searchParams.get('folder') || 'companyLogo';
+
+    if (!fileName) {
+      return NextResponse.json(
+        { error: 'Имя файла не указано' },
+        { status: 400 }
+      );
+    }
+
+    const folder: AllowedFolder = (ALLOWED_FOLDERS.includes(requestedFolder as AllowedFolder)
+      ? (requestedFolder as AllowedFolder)
+      : 'companyLogo');
+
+    // Защита от path traversal
+    const safeFileName = path.basename(fileName);
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', folder);
+    const filePath = path.join(uploadsDir, safeFileName);
+
+    try {
+      await unlink(filePath);
+      return NextResponse.json({ success: true });
+    } catch (error: any) {
+      // Если файл не найден, считаем что он уже удален
+      if (error.code === 'ENOENT') {
+        return NextResponse.json({ success: true });
+      }
+      console.error('Ошибка при удалении файла:', error);
+      return NextResponse.json(
+        { error: 'Ошибка при удалении файла' },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('Ошибка при обработке запроса удаления:', error);
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {

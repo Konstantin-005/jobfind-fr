@@ -15,7 +15,17 @@ interface Industry {
 export default function AddCompanyPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [, setIsAuthorized] = useState(false);
+
+  const extractLogoFileName = (value?: string | null) => {
+    if (!value) return undefined;
+
+    const withoutQuery = value.split('?')[0]?.split('#')[0] ?? value;
+    const parts = withoutQuery.split(/[/\\]/);
+    const last = parts[parts.length - 1];
+
+    return last || undefined;
+  };
   
   // Auth check effect
   useEffect(() => {
@@ -75,25 +85,27 @@ export default function AddCompanyPage() {
   
   const [formData, setFormData] = useState({
     company_name: '',
+    brand_name: '',
     description: '',
     industry_id: [] as string[],
     website: '',
     logo: null as { path: string; originalName: string; uuid: string; url: string } | null,
     employees_count: '',
     founded_year: '',
-    phone: '',
     email: '',
     inn: '',
     company_type: 'Организация',
     is_it_company: false,
-    brand_name: ''
   });
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [pendingIndustryIds, setPendingIndustryIds] = useState<string[]>([]);
   const dropdownRef = useReactRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isCompanyCreatedModalOpen, setIsCompanyCreatedModalOpen] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<{ url: string; isPdf: boolean } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -117,11 +129,39 @@ export default function AddCompanyPage() {
     fetchIndustries();
   }, []);
 
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(target)) {
+        setIsDropdownOpen(false);
+        setPendingIndustryIds(formData.industry_id);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen, formData.industry_id]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     
     if (name === 'industry_id') {
       // This will be handled by the checkbox change handler
+      return;
+    }
+
+    if (name === 'is_it_company' && type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({
+        ...prev,
+        is_it_company: checked,
+      }));
       return;
     }
     
@@ -132,17 +172,25 @@ export default function AddCompanyPage() {
   };
 
   const handleIndustryToggle = (industryId: string) => {
-    setFormData(prev => {
-      const currentIndustries = prev.industry_id as string[];
-      const newIndustries = currentIndustries.includes(industryId)
-        ? currentIndustries.filter(id => id !== industryId)
-        : [...currentIndustries, industryId];
-      
-      return {
-        ...prev,
-        industry_id: newIndustries,
-      };
+    setPendingIndustryIds(prev => {
+      const newIndustries = prev.includes(industryId)
+        ? prev.filter(id => id !== industryId)
+        : [...prev, industryId];
+      return newIndustries;
     });
+  };
+
+  const openIndustriesDropdown = () => {
+    setPendingIndustryIds(formData.industry_id);
+    setIsDropdownOpen(true);
+  };
+
+  const applyIndustriesSelection = () => {
+    setFormData(prev => ({
+      ...prev,
+      industry_id: pendingIndustryIds,
+    }));
+    setIsDropdownOpen(false);
   };
 
   const handleAddAddress = () => {
@@ -243,22 +291,44 @@ setFormData(prev => ({
     setError('');
     setSuccess('');
 
+    if (!formData.company_name.trim()) {
+      setLoading(false);
+      setError('Заполните обязательное поле: Официальное название организации');
+      return;
+    }
+
+    if (!formData.inn.trim()) {
+      setLoading(false);
+      setError('Заполните обязательное поле: ИНН');
+      return;
+    }
+
+    if (!formData.company_type) {
+      setLoading(false);
+      setError('Заполните обязательное поле: Тип');
+      return;
+    }
+
+    if (formData.industry_id.length === 0) {
+      setLoading(false);
+      setError('Выберите обязательное поле: Отрасли компании');
+      return;
+    }
+
     try {
       const requestData = {
         company_name: formData.company_name,
         description: formData.description,
         website_url: formData.website || undefined,
-        logo_url: formData.logo?.path ? formData.logo.path : undefined,
+        logo_url: extractLogoFileName(formData.logo?.path),
         founded_year: formData.founded_year ? parseInt(formData.founded_year) : undefined,
         company_size: formData.employees_count || undefined,
-        inn: formData.inn || undefined,
-        company_type: formData.company_type || 'Организация',
+        inn: formData.inn.trim(),
+        company_type: formData.company_type,
         is_it_company: formData.is_it_company || false,
         email: formData.email || undefined,
         brand_name: formData.brand_name || undefined,
-        industries: formData.industry_id.length > 0 
-          ? formData.industry_id.map(industry_id => ({ industry_id: Number(industry_id) })) 
-          : undefined,
+        industries: formData.industry_id.map(industry_id => ({ industry_id: Number(industry_id) })),
         addresses: addresses
           .filter(a => a.city_id && a.address)
           .map(a => ({ city_id: Number(a.city_id), address: a.address }))
@@ -283,11 +353,7 @@ setFormData(prev => ({
         throw new Error(errorData.message || 'Ошибка при создании компании');
       }
 
-      setSuccess('Компания успешно создана!');
-      // Redirect to my company page after 2 seconds
-      setTimeout(() => {
-        router.push('/employer/mycompany');
-      }, 2000);
+      setIsCompanyCreatedModalOpen(true);
     } catch (err) {
       console.error('Ошибка при создании компании:', err);
       setError(err instanceof Error ? err.message : 'Произошла ошибка при создании компании');
@@ -314,10 +380,93 @@ setFormData(prev => ({
             </div>
           )}
 
+          {isCompanyCreatedModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+              <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                <div className="flex items-start justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Компания создана</h2>
+                  <button
+                    type="button"
+                    onClick={() => setIsCompanyCreatedModalOpen(false)}
+                    className="ml-4 text-gray-400 hover:text-gray-600"
+                    aria-label="Закрыть"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+
+                <p className="mt-3 text-sm text-gray-700">
+                  Компания успешно создана. Вы можете перейти к странице «Моя компания» для дальнейшего редактирования.
+                </p>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCompanyCreatedModalOpen(false);
+                      router.push('/employer/mycompany');
+                    }}
+                    className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Перейти в «Моя компания»
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsCompanyCreatedModalOpen(false)}
+                    className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Остаться
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {logoPreview && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+              onClick={() => setLogoPreview(null)}
+            >
+              <div
+                className="w-full max-w-3xl rounded-lg bg-white p-4 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Логотип компании</h2>
+                  <button
+                    type="button"
+                    onClick={() => setLogoPreview(null)}
+                    className="ml-4 text-gray-400 hover:text-gray-600"
+                    aria-label="Закрыть"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  {logoPreview.isPdf ? (
+                    <iframe
+                      src={logoPreview.url}
+                      className="h-[70vh] w-full rounded border"
+                      title="Логотип компании"
+                    />
+                  ) : (
+                    <img
+                      src={logoPreview.url}
+                      alt="Логотип компании"
+                      className="max-h-[70vh] w-full rounded object-contain bg-white"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">
-                Название компании *
+                Официальное название организации *
               </label>
               <input
                 type="text"
@@ -331,18 +480,106 @@ setFormData(prev => ({
             </div>
 
             <div>
+              <label htmlFor="brand_name" className="block text-sm font-medium text-gray-700">
+                Брендовое наименование (опционально)
+              </label>
+              <input
+                type="text"
+                id="brand_name"
+                name="brand_name"
+                value={formData.brand_name}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="inn" className="block text-sm font-medium text-gray-700">
+                  ИНН *
+                </label>
+                <input
+                  type="text"
+                  id="inn"
+                  name="inn"
+                  required
+                  value={formData.inn}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="company_type" className="block text-sm font-medium text-gray-700">
+                  Тип *
+                </label>
+                <select
+                  id="company_type"
+                  name="company_type"
+                  required
+                  value={formData.company_type}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                >
+                  <option value="Организация">Организация</option>
+                  <option value="ИП">ИП</option>
+                  <option value="Самозанятый">Самозанятый</option>
+                  <option value="Физическое лицо">Физическое лицо</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="is_it_company"
+                name="is_it_company"
+                checked={formData.is_it_company}
+                onChange={handleChange}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="is_it_company" className="ml-2 block text-sm text-gray-700">
+                IT-компания
+              </label>
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+              />
+            </div>
+
+            <div>
               <label htmlFor="industry_id" className="block text-sm font-medium text-gray-700">
-                Отрасль
+                Отрасли компании *
               </label>
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  onClick={() => (isDropdownOpen ? setIsDropdownOpen(false) : openIndustriesDropdown())}
                   className="mt-1 flex justify-between items-center w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
                 >
                   <span className="truncate">{getSelectedIndustryNames()}</span>
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-gray-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
 
@@ -354,69 +591,26 @@ setFormData(prev => ({
                           <label className="flex items-center">
                             <input
                               type="checkbox"
-                              checked={formData.industry_id.includes(industry.industry_id.toString())}
+                              checked={pendingIndustryIds.includes(industry.industry_id.toString())}
                               onChange={() => handleIndustryToggle(industry.industry_id.toString())}
                               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <span className="ml-3 block truncate">
-                              {industry.name}
-                            </span>
+                            <span className="ml-3 block truncate">{industry.name}</span>
                           </label>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Адреса компании
-              </label>
-              <div className="space-y-4 mt-2">
-                {addresses.map((item, index) => (
-                  <div key={index} className="p-4 border rounded-md bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                      <div>
-                        <span className="block text-xs text-gray-500 mb-1">Город</span>
-                        <CityAutocomplete
-                          value={item.city_id}
-                          onChange={(cityId) => handleAddressChange(index, 'city_id', cityId)}
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-xs text-gray-500 mb-1">Адрес</label>
-                        <input
-                          type="text"
-                          value={item.address}
-                          onChange={(e) => handleAddressChange(index, 'address', e.target.value)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                          placeholder="Улица, дом, офис"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-3 flex justify-between">
+                    <div className="px-4 py-2 border-t bg-white sticky bottom-0">
                       <button
                         type="button"
-                        onClick={() => handleRemoveAddress(index)}
-                        className="text-red-600 text-sm hover:underline"
-                        disabled={addresses.length === 1}
+                        onClick={applyIndustriesSelection}
+                        className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                       >
-                        Удалить адрес
+                        Выбрать
                       </button>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={handleAddAddress}
-                  className="text-blue-600 text-sm hover:underline"
-                >
-                  + Добавить ещё адрес
-                </button>
+                )}
               </div>
             </div>
 
@@ -434,39 +628,11 @@ setFormData(prev => ({
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_it_company"
-                name="is_it_company"
-                checked={formData.is_it_company}
-                onChange={(e) => setFormData({...formData, is_it_company: e.target.checked})}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="is_it_company" className="ml-2 block text-sm text-gray-700">
-                IT-компания
-              </label>
-            </div>
-
-            <div>
-              <label htmlFor="website" className="block text-sm font-medium text-gray-700">
-                Веб-сайт
-              </label>
-              <input
-                type="url"
-                id="website"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-              />
-            </div>
-
             <div className="mb-6">
               <label htmlFor="logo" className="block text-sm font-medium text-gray-700 mb-2">
                 Логотип компании
               </label>
-              
+
               {formData.logo ? (
                 <div className="flex items-center space-x-4">
                   <div className="flex-1 p-3 border rounded-md bg-gray-50">
@@ -475,9 +641,43 @@ setFormData(prev => ({
                         <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className="text-sm text-gray-700 truncate max-w-xs">
-                          {formData.logo?.originalName || 'Файл не выбран'}
-                        </span>
+                        {(() => {
+                          const fileName = extractLogoFileName(formData.logo?.path);
+                          const publicUrl = fileName ? `/uploads/companyLogo/${fileName}` : undefined;
+                          const isPdf = Boolean(fileName && fileName.toLowerCase().endsWith('.pdf'));
+
+                          if (!publicUrl || !fileName) {
+                            return (
+                              <span className="text-sm text-gray-700 truncate max-w-xs">
+                                {formData.logo.originalName || 'Файл загружен'}
+                              </span>
+                            );
+                          }
+
+                          if (isPdf) {
+                            return (
+                              <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-blue-600 hover:underline truncate max-w-xs"
+                              >
+                                {formData.logo.originalName || fileName}
+                              </a>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={publicUrl}
+                                alt="Логотип компании"
+                                className="h-16 w-16 cursor-pointer rounded object-contain bg-white"
+                                onClick={() => setLogoPreview({ url: publicUrl, isPdf: false })}
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                       <button
                         type="button"
@@ -490,11 +690,11 @@ setFormData(prev => ({
                         </svg>
                       </button>
                     </div>
-                    
+
                     {isUploading && uploadProgress > 0 && (
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
-                        <div 
-                          className="bg-blue-600 h-2.5 rounded-full" 
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full"
                           style={{ width: `${uploadProgress}%` }}
                         ></div>
                       </div>
@@ -537,19 +737,72 @@ setFormData(prev => ({
                       </label>
                       <p className="pl-1">или перетащите</p>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, SVG, PDF до 5MB
-                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, SVG, PDF до 5MB</p>
                   </div>
                 </div>
               )}
-              
-              {error && (
-                <p className="mt-2 text-sm text-red-600">{error}</p>
-              )}
-              {success && !error && (
-                <p className="mt-2 text-sm text-green-600">{success}</p>
-              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Адреса компании</label>
+              <div className="space-y-4 mt-2">
+                {addresses.map((item, index) => (
+                  <div key={index} className="p-4 border rounded-md bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                      <div>
+                        <span className="block text-xs text-gray-500 mb-1">Населенный пункт</span>
+                        <CityAutocomplete
+                          value={item.city_id}
+                          onChange={(cityId) => handleAddressChange(index, 'city_id', cityId)}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-gray-500 mb-1">Адрес</label>
+                        <input
+                          type="text"
+                          value={item.address}
+                          onChange={(e) => handleAddressChange(index, 'address', e.target.value)}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                          placeholder="Улица, дом, офис"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-between">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAddress(index)}
+                        className="text-red-600 text-sm hover:underline"
+                        disabled={addresses.length === 1}
+                      >
+                        Удалить адрес
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={handleAddAddress}
+                  className="text-blue-600 text-sm hover:underline"
+                >
+                  + Добавить ещё адрес
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="website" className="block text-sm font-medium text-gray-700">
+                Веб-сайт
+              </label>
+              <input
+                type="url"
+                id="website"
+                name="website"
+                value={formData.website}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -586,36 +839,6 @@ setFormData(prev => ({
                   min="1900"
                   max={new Date().getFullYear()}
                   value={formData.founded_year}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Телефон
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                 />

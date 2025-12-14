@@ -1,4 +1,26 @@
 definitions:
+  controllers.ApplicantStatusCounts:
+    properties:
+      by_applicant_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      job_id:
+        type: integer
+      total_count:
+        type: integer
+    type: object
+  controllers.ApplicantStatusCountsAll:
+    properties:
+      by_applicant_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total_count:
+        type: integer
+    type: object
   controllers.ApplyToJobRequest:
     description: Данные отклика (resume_id, cover_letter)
     properties:
@@ -7,6 +29,68 @@ definitions:
         type: string
       resume_id:
         example: 1
+        type: integer
+    type: object
+  controllers.BulkUpdateApplicationStatusRequest:
+    type: object
+  controllers.BulkUpdateApplicationStatusResponse:
+    properties:
+      failed_ids:
+        items:
+          type: integer
+        type: array
+      message:
+        type: string
+      updated_count:
+        type: integer
+    type: object
+  controllers.BulkUpdateEmployerStatusRequest:
+    type: object
+  controllers.BulkUpdateEmployerStatusResponse:
+    properties:
+      failed_ids:
+        items:
+          type: integer
+        type: array
+      message:
+        type: string
+      updated_count:
+        type: integer
+    type: object
+  controllers.ChatMessagesResponse:
+    properties:
+      job:
+        $ref: '#/definitions/controllers.JobChatContext'
+      messages:
+        items:
+          $ref: '#/definitions/models.ChatMessage'
+        type: array
+      resume:
+        $ref: '#/definitions/controllers.ResumeChatContext'
+    type: object
+  controllers.ChatRoomListItem:
+    properties:
+      applicant_full_name:
+        type: string
+      application_id:
+        type: integer
+      company_brand_name:
+        type: string
+      company_logo_url:
+        type: string
+      company_name:
+        type: string
+      job_title:
+        type: string
+      last_message_at:
+        type: string
+      last_message_text:
+        type: string
+      photo_url:
+        type: string
+      room_id:
+        type: integer
+      unread_count:
         type: integer
     type: object
   controllers.CompanyAddressInput:
@@ -55,11 +139,104 @@ definitions:
       is_it_company:
         type: boolean
       logo_url:
-        type: string
+        $ref: '#/definitions/controllers.OptionalString'
       website_url:
         type: string
     required:
     - company_name
+    type: object
+  controllers.CreateEducationDTO:
+    properties:
+      end_year:
+        type: integer
+      faculty_id:
+        type: integer
+      institution_id:
+        type: integer
+      specialization_id:
+        type: integer
+    type: object
+  controllers.CreateResumeDTO:
+    properties:
+      business_trips:
+        type: string
+      education_type_id:
+        type: integer
+      educations:
+        items:
+          $ref: '#/definitions/controllers.CreateEducationDTO'
+        type: array
+      email:
+        type: string
+      employment_type_ids:
+        items:
+          type: integer
+        type: array
+      has_telegram:
+        type: boolean
+      has_whatsapp:
+        type: boolean
+      hide_email:
+        type: boolean
+      hide_experience:
+        type: boolean
+      hide_full_name:
+        type: boolean
+      hide_other_contacts:
+        type: boolean
+      hide_phone:
+        type: boolean
+      phone:
+        type: string
+      phone_comment:
+        type: string
+      photo_url:
+        type: string
+      profession_id:
+        type: integer
+      professional_summary:
+        type: string
+      salary_expectation:
+        type: number
+      title:
+        type: string
+      visibility:
+        type: string
+      website_url:
+        type: string
+      work_experiences:
+        items:
+          $ref: '#/definitions/controllers.CreateWorkExperienceDTO'
+        type: array
+      work_format_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  controllers.CreateWorkExperienceDTO:
+    properties:
+      city_id:
+        type: integer
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      end_month:
+        type: integer
+      end_year:
+        type: integer
+      is_current:
+        type: boolean
+      position:
+        type: string
+      profession_id:
+        type: integer
+      responsibilities:
+        type: string
+      start_month:
+        type: integer
+      start_year:
+        type: integer
     type: object
   controllers.EducationCreateRequest:
     properties:
@@ -89,6 +266,18 @@ definitions:
       specialization_id:
         type: integer
     type: object
+  controllers.EmployerStatusCounts:
+    properties:
+      by_employer_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      job_id:
+        type: integer
+      total_count:
+        type: integer
+    type: object
   controllers.ErrorResponse:
     description: Ответ с ошибкой
     properties:
@@ -103,6 +292,15 @@ definitions:
         example: user@example.com
         type: string
     type: object
+  controllers.GetMyApplicationsRequest:
+    properties:
+      applicant_status:
+        type: string
+      limit:
+        type: integer
+      page:
+        type: integer
+    type: object
   controllers.JobAddress:
     properties:
       address:
@@ -114,18 +312,103 @@ definitions:
       district:
         type: string
     type: object
+  controllers.JobApplicationItemResponse:
+    properties:
+      applicant_status:
+        type: string
+      application_id:
+        type: integer
+      applied_date:
+        type: string
+      chat_room_id:
+        type: integer
+      company_id:
+        type: integer
+      company_logo_url:
+        type: string
+      company_name:
+        type: string
+      cover_letter:
+        type: string
+      job_id:
+        type: integer
+      job_title:
+        type: string
+      resume_id:
+        type: integer
+      resume_title:
+        type: string
+      viewed:
+        type: string
+    type: object
+  controllers.JobApplicationWithResumeResponse:
+    properties:
+      age_years:
+        type: integer
+      application_id:
+        type: integer
+      applied_date:
+        type: string
+      chat_room_id:
+        type: integer
+      cover_letter:
+        type: string
+      employer_status:
+        type: string
+      full_name:
+        type: string
+      has_telegram:
+        type: boolean
+      has_whatsapp:
+        type: boolean
+      last_work_experience:
+        $ref: '#/definitions/controllers.LastWorkExperience'
+      link_uuid:
+        type: string
+      phone:
+        type: string
+      phone_comment:
+        type: string
+      photo_url:
+        type: string
+      resume_title:
+        type: string
+      resume_updated_at:
+        type: string
+      salary_expectation:
+        type: number
+      total_experience_months:
+        type: integer
+      total_experience_years:
+        type: integer
+      viewed:
+        type: string
+    type: object
+  controllers.JobChatContext:
+    properties:
+      company_brand_name:
+        type: string
+      company_logo_url:
+        type: string
+      company_name:
+        type: string
+      job_id:
+        type: integer
+      job_title:
+        type: string
+    type: object
   controllers.JobDetailResponse:
     properties:
       address:
         $ref: '#/definitions/controllers.JobAddress'
+      addresses:
+        items:
+          $ref: '#/definitions/models.JobPostingAddress'
+        type: array
       cities:
         items:
           $ref: '#/definitions/models.City'
         type: array
-      company_address:
-        $ref: '#/definitions/models.CompanyAddress'
-      company_address_id:
-        type: integer
       company_id:
         type: integer
       company_profile:
@@ -162,6 +445,8 @@ definitions:
         type: integer
       link:
         type: string
+      no_resume_apply:
+        type: boolean
       posted_by:
         type: string
       posted_date:
@@ -231,6 +516,8 @@ definitions:
         type: integer
       logo_url:
         type: string
+      no_resume_apply:
+        type: boolean
       publication_cities:
         items:
           type: string
@@ -254,15 +541,32 @@ definitions:
           type: integer
         type: array
     type: object
-  controllers.JobUpsertRequest:
-    description: Получить подробную информацию о вакансии по её ID
+  controllers.JobPostingAddressInput:
     properties:
+      address:
+        type: string
+      city_id:
+        type: integer
+      district_id:
+        type: integer
+      metro_station_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - address
+    - city_id
+    type: object
+  controllers.JobUpsertRequest:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/controllers.JobPostingAddressInput'
+        type: array
       city_ids:
         items:
           type: integer
         type: array
-      company_address_id:
-        type: integer
       day_length_ids:
         items:
           type: integer
@@ -280,6 +584,8 @@ definitions:
       experience_level:
         type: string
       is_contract_possible:
+        type: boolean
+      no_resume_apply:
         type: boolean
       profession_id:
         type: integer
@@ -324,6 +630,25 @@ definitions:
     - title
     - work_experience
     type: object
+  controllers.LastWorkExperience:
+    properties:
+      company_name:
+        type: string
+      end_month:
+        type: integer
+      end_year:
+        type: integer
+      is_current:
+        type: boolean
+      position:
+        type: string
+      profession:
+        type: string
+      start_month:
+        type: integer
+      start_year:
+        type: integer
+    type: object
   controllers.LoginRequest:
     description: Данные для входа (email, password)
     properties:
@@ -363,6 +688,42 @@ definitions:
         example: Password reset email sent
         type: string
     type: object
+  controllers.OptionalString:
+    properties:
+      set:
+        type: boolean
+      value:
+        type: string
+    type: object
+  controllers.PaginatedApplicationsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobApplicationWithResumeResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/controllers.PaginationMeta'
+    type: object
+  controllers.PaginatedMyApplicationsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobApplicationItemResponse'
+        type: array
+      meta:
+        $ref: '#/definitions/controllers.PaginationMeta'
+    type: object
+  controllers.PaginationMeta:
+    properties:
+      items_count:
+        type: integer
+      limit:
+        type: integer
+      page:
+        type: integer
+      total_count:
+        type: integer
+    type: object
   controllers.RegisterRequest:
     description: Данные пользователя (email, password, user_type, phone_number)
     properties:
@@ -389,12 +750,48 @@ definitions:
         example: reset-token-string
         type: string
     type: object
+  controllers.ResumeChatContext:
+    properties:
+      applicant_full_name:
+        type: string
+      photo_url:
+        type: string
+      resume_id:
+        type: integer
+      resume_title:
+        type: string
+    type: object
+  controllers.SendChatMessageRequest:
+    properties:
+      message_text:
+        type: string
+    required:
+    - message_text
+    type: object
   controllers.UpdateApplicationStatusRequest:
-    description: Новый статус заявки
+    description: 'Новый статус заявки. Допустимые значения enum_job_applications_status:
+      submitted, invitation, interview, job_start, waiting, rejected, deleted, archived,
+      viewed.'
     properties:
       status:
         example: interview
         type: string
+    type: object
+  controllers.UpdateEmployerStatusRequest:
+    description: 'Новый статус заявки со стороны работодателя. Допустимые значения
+      enum_job_applications_employer_status: not_processed, in_progress, phone_interview,
+      evaluation, interview, job_offer, onboarding, rejected.'
+    properties:
+      status:
+        example: in_progress
+        type: string
+    type: object
+  controllers.UpdateJobAddressesRequest:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/controllers.JobPostingAddressInput'
+        type: array
     type: object
   controllers.UpdateJobSeekerProfileRequest:
     description: Данные для обновления профиля соискателя
@@ -436,6 +833,55 @@ definitions:
       middle_name:
         type: string
     type: object
+  controllers.UpdateResumeDTO:
+    properties:
+      business_trips:
+        type: string
+      education_type_id:
+        type: integer
+      email:
+        type: string
+      employment_type_ids:
+        items:
+          type: integer
+        type: array
+      has_telegram:
+        type: boolean
+      has_whatsapp:
+        type: boolean
+      hide_email:
+        type: boolean
+      hide_experience:
+        type: boolean
+      hide_full_name:
+        type: boolean
+      hide_other_contacts:
+        type: boolean
+      hide_phone:
+        type: boolean
+      phone:
+        type: string
+      phone_comment:
+        type: string
+      photo_url:
+        type: string
+      profession_id:
+        type: integer
+      professional_summary:
+        type: string
+      salary_expectation:
+        type: number
+      title:
+        type: string
+      visibility:
+        type: string
+      website_url:
+        type: string
+      work_format_ids:
+        items:
+          type: integer
+        type: array
+    type: object
   controllers.UpdateUserProfileRequest:
     description: Данные для обновления профиля пользователя
     properties:
@@ -450,6 +896,11 @@ definitions:
         type: string
       phone_number:
         example: "+79991234567"
+        type: string
+    type: object
+  controllers.VerifyEmailRequest:
+    properties:
+      token:
         type: string
     type: object
   controllers.WorkExperienceCreateRequest:
@@ -785,6 +1236,8 @@ definitions:
   models.JobApplication:
     properties:
       applicant_id:
+        type: integer
+      applicant_status:
         type: string
       application_id:
         type: integer
@@ -794,25 +1247,33 @@ definitions:
         type: integer
       cover_letter:
         type: string
+      employer_status:
+        type: string
       job_id:
         type: integer
-      last_updated:
-        type: string
+      job_posting:
+        $ref: '#/definitions/models.JobPosting'
+      resume:
+        $ref: '#/definitions/models.Resume'
       resume_id:
         type: integer
-      status:
+      resume_snapshot:
+        items:
+          type: integer
+        type: array
+      viewed:
         type: string
     type: object
   models.JobPosting:
     properties:
+      addresses:
+        items:
+          $ref: '#/definitions/models.JobPostingAddress'
+        type: array
       cities:
         items:
           $ref: '#/definitions/models.City'
         type: array
-      company_address:
-        $ref: '#/definitions/models.CompanyAddress'
-      company_address_id:
-        type: integer
       company_id:
         type: integer
       company_profile:
@@ -849,6 +1310,8 @@ definitions:
         type: integer
       link:
         type: string
+      no_resume_apply:
+        type: boolean
       posted_by:
         type: string
       posted_date:
@@ -904,20 +1367,75 @@ definitions:
           $ref: '#/definitions/models.WorkSchedule'
         type: array
     type: object
+  models.JobPostingAddress:
+    properties:
+      address:
+        type: string
+      address_id:
+        type: integer
+      city:
+        $ref: '#/definitions/models.City'
+      city_id:
+        type: integer
+      district:
+        $ref: '#/definitions/models.District'
+      district_id:
+        type: integer
+      job_id:
+        type: integer
+    type: object
+  models.JobSeekerDrivingLicense:
+    properties:
+      category_id:
+        type: integer
+      expiry_date:
+        type: string
+      id:
+        type: integer
+      issue_date:
+        type: string
+      profile_id:
+        type: integer
+    type: object
+  models.JobSeekerLanguage:
+    properties:
+      id:
+        type: integer
+      language:
+        $ref: '#/definitions/models.Language'
+      language_id:
+        type: integer
+      proficiency_level:
+        type: string
+      profile_id:
+        type: integer
+    type: object
   models.JobSeekerProfile:
     properties:
       birth_date:
         type: string
+      city:
+        $ref: '#/definitions/models.City'
       city_id:
         type: integer
+      driving_licenses:
+        items:
+          $ref: '#/definitions/models.JobSeekerDrivingLicense'
+        type: array
       first_name:
         type: string
       gender:
         type: string
       job_search_status:
         type: string
+      languages:
+        items:
+          $ref: '#/definitions/models.JobSeekerLanguage'
+        type: array
       last_name:
         type: string
+      metro_station:
+        $ref: '#/definitions/models.MetroStation'
       metro_station_id:
         type: integer
       middle_name:
@@ -931,6 +1449,19 @@ definitions:
       user:
         $ref: '#/definitions/models.User'
       user_id:
+        type: string
+    type: object
+  models.Language:
+    properties:
+      code:
+        type: string
+      job_seeker_profiles:
+        items:
+          $ref: '#/definitions/models.JobSeekerProfile'
+        type: array
+      language_id:
+        type: integer
+      name:
         type: string
     type: object
   models.MetroStation:
@@ -1270,12 +1801,63 @@ paths:
       summary: Получить заявку по ID
       tags:
       - Applications
+  /api/applications/{application_id}/employer-status:
+    put:
+      consumes:
+      - application/json
+      description: 'Обновляет статус заявки со стороны работодателя (только для employer).
+        Требует, чтобы вакансия принадлежала компании текущего пользователя. Автоматические
+        изменения: ''in_progress'' -> viewed = текущее время, applicant_status = ''waiting'';
+        ''rejected'' -> applicant_status = ''rejected''; ''phone_interview'' или ''interview''
+        -> applicant_status = ''interview''; ''job_offer'' -> applicant_status = ''invitation'';
+        ''onboarding'' -> applicant_status = ''job_start''.'
+      parameters:
+      - description: ID заявки
+        in: path
+        name: application_id
+        required: true
+        type: integer
+      - description: Новый employer_status
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateEmployerStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobApplication'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить employer_status заявки
+      tags:
+      - Applications
   /api/applications/{application_id}/status:
     put:
       consumes:
       - application/json
-      description: Обновляет статус заявки (только для employer), создаёт чат-рум
-        при переводе в interview
+      description: 'Обновляет статус заявки соискателя. Доступно только владельцу
+        заявки. Допустимые значения enum_job_applications_status: submitted, invitation,
+        interview, job_start, waiting, rejected, deleted, archived, viewed.'
       parameters:
       - description: ID заявки
         in: path
@@ -1313,7 +1895,284 @@ paths:
             $ref: '#/definitions/controllers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Обновить статус заявки
+      summary: Обновить статус заявки для роли job_seeker
+      tags:
+      - Applications
+  /api/applications/bulk-employer-status:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет статус нескольких заявок со стороны работодателя. Требует,
+        чтобы вакансии принадлежали компании текущего пользователя. Применяются те
+        же автоматические правила изменения applicant_status, что и для одиночного
+        обновления.
+      parameters:
+      - description: Список ID заявок и новый статус
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.BulkUpdateEmployerStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.BulkUpdateEmployerStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Массовое обновление employer_status заявок
+      tags:
+      - Applications
+  /api/applications/bulk-status:
+    put:
+      consumes:
+      - application/json
+      description: 'Обновляет статус нескольких заявок соискателя одновременно. Доступно
+        только владельцу заявок. Допустимые значения enum_job_applications_status:
+        submitted, invitation, interview, job_start, waiting, rejected, deleted, archived,
+        viewed.'
+      parameters:
+      - description: Список ID заявок и новый статус
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.BulkUpdateApplicationStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.BulkUpdateApplicationStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Массовое обновление статуса заявок для роли job_seeker
+      tags:
+      - Applications
+  /api/applications/jobs/{job_id}:
+    get:
+      description: Возвращает список откликов по вакансии с данными резюме и профиля
+        соискателя. В ответе присутствует объект last_work_experience с информацией
+        о последнем месте работы и суммарный стаж по всем WorkExperience. Доступно
+        только работодателю-владельцу вакансии. Отклики со статусом applicant_status
+        = 'deleted' не возвращаются.
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Фильтр по employer_status (not_processed, in_progress, phone_interview,
+          evaluation, interview, job_offer, onboarding, rejected)
+        in: query
+        name: employer_status
+        type: string
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Количество элементов на странице (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PaginatedApplicationsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить отклики по вакансии для работодателя
+      tags:
+      - Applications
+  /api/applications/jobs/{job_id}/applicant-status-counts:
+    get:
+      description: Возвращает агрегированную статистику по количеству откликов по
+        значениям applicant_status для указанной вакансии. Если query-параметр applicant_status
+        не передан, возвращается статистика по всем статусам. Доступно только соискателям
+        (job_seeker). В TotalCount не учитываются отклики со статусами 'archived'
+        и 'deleted'.
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Фильтр по applicant_status (submitted, invitation, interview,
+          job_start, waiting, rejected, deleted, archived, viewed)
+        in: query
+        name: applicant_status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ApplicantStatusCounts'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить количество откликов по applicant_status для вакансии
+      tags:
+      - Applications
+  /api/applications/jobs/{job_id}/counts:
+    get:
+      description: Возвращает агрегированную статистику по количеству откликов по
+        всем значениям employer_status для указанной вакансии. Доступно только работодателю-владельцу
+        вакансии. Отклики со статусом applicant_status = 'deleted' не учитываются.
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.EmployerStatusCounts'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить количество откликов по employer_status для вакансии
+      tags:
+      - Applications
+  /api/applications/my:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает список откликов текущего соискателя с информацией о
+        вакансиях и компаниях. Поддерживает фильтрацию по applicant_status и пагинацию.
+        По умолчанию (без фильтра) не возвращаются отклики со статусами 'archived'
+        и 'deleted'.
+      parameters:
+      - description: Фильтры и пагинация
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/controllers.GetMyApplicationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PaginatedMyApplicationsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить мои отклики (для соискателя)
+      tags:
+      - Applications
+  /api/applications/my/applicant-status-counts:
+    get:
+      description: Возвращает агрегированную статистику по количеству откликов по
+        значениям applicant_status для всех вакансий текущего соискателя. В TotalCount
+        не учитываются отклики со статусами 'archived' и 'deleted'. Доступно только
+        соискателю (job_seeker).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ApplicantStatusCountsAll'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить количество откликов по applicant_status для текущего соискателя
       tags:
       - Applications
   /api/auth/forgot-password:
@@ -1337,6 +2196,10 @@ paths:
             $ref: '#/definitions/controllers.MessageResponse'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/controllers.ErrorResponse'
       summary: Запрос на восстановление пароля
@@ -1369,6 +2232,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
       summary: Вход пользователя
       tags:
       - Auth
@@ -1376,7 +2243,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Регистрирует нового пользователя (job_seeker или employer)
+      description: Регистрирует нового пользователя (job_seeker или employer). Пользователь
+        создаётся неактивным и должен подтвердить email по ссылке из письма.
       parameters:
       - description: Данные пользователя (email, password, user_type, phone_number)
         in: body
@@ -1388,11 +2256,15 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Пользователь создан, отправлено письмо для подтверждения email
           schema:
             $ref: '#/definitions/controllers.MessageResponse'
         "400":
-          description: Bad Request
+          description: Некорректный ввод или конфликт (пользователь уже существует)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Ошибка генерации токена или отправки письма подтверждения
           schema:
             $ref: '#/definitions/controllers.ErrorResponse'
       summary: Регистрация пользователя
@@ -1428,6 +2300,37 @@ paths:
       summary: Сброс пароля
       tags:
       - Auth
+  /api/auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Подтверждает email пользователя по токену из письма и активирует
+        аккаунт.
+      parameters:
+      - description: JWT-токен подтверждения email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Подтверждение email
+      tags:
+      - Auth
   /api/chat/messages/{room_id}:
     get:
       description: Возвращает сообщения чата с вложениями и пагинацией
@@ -1451,9 +2354,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.ChatMessage'
-            type: array
+            $ref: '#/definitions/controllers.ChatMessagesResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1469,6 +2370,59 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить сообщения чата
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новое сообщение в указанной комнате, только для участников
+        чата
+      parameters:
+      - description: ID комнаты
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      - description: Текст сообщения
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.SendChatMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ChatMessage'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение в чат
       tags:
       - Chat
   /api/chat/read/{room_id}:
@@ -1538,6 +2492,80 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить чат-рум по application_id
+      tags:
+      - Chat
+  /api/chat/room/by-id/{room_id}:
+    get:
+      description: Возвращает чат-рум по room_id, только если пользователь — участник
+      parameters:
+      - description: ID комнаты (room_id)
+        in: path
+        name: room_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatRoom'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить чат-рум по room_id
+      tags:
+      - Chat
+  /api/chat/rooms:
+    get:
+      description: Возвращает список диалогов пользователя с информацией по вакансии,
+        соискателю и непрочитанным сообщениям
+      parameters:
+      - description: Если true — возвращать только диалоги с непрочитанными сообщениями
+        in: query
+        name: only_unread
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.ChatRoomListItem'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список чатов текущего пользователя
       tags:
       - Chat
   /api/chat/unread-count:
@@ -1622,47 +2650,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить вакансии компании
-      tags:
-      - Companies
-    post:
-      consumes:
-      - application/json
-      description: Создать новую вакансию для компании (только для работодателя)
-      parameters:
-      - description: Данные вакансии
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/models.JobPosting'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.JobPosting'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать вакансию для компании
       tags:
       - Companies
   /api/companies/jobs/{id}:
@@ -2242,111 +3229,6 @@ paths:
       summary: Обновить свой профиль соискателя
       tags:
       - JobSeekerProfiles
-  /api/job-seekers/profile:
-    get:
-      description: Возвращает профиль job seeker с вложенными резюме, опытом, образованием
-        и скиллами
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.JobSeekerProfile'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Получить профиль соискателя
-      tags:
-      - JobSeekers
-    post:
-      consumes:
-      - application/json
-      description: Создаёт или обновляет профиль job seeker
-      parameters:
-      - description: Данные профиля
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/models.JobSeekerProfile'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.JobSeekerProfile'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать или обновить профиль соискателя
-      tags:
-      - JobSeekers
-  /api/job-seekers/resumes:
-    post:
-      consumes:
-      - application/json
-      description: Создаёт новое резюме для профиля job seeker
-      parameters:
-      - description: Данные резюме
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/models.Resume'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Resume'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать резюме для соискателя
-      tags:
-      - JobSeekers
   /api/jobs:
     get:
       description: Получить список вакансий с фильтрами (поиск, город, регион, профессия,
@@ -2523,11 +3405,62 @@ paths:
       summary: Обновить вакансию
       tags:
       - Jobs
+  /api/jobs/{job_id}/addresses:
+    put:
+      consumes:
+      - application/json
+      description: 'Полностью заменить адреса вакансии: добавить/редактировать/удалить
+        (лимит 10)'
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Адреса вакансии
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateJobAddressesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить адреса вакансии
+      tags:
+      - Jobs
   /api/jobs/{job_id}/apply:
     post:
       consumes:
       - application/json
-      description: Откликнуться на вакансию (только для соискателя)
+      description: Откликнуться на вакансию (только для соискателя). Если у вакансии
+        `no_resume_apply = false`, поле `resume_id` обязательно; если `no_resume_apply
+        = true`, отклик возможен без резюме.
       parameters:
       - description: ID вакансии
         in: path
@@ -2668,51 +3601,15 @@ paths:
   /api/resumes:
     post:
       consumes:
-      - multipart/form-data
-      description: Создаёт новое резюме с поддержкой загрузки фото, связей и валидацией
+      - application/json
+      description: Создаёт новое резюме с опытом работы и образованием
       parameters:
-      - description: Фото
-        in: formData
-        name: photo
-        type: file
-      - description: Заголовок
-        in: formData
-        name: title
-        type: string
-      - description: ID профессии
-        in: formData
-        name: profession_id
-        type: integer
-      - description: Ожидаемая зарплата
-        in: formData
-        name: salary_expectation
-        type: number
-      - description: ID типа образования
-        in: formData
-        name: education_type_id
-        type: integer
-      - collectionFormat: csv
-        description: ID типов занятости
-        in: formData
-        items:
-          type: integer
-        name: employment_type_ids[]
-        type: array
-      - collectionFormat: csv
-        description: ID форматов работы
-        in: formData
-        items:
-          type: integer
-        name: work_format_ids[]
-        type: array
-      - description: 'JSON-массив опыта работы. Пример: [{\'
-        in: formData
-        name: work_experiences
-        type: string
-      - description: 'JSON-массив образования. Пример: [{\'
-        in: formData
-        name: educations
-        type: string
+      - description: Данные резюме
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateResumeDTO'
       produces:
       - application/json
       responses:
@@ -2804,18 +3701,13 @@ paths:
       consumes:
       - application/json
       - multipart/form-data
-      description: Обновляет только переданные поля резюме. Поддерживает JSON и multipart/form-data
-        (фото и связи).
+      description: Обновляет только переданные поля резюме. Поддерживает JSON и multipart/form-data.
       parameters:
       - description: ID резюме
         in: path
         name: resume_id
         required: true
         type: integer
-      - description: Фото
-        in: formData
-        name: photo
-        type: file
       - description: Заголовок
         in: formData
         name: title
@@ -2888,10 +3780,10 @@ paths:
         in: formData
         name: education_type_id
         type: integer
-      - description: Фото резюме
+      - description: Имя файла фото резюме
         in: formData
         name: photo_url
-        type: file
+        type: string
       - description: Массив ID типов занятости
         in: formData
         name: employment_type_ids[]
@@ -2929,48 +3821,20 @@ paths:
       - Resumes
     put:
       consumes:
-      - multipart/form-data
-      description: Обновляет резюме, поддерживает обновление связей и фото
+      - application/json
+      description: Обновляет резюме через JSON
       parameters:
       - description: ID резюме
         in: path
         name: resume_id
         required: true
         type: integer
-      - description: Фото
-        in: formData
-        name: photo
-        type: file
-      - description: Заголовок
-        in: formData
-        name: title
-        type: string
-      - description: ID профессии
-        in: formData
-        name: profession_id
-        type: integer
-      - description: Ожидаемая зарплата
-        in: formData
-        name: salary_expectation
-        type: number
-      - description: ID типа образования
-        in: formData
-        name: education_type_id
-        type: integer
-      - collectionFormat: csv
-        description: ID типов занятости
-        in: formData
-        items:
-          type: integer
-        name: employment_type_ids[]
-        type: array
-      - collectionFormat: csv
-        description: ID форматов работы
-        in: formData
-        items:
-          type: integer
-        name: work_format_ids[]
-        type: array
+      - description: Данные для обновления резюме
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateResumeDTO'
       produces:
       - application/json
       responses:
@@ -3187,50 +4051,6 @@ paths:
       summary: Изменить образование в резюме
       tags:
       - Resumes
-  /api/resumes/{resume_id}/photo:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Загружает или заменяет фото для резюме
-      parameters:
-      - description: ID резюме
-        in: path
-        name: resume_id
-        required: true
-        type: integer
-      - description: Фото
-        in: formData
-        name: photo
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Загрузить или заменить фото для резюме
-      tags:
-      - Resumes
   /api/resumes/{resume_id}/work-experiences:
     post:
       consumes:
@@ -3380,6 +4200,49 @@ paths:
       summary: Изменить опыт работы в резюме
       tags:
       - Resumes
+  /api/resumes/link/{link_uuid}:
+    get:
+      description: Возвращает резюме по публичной ссылке (link_uuid) в формате ответа
+        SearchResumes. Доступно только работодателю.
+      parameters:
+      - description: Link UUID резюме
+        in: path
+        name: link_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить резюме по LinkUUID
+      tags:
+      - Resumes
   /api/resumes/my:
     get:
       description: Возвращает все резюме, связанные с профилем пользователя
@@ -3400,6 +4263,161 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить список резюме текущего пользователя
+      tags:
+      - Resumes
+  /api/resumes/search:
+    get:
+      description: Поиск резюме по ключевым словам, фильтрам профиля и параметрам
+        резюме. Доступно только для работодателей.
+      parameters:
+      - description: Ключевое слово
+        in: query
+        name: keyword
+        type: string
+      - collectionFormat: multi
+        description: ID профессий
+        in: query
+        items:
+          type: integer
+        name: profession_ids[]
+        type: array
+      - description: Мин. зарплата
+        in: query
+        name: salary_min
+        type: number
+      - description: Макс. зарплата
+        in: query
+        name: salary_max
+        type: number
+      - collectionFormat: multi
+        description: ID типов занятости
+        in: query
+        items:
+          type: integer
+        name: employment_type_ids[]
+        type: array
+      - collectionFormat: multi
+        description: ID форматов работы
+        in: query
+        items:
+          type: integer
+        name: work_format_ids[]
+        type: array
+      - collectionFormat: multi
+        description: ID навыков
+        in: query
+        items:
+          type: integer
+        name: skill_ids[]
+        type: array
+      - collectionFormat: multi
+        description: ID типов образования
+        in: query
+        items:
+          type: integer
+        name: education_type_ids[]
+        type: array
+      - description: Наличие фото
+        in: query
+        name: has_photo
+        type: boolean
+      - collectionFormat: multi
+        description: ID городов
+        in: query
+        items:
+          type: integer
+        name: city_ids[]
+        type: array
+      - collectionFormat: multi
+        description: ID регионов
+        in: query
+        items:
+          type: integer
+        name: region_ids[]
+        type: array
+      - description: Пол
+        in: query
+        name: gender
+        type: string
+      - description: Мин. возраст
+        in: query
+        name: age_min
+        type: integer
+      - description: Макс. возраст
+        in: query
+        name: age_max
+        type: integer
+      - collectionFormat: multi
+        description: Статус поиска
+        in: query
+        items:
+          type: string
+        name: job_search_status[]
+        type: array
+      - collectionFormat: multi
+        description: ID языков (deprecated)
+        in: query
+        items:
+          type: integer
+        name: language_ids[]
+        type: array
+      - collectionFormat: multi
+        description: ID прав
+        in: query
+        items:
+          type: integer
+        name: driving_license_category_ids[]
+        type: array
+      - collectionFormat: multi
+        description: Опыт работы
+        in: query
+        items:
+          type: string
+        name: total_experience_level[]
+        type: array
+      - description: 'Сортировка (default: updated_at_desc)'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Лимит (default: 25)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Поиск резюме
       tags:
       - Resumes
   /api/test:

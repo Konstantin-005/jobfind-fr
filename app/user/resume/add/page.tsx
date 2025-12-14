@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { API_ENDPOINTS } from "../../../config/api";
-import employmentTypes from "../../../config/employment_types_202505222228.json";
-import workFormats from "../../../config/work_formats_202505222228.json";
-import educationTypes from "../../../config/education_types_202505242225.json";
-import { uploadFile } from "../../../utils/api";
+import { API_ENDPOINTS } from "@/app/config/api";
+import employmentTypes from "@/app/config/employment_types_202505222228.json";
+import workFormats from "@/app/config/work_formats_202505222228.json";
+import educationTypes from "@/app/config/education_types_202505242225.json";
+import { uploadFile } from "@/app/utils/api";
+import RichTextEditor from "@/app/components/RichTextEditor";
 
 const steps = [
   { label: "Должность" },
@@ -16,13 +17,14 @@ const steps = [
   { label: "Контакты и настройки видимости" },
 ];
 
-export default function ResumeEditPage({ params }: { params: { id: string } }) {
+export default function ResumeAddPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     title: "",
     profession_id: undefined as number | undefined,
@@ -32,7 +34,6 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     business_trips: "" as "yes" | "no" | "sometimes" | "",
     work_experiences: [
       {
-        experience_id: undefined as number | undefined,
         company_id: undefined as number | undefined,
         company_name: "",
         city_id: undefined as number | undefined,
@@ -56,7 +57,6 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     education_type_id: undefined as number | undefined,
     educations: [
       {
-        education_id: undefined as number | undefined,
         institution: "",
         institution_id: undefined as number | undefined,
         institutionSuggestions: [] as Array<{ institution_id: number; name: string }>,
@@ -82,167 +82,31 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     hideCompanyNames: false,
     visibility: "public" as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only",
   });
+
   const [suggestions, setSuggestions] = useState<Array<{ profession_id: number; name: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Месяцы для select
   const months = [
-    "Январь",
-    "Февраль",
-    "Март",
-    "Апрель",
-    "Май",
-    "Июнь",
-    "Июль",
-    "Август",
-    "Сентябрь",
-    "Октябрь",
-    "Ноябрь",
-    "Декабрь",
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
   ];
 
-  // Загрузка данных резюме при монтировании компонента
-  useEffect(() => {
-    const fetchResume = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/login?redirect=/resume/' + params.id + '/edit');
-          return;
-        }
-
-        const response = await fetch(`/api/resumes/${params.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка загрузки резюме');
-        }
-
-        const data = await response.json();
-        
-        // Преобразуем данные в формат формы
-        setForm({
-          title: data.title || "",
-          profession_id: data.profession_id,
-          salary_expectation: data.salary_expectation?.toString() || "",
-          employment_type_ids: data.employment_type_ids || [],
-          work_format_ids: data.work_format_ids || [],
-          business_trips: data.business_trips || "",
-          work_experiences: data.work_experiences?.map((exp: any) => ({
-            experience_id: exp.experience_id,
-            company_id: exp.company_id,
-            company_name: exp.company_name || "",
-            city_id: exp.city_id,
-            city_name: exp.city_name || "",
-            position: exp.position || "",
-            profession_id: exp.profession_id,
-            start_month: exp.start_month,
-            start_year: exp.start_year?.toString() || "",
-            end_month: exp.end_month,
-            end_year: exp.end_year?.toString() || "",
-            is_current: exp.is_current || false,
-            responsibilities: exp.responsibilities || "",
-            companySuggestions: [],
-            citySuggestions: [],
-            professionSuggestions: [],
-            isLoadingCompany: false,
-            isLoadingCity: false,
-            isLoadingProfession: false,
-          })) || [{
-            experience_id: undefined,
-            company_id: undefined,
-            company_name: "",
-            city_id: undefined,
-            city_name: "",
-            position: "",
-            profession_id: undefined,
-            start_month: undefined,
-            start_year: "",
-            end_month: undefined,
-            end_year: "",
-            is_current: false,
-            responsibilities: "",
-            companySuggestions: [],
-            citySuggestions: [],
-            professionSuggestions: [],
-            isLoadingCompany: false,
-            isLoadingCity: false,
-            isLoadingProfession: false,
-          }],
-          education_type_id: data.education_type_id,
-          educations: data.educations?.map((edu: any) => ({
-            education_id: edu.education_id,
-            institution: edu.institution_name || "",
-            institution_id: edu.institution_id,
-            specialization: edu.specialization_name || "",
-            specialization_id: edu.specialization_id,
-            end_year: edu.end_year?.toString() || "",
-            institutionSuggestions: [],
-            specializationSuggestions: [],
-            isLoadingInstitution: false,
-            isLoadingSpecialization: false,
-          })) || [{
-            education_id: undefined,
-            institution: "",
-            institution_id: undefined,
-            specialization: "",
-            specialization_id: undefined,
-            end_year: "",
-            institutionSuggestions: [],
-            specializationSuggestions: [],
-            isLoadingInstitution: false,
-            isLoadingSpecialization: false,
-          }],
-          professional_summary: data.professional_summary || "",
-          phone: data.phone || "",
-          phoneComment: data.phone_comment || "",
-          hasWhatsapp: data.has_whatsapp || false,
-          hasTelegram: data.has_telegram || false,
-          email: data.email || "",
-          website: data.website_url || "",
-          hideNameAndPhoto: data.hide_full_name || false,
-          hidePhone: data.hide_phone || false,
-          hideEmail: data.hide_email || false,
-          hideOtherContacts: data.hide_other_contacts || false,
-          hideCompanyNames: data.hide_experience || false,
-          visibility: data.visibility || "public",
-        });
-
-        if (data.photo_url) {
-          const isPath = typeof data.photo_url === 'string' && data.photo_url.includes('/');
-          const photoUrl = isPath ? data.photo_url : `/uploads/photo/${data.photo_url}`;
-          setPhotoPreview(photoUrl);
-          if (!isPath) setPhotoFileName(data.photo_url);
-        }
-      } catch (error) {
-        console.error('Error fetching resume:', error);
-        setErrorMessage('Ошибка загрузки резюме');
-        setIsErrorModalOpen(true);
-      }
-    };
-
-    fetchResume();
-  }, [params.id, router]);
-
-  // ... [Оставляем все обработчики из формы создания резюме] ...
-
+  // Обработка ввода должности с автокомплитом
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setForm(prev => ({ ...prev, title: value }));
-
+    setForm((prev) => ({ ...prev, title: value }));
     if (value.trim()) {
       setIsLoading(true);
       fetch(`${API_ENDPOINTS.dictionaries.professionsSearch}?query=${encodeURIComponent(value)}`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           setSuggestions(data);
           setIsLoading(false);
         })
-        .catch(err => {
-          console.error('Error fetching suggestions:', err);
+        .catch((err) => {
+          console.error("Error fetching suggestions:", err);
           setIsLoading(false);
         });
     } else {
@@ -250,39 +114,48 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Обработка выбора профессии из подсказок
   const handleSuggestionClick = (name: string, id?: number) => {
-    setForm(prev => ({ ...prev, title: name, profession_id: id }));
+    setForm((prev) => ({ ...prev, title: name, profession_id: id }));
     setSuggestions([]);
   };
 
+  // Обработка изменения желаемого уровня дохода
   const handleSalaryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, salary_expectation: e.target.value }));
+    setForm((prev) => ({ ...prev, salary_expectation: e.target.value }));
   };
 
+  // Обработка изменения типа занятости
   const handleEmploymentTypeChange = (typeId: number) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       employment_type_ids: prev.employment_type_ids.includes(typeId)
-        ? prev.employment_type_ids.filter(id => id !== typeId)
+        ? prev.employment_type_ids.filter((id) => id !== typeId)
         : [...prev.employment_type_ids, typeId],
     }));
   };
 
+  // Обработка изменения формата работы
   const handleWorkFormatChange = (formatId: number) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       work_format_ids: prev.work_format_ids.includes(formatId)
-        ? prev.work_format_ids.filter(id => id !== formatId)
+        ? prev.work_format_ids.filter((id) => id !== formatId)
         : [...prev.work_format_ids, formatId],
     }));
   };
 
+  // Обработка изменения командировок
   const handleBusinessTripsChange = (value: "yes" | "no" | "sometimes") => {
-    setForm(prev => ({ ...prev, business_trips: value }));
+    setForm((prev) => ({
+      ...prev,
+      business_trips: value,
+    }));
   };
 
+  // Обработчики для work_experiences
   const handleWorkExpChange = (idx: number, field: string, value: any) => {
-    setForm(prev => {
+    setForm((prev) => {
       const updated = [...prev.work_experiences];
       updated[idx] = { ...updated[idx], [field]: value };
       return { ...prev, work_experiences: updated };
@@ -290,24 +163,23 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   };
 
   const handleAddWorkExp = () => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       work_experiences: [
         ...prev.work_experiences,
         {
-          experience_id: undefined,
           company_id: undefined,
-          company_name: '',
+          company_name: "",
           city_id: undefined,
-          city_name: '',
-          position: '',
+          city_name: "",
+          position: "",
           profession_id: undefined,
           start_month: undefined,
-          start_year: '',
+          start_year: "",
           end_month: undefined,
-          end_year: '',
+          end_year: "",
           is_current: false,
-          responsibilities: '',
+          responsibilities: "",
           companySuggestions: [],
           citySuggestions: [],
           professionSuggestions: [],
@@ -319,247 +191,86 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     }));
   };
 
-  const handleRemoveWorkExp = (idx: number) => {
-    setForm(prev => ({
-      ...prev,
-      work_experiences: prev.work_experiences.filter((_, i) => i !== idx),
-    }));
-  };
-
+  // Автокомплит для компании
   const handleCompanyInput = async (idx: number, value: string) => {
-    handleWorkExpChange(idx, 'company_name', value);
-    handleWorkExpChange(idx, 'company_id', undefined);
-
+    // Очищаем company_id при редактировании текста
+    handleWorkExpChange(idx, "company_name", value);
+    handleWorkExpChange(idx, "company_id", undefined);
+    
     if (!value.trim()) {
-      handleWorkExpChange(idx, 'companySuggestions', []);
+      handleWorkExpChange(idx, "companySuggestions", []);
       return;
     }
-
-    handleWorkExpChange(idx, 'isLoadingCompany', true);
+    handleWorkExpChange(idx, "isLoadingCompany", true);
     try {
       const res = await fetch(`${API_ENDPOINTS.dictionaries.companiesSearch}?query=${encodeURIComponent(value)}`);
       const data = await res.json();
-      handleWorkExpChange(idx, 'companySuggestions', data);
+      handleWorkExpChange(idx, "companySuggestions", data);
     } catch (e) {
-      handleWorkExpChange(idx, 'companySuggestions', []);
+      handleWorkExpChange(idx, "companySuggestions", []);
     }
-    handleWorkExpChange(idx, 'isLoadingCompany', false);
+    handleWorkExpChange(idx, "isLoadingCompany", false);
   };
-
   const handleCompanySelect = (idx: number, company: { company_id: number; company_name: string; brand_name: string }) => {
-    handleWorkExpChange(idx, 'company_id', company.company_id);
-    handleWorkExpChange(idx, 'company_name', company.company_name);
-    handleWorkExpChange(idx, 'companySuggestions', []);
+    handleWorkExpChange(idx, "company_id", company.company_id);
+    handleWorkExpChange(idx, "company_name", company.company_name);
+    handleWorkExpChange(idx, "companySuggestions", []);
   };
 
+  // Для work_experiences (3-й шаг) используем отдельные обработчики
   const handleCityInput = async (idx: number, value: string) => {
-    handleWorkExpChange(idx, 'city_name', value);
-    handleWorkExpChange(idx, 'city_id', undefined);
-
+    handleWorkExpChange(idx, "city_name", value);
     if (!value.trim()) {
-      handleWorkExpChange(idx, 'citySuggestions', []);
+      handleWorkExpChange(idx, "citySuggestions", []);
       return;
     }
-
-    handleWorkExpChange(idx, 'isLoadingCity', true);
+    handleWorkExpChange(idx, "isLoadingCity", true);
     try {
       const res = await fetch(`${API_ENDPOINTS.citiesSearch}?query=${encodeURIComponent(value)}`);
       let data = await res.json();
+      // Приводим к виду { city_id, name }
       data = data.map((city: any) => ({ city_id: city.city_id ?? city.id, name: city.name }));
-      handleWorkExpChange(idx, 'citySuggestions', data);
+      handleWorkExpChange(idx, "citySuggestions", data);
     } catch (e) {
-      handleWorkExpChange(idx, 'citySuggestions', []);
+      handleWorkExpChange(idx, "citySuggestions", []);
     }
-    handleWorkExpChange(idx, 'isLoadingCity', false);
+    handleWorkExpChange(idx, "isLoadingCity", false);
   };
-
   const handleCitySelect = (idx: number, city: { city_id: number; name: string }) => {
-    handleWorkExpChange(idx, 'city_id', city.city_id);
-    handleWorkExpChange(idx, 'city_name', city.name);
-    handleWorkExpChange(idx, 'citySuggestions', []);
+    handleWorkExpChange(idx, "city_id", city.city_id);
+    handleWorkExpChange(idx, "city_name", city.name);
+    handleWorkExpChange(idx, "citySuggestions", []);
   };
 
+  // Автокомплит для должности
   const handleProfessionInput = async (idx: number, value: string) => {
-    handleWorkExpChange(idx, 'position', value);
-    handleWorkExpChange(idx, 'profession_id', undefined);
-
+    // Очищаем profession_id при редактировании текста
+    handleWorkExpChange(idx, "position", value);
+    handleWorkExpChange(idx, "profession_id", undefined);
+    
     if (!value.trim()) {
-      handleWorkExpChange(idx, 'professionSuggestions', []);
+      handleWorkExpChange(idx, "professionSuggestions", []);
       return;
     }
-
-    handleWorkExpChange(idx, 'isLoadingProfession', true);
+    handleWorkExpChange(idx, "isLoadingProfession", true);
     try {
       const res = await fetch(`${API_ENDPOINTS.dictionaries.professionsSearch}?query=${encodeURIComponent(value)}`);
       const data = await res.json();
-      handleWorkExpChange(idx, 'professionSuggestions', data);
+      handleWorkExpChange(idx, "professionSuggestions", data);
     } catch (e) {
-      handleWorkExpChange(idx, 'professionSuggestions', []);
+      handleWorkExpChange(idx, "professionSuggestions", []);
     }
-    handleWorkExpChange(idx, 'isLoadingProfession', false);
+    handleWorkExpChange(idx, "isLoadingProfession", false);
   };
-
   const handleProfessionSelect = (idx: number, prof: { profession_id: number; name: string }) => {
-    handleWorkExpChange(idx, 'profession_id', prof.profession_id);
-    handleWorkExpChange(idx, 'position', prof.name);
-    handleWorkExpChange(idx, 'professionSuggestions', []);
+    handleWorkExpChange(idx, "profession_id", prof.profession_id);
+    handleWorkExpChange(idx, "position", prof.name);
+    handleWorkExpChange(idx, "professionSuggestions", []);
   };
 
-  const handleEducationTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value ? Number(e.target.value) : undefined;
-    setForm(prev => ({ ...prev, education_type_id: value }));
-  };
-
-  const handleEducationChange = (idx: number, field: string, value: any) => {
-    setForm(prev => {
-      const updated = [...prev.educations];
-      updated[idx] = { ...updated[idx], [field]: value };
-      return { ...prev, educations: updated };
-    });
-  };
-
-  const handleAddEducation = () => {
-    setForm(prev => ({
-      ...prev,
-      educations: [
-        ...prev.educations,
-        {
-          education_id: undefined,
-          institution: '',
-          institution_id: undefined,
-          institutionSuggestions: [],
-          isLoadingInstitution: false,
-          specialization: '',
-          specialization_id: undefined,
-          specializationSuggestions: [],
-          isLoadingSpecialization: false,
-          end_year: '',
-        },
-      ],
-    }));
-  };
-
-  const handleRemoveEducation = (idx: number) => {
-    setForm(prev => ({
-      ...prev,
-      educations: prev.educations.filter((_, i) => i !== idx),
-    }));
-  };
-
-  const handleInstitutionInput = async (idx: number, value: string) => {
-    handleEducationChange(idx, 'institution', value);
-    handleEducationChange(idx, 'institution_id', undefined);
-
-    if (!value.trim()) {
-      handleEducationChange(idx, 'institutionSuggestions', []);
-      return;
-    }
-
-    handleEducationChange(idx, 'isLoadingInstitution', true);
-    try {
-      const res = await fetch(`${API_ENDPOINTS.dictionaries.educationalInstitutionsSearch}?query=${encodeURIComponent(value)}`);
-      const data = await res.json();
-      handleEducationChange(idx, 'institutionSuggestions', data);
-    } catch (e) {
-      handleEducationChange(idx, 'institutionSuggestions', []);
-    }
-    handleEducationChange(idx, 'isLoadingInstitution', false);
-  };
-
-  const handleInstitutionSelect = (idx: number, inst: { institution_id: number; name: string }) => {
-    handleEducationChange(idx, 'institution_id', inst.institution_id);
-    handleEducationChange(idx, 'institution', inst.name);
-    handleEducationChange(idx, 'institutionSuggestions', []);
-  };
-
-  const handleSpecializationInput = async (idx: number, value: string) => {
-    handleEducationChange(idx, 'specialization', value);
-    handleEducationChange(idx, 'specialization_id', undefined);
-
-    if (!value.trim()) {
-      handleEducationChange(idx, 'specializationSuggestions', []);
-      return;
-    }
-
-    handleEducationChange(idx, 'isLoadingSpecialization', true);
-    try {
-      const res = await fetch(`${API_ENDPOINTS.dictionaries.specializationsSearch}?query=${encodeURIComponent(value)}`);
-      const data = await res.json();
-      handleEducationChange(idx, 'specializationSuggestions', data);
-    } catch (e) {
-      handleEducationChange(idx, 'specializationSuggestions', []);
-    }
-    handleEducationChange(idx, 'isLoadingSpecialization', false);
-  };
-
-  const handleSpecializationSelect = (idx: number, spec: { specialization_id: number; name: string }) => {
-    handleEducationChange(idx, 'specialization_id', spec.specialization_id);
-    handleEducationChange(idx, 'specialization', spec.name);
-    handleEducationChange(idx, 'specializationSuggestions', []);
-  };
-
-  const handleProfessionalSummaryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setForm(prev => ({ ...prev, professional_summary: e.target.value }));
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, phone: e.target.value }));
-  };
-
-  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hasWhatsapp: e.target.checked }));
-  };
-
-  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hasTelegram: e.target.checked }));
-  };
-
-  const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, phoneComment: e.target.value }));
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, email: e.target.value }));
-  };
-
-  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, website: e.target.value }));
-  };
-
-  const handleHideNameAndPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hideNameAndPhoto: e.target.checked }));
-  };
-
-  const handleHidePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hidePhone: e.target.checked }));
-  };
-
-  const handleHideEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hideEmail: e.target.checked }));
-  };
-
-  const handleHideOtherContactsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hideOtherContacts: e.target.checked }));
-  };
-
-  const handleHideCompanyNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, hideCompanyNames: e.target.checked }));
-  };
-
-  const handleVisibilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, visibility: e.target.value as typeof prev.visibility }));
-  };
-
-  const handleEducationTypeStepValidation = () => {
-    if (!form.education_type_id) {
-      setErrorMessage('Укажите уровень образования');
-      setIsErrorModalOpen(true);
-      return false;
-    }
-    return true;
-  };
-
+  // Переход к следующему шагу (заглушка)
   const handleNext = () => {
+    // Проверка на первом шаге
     if (currentStep === 0) {
       if (!form.title.trim()) {
         setErrorMessage('Укажите желаемую должность');
@@ -568,50 +279,230 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       }
     }
 
-    if (currentStep === 1) {
-      if (form.employment_type_ids.length === 0) {
-        setErrorMessage('Выберите хотя бы один тип занятости');
-        setIsErrorModalOpen(true);
-        return;
-      }
-      if (form.work_format_ids.length === 0) {
-        setErrorMessage('Выберите хотя бы один формат работы');
-        setIsErrorModalOpen(true);
-        return;
-      }
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
     }
+  };
 
-    if (currentStep === 3 && !handleEducationTypeStepValidation()) {
+  // Переход к предыдущему шагу (заглушка)
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Сохранить и выйти (заглушка)
+  const handleSaveAndExit = () => {
+    router.push("/resume");
+  };
+
+  const handleSearchCityInput = async (value: string) => {
+    // Функция больше не нужна, оставлена пустой для совместимости если вызывается где-то
+    return;
+  };
+
+  const handleSearchCitySelect = (city: { city_id: number; name: string }) => {
+    // Функция больше не нужна, оставлена пустой для совместимости если вызывается где-то
+    return;
+  };
+
+  // 1. Добавляю функцию для удаления блока опыта работы
+  const handleRemoveWorkExp = (idx: number) => {
+    setForm((prev) => ({
+      ...prev,
+      work_experiences: prev.work_experiences.filter((_, i) => i !== idx),
+    }));
+  };
+
+  const handleEducationTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, education_type_id: Number(e.target.value) }));
+  };
+
+  const handleEducationChange = (idx: number, field: string, value: any) => {
+    setForm((prev) => {
+      const updated = [...prev.educations];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return { ...prev, educations: updated };
+    });
+  };
+
+  const handleAddEducation = () => {
+    setForm((prev) => ({
+      ...prev,
+      educations: [
+        ...prev.educations,
+        {
+          institution: "",
+          institution_id: undefined,
+          institutionSuggestions: [],
+          isLoadingInstitution: false,
+          specialization: "",
+          specialization_id: undefined,
+          specializationSuggestions: [],
+          isLoadingSpecialization: false,
+          end_year: "",
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveEducation = (idx: number) => {
+    setForm((prev) => ({
+      ...prev,
+      educations: prev.educations.filter((_, i) => i !== idx),
+    }));
+  };
+
+  // 2. Обработчики для автокомплита учебного заведения
+  const handleInstitutionInput = async (idx: number, value: string) => {
+    // Очищаем institution_id при редактировании текста
+    handleEducationChange(idx, "institution", value);
+    handleEducationChange(idx, "institution_id", undefined);
+    
+    if (!value.trim()) {
+      handleEducationChange(idx, "institutionSuggestions", []);
       return;
     }
-
-    setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+    handleEducationChange(idx, "isLoadingInstitution", true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.educationalInstitutionsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleEducationChange(idx, "institutionSuggestions", data);
+    } catch (e) {
+      handleEducationChange(idx, "institutionSuggestions", []);
+    }
+    handleEducationChange(idx, "isLoadingInstitution", false);
   };
 
-  const handlePrev = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
+  // 3. Обработчики для автокомплита специальности
+  const handleSpecializationInput = async (idx: number, value: string) => {
+    // Очищаем specialization_id при редактировании текста
+    handleEducationChange(idx, "specialization", value);
+    handleEducationChange(idx, "specialization_id", undefined);
+    
+    if (!value.trim()) {
+      handleEducationChange(idx, "specializationSuggestions", []);
+      return;
+    }
+    handleEducationChange(idx, "isLoadingSpecialization", true);
+    try {
+      const res = await fetch(`${API_ENDPOINTS.dictionaries.specializationsSearch}?query=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      handleEducationChange(idx, "specializationSuggestions", data);
+    } catch (e) {
+      handleEducationChange(idx, "specializationSuggestions", []);
+    }
+    handleEducationChange(idx, "isLoadingSpecialization", false);
   };
 
-  // Фото: выбор файла, загрузка через /api/upload, установка превью и имени файла
+  const handleInstitutionSelect = (idx: number, inst: { institution_id: number; name: string }) => {
+    handleEducationChange(idx, "institution_id", inst.institution_id);
+    handleEducationChange(idx, "institution", inst.name);
+    handleEducationChange(idx, "institutionSuggestions", []);
+  };
+
+  const handleSpecializationSelect = (idx: number, spec: { specialization_id: number; name: string }) => {
+    handleEducationChange(idx, "specialization_id", spec.specialization_id);
+    handleEducationChange(idx, "specialization", spec.name);
+    handleEducationChange(idx, "specializationSuggestions", []);
+  };
+
+  // 2. Добавляю обработчик для поля professional_summary
+  const handleProfessionalSummaryChange = (value: string) => {
+    setForm((prev) => ({ ...prev, professional_summary: value }));
+  };
+
+  // 2. Добавляю обработчики для полей контактов и настроек видимости
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const cursorPosition = input.selectionStart || 0;
+    
+    // Получаем только цифры из введенного значения, исключая +7
+    let value = input.value.replace(/[^\d]/g, '');
+    if (value.startsWith('7')) {
+      value = value.slice(1);
+    }
+    
+    // Ограничиваем длину до 10 цифр
+    if (value.length > 10) {
+      value = value.slice(0, 10);
+    }
+    
+    // Форматируем номер
+    const formattedValue = value.length > 0 ? `+7${value}` : '';
+    
+    setForm((prev) => ({ ...prev, phone: formattedValue }));
+
+    // Восстанавливаем позицию курсора
+    requestAnimationFrame(() => {
+      // Всегда ставим курсор в конец, если вводим новую цифру
+      const newPosition = formattedValue.length;
+      input.setSelectionRange(newPosition, newPosition);
+    });
+  };
+
+  const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, phoneComment: e.target.value }));
+  };
+
+  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hasWhatsapp: e.target.checked }));
+  };
+
+  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hasTelegram: e.target.checked }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, email: e.target.value }));
+  };
+
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, website: e.target.value }));
+  };
+
+  const handleHideNameAndPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideNameAndPhoto: e.target.checked }));
+  };
+
+  const handleHidePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hidePhone: e.target.checked }));
+  };
+
+  const handleHideEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideEmail: e.target.checked }));
+  };
+
+  const handleHideOtherContactsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideOtherContacts: e.target.checked }));
+  };
+
+  const handleHideCompanyNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, hideCompanyNames: e.target.checked }));
+  };
+
+  const handleVisibilityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, visibility: e.target.value as "public" | "private" | "selected_companies" | "excluded_companies" | "link_only" }));
+  };
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhoto(file);
+    // Превью
     const reader = new FileReader();
     reader.onloadend = () => setPhotoPreview(reader.result as string);
     reader.readAsDataURL(file);
 
+    // Загрузка
     const res = await uploadFile(file, 'photo');
     if (res.error || !res.data?.fileName) {
       console.error('Ошибка загрузки фото:', res.error);
-      setErrorMessage(res.error || 'Ошибка загрузки фото');
-      setIsErrorModalOpen(true);
       return;
     }
     setPhotoFileName(res.data.fileName);
   };
 
-  // Изменяем функцию handleSave для отправки PUT запроса
   const handleSave = async () => {
     try {
       // Проверка обязательных полей
@@ -635,85 +526,93 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         setIsErrorModalOpen(true);
         return;
       }
-
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/login?redirect=/resume/' + params.id + '/edit');
+        router.push('/login?redirect=/resume/add');
         return;
       }
 
-      const formData = new FormData();
-      formData.append('title', form.title);
-      formData.append('profession_id', String(form.profession_id));
-      if (form.professional_summary) formData.append('professional_summary', form.professional_summary);
-      if (form.salary_expectation) formData.append('salary_expectation', form.salary_expectation);
-      formData.append('visibility', form.visibility);
-      if (form.phone) formData.append('phone', form.phone);
-      if (form.email) formData.append('email', form.email);
-      if (form.website) formData.append('website_url', form.website);
-      formData.append('has_whatsapp', String(form.hasWhatsapp));
-      formData.append('has_telegram', String(form.hasTelegram));
-      formData.append('education_type_id', String(form.education_type_id));
-      if (photoFileName) formData.append('photo_url', photoFileName);
-      formData.append('hide_full_name', String(form.hideNameAndPhoto));
-      formData.append('hide_phone', String(form.hidePhone));
-      formData.append('hide_email', String(form.hideEmail));
-      formData.append('hide_other_contacts', String(form.hideOtherContacts));
-      formData.append('hide_experience', String(form.hideCompanyNames));
-      if (form.phoneComment) formData.append('phone_comment', form.phoneComment);
-      if (form.business_trips) formData.append('business_trips', form.business_trips);
-      form.employment_type_ids.forEach(id => formData.append('employment_type_ids[]', String(id)));
-      form.work_format_ids.forEach(id => formData.append('work_format_ids[]', String(id)));
+      // Формируем JSON-объект для отправки
+      const requestData: any = {
+        title: form.title,
+        profession_id: form.profession_id,
+        visibility: form.visibility,
+        has_whatsapp: form.hasWhatsapp,
+        has_telegram: form.hasTelegram,
+        education_type_id: form.education_type_id,
+        hide_full_name: form.hideNameAndPhoto,
+        hide_phone: form.hidePhone,
+        hide_email: form.hideEmail,
+        hide_other_contacts: form.hideOtherContacts,
+        hide_experience: form.hideCompanyNames,
+        employment_type_ids: form.employment_type_ids,
+        work_format_ids: form.work_format_ids,
+      };
 
-      // work_experiences
-      form.work_experiences.forEach((exp, index) => {
-        const hasAny = exp.company_id || exp.company_name || exp.city_id || exp.position || exp.profession_id || exp.start_month || exp.start_year || exp.end_month || exp.end_year || exp.responsibilities;
-        if (!hasAny) return;
-        if (exp.experience_id) formData.append(`work_experiences[${index}][experience_id]`, String(exp.experience_id));
-        if (exp.company_id) formData.append(`work_experiences[${index}][company_id]`, String(exp.company_id));
-        if (exp.company_name) formData.append(`work_experiences[${index}][company_name]`, exp.company_name);
-        if (exp.city_id) formData.append(`work_experiences[${index}][city_id]`, String(exp.city_id));
-        if (exp.position) formData.append(`work_experiences[${index}][position]`, exp.position);
-        if (exp.profession_id) formData.append(`work_experiences[${index}][profession_id]`, String(exp.profession_id));
-        if (exp.start_month) formData.append(`work_experiences[${index}][start_month]`, String(exp.start_month));
-        if (exp.start_year) formData.append(`work_experiences[${index}][start_year]`, exp.start_year);
-        if (exp.end_month) formData.append(`work_experiences[${index}][end_month]`, String(exp.end_month));
-        if (exp.end_year) formData.append(`work_experiences[${index}][end_year]`, exp.end_year);
-        formData.append(`work_experiences[${index}][is_current]`, String(exp.is_current));
-        if (exp.responsibilities) formData.append(`work_experiences[${index}][responsibilities]`, exp.responsibilities);
-      });
+      // Добавляем опциональные поля
+      if (form.professional_summary) requestData.professional_summary = form.professional_summary;
+      if (form.salary_expectation) requestData.salary_expectation = Number(form.salary_expectation);
+      if (form.phone) requestData.phone = form.phone.replace(/^\+/, '');
+      if (form.email) requestData.email = form.email;
+      if (form.website) requestData.website_url = form.website;
+      if (photoFileName) requestData.photo_url = photoFileName;
+      if (form.phoneComment) requestData.phone_comment = form.phoneComment;
+      if (form.business_trips) requestData.business_trips = form.business_trips;
 
-      // educations
-      form.educations.forEach((edu, index) => {
-        if (edu.education_id) formData.append(`educations[${index}][education_id]`, String(edu.education_id));
-        if (edu.institution_id) formData.append(`educations[${index}][institution_id]`, String(edu.institution_id));
-        if (edu.specialization_id) formData.append(`educations[${index}][specialization_id]`, String(edu.specialization_id));
-        if (edu.end_year) formData.append(`educations[${index}][end_year]`, edu.end_year);
-      });
+      // Формируем массив опыта работы
+      requestData.work_experiences = form.work_experiences
+        .filter(exp => exp.company_id || exp.company_name || exp.city_id || exp.position || exp.profession_id || exp.start_month || exp.start_year || exp.end_month || exp.end_year || exp.responsibilities)
+        .map(exp => {
+          const workExp: any = {
+            is_current: exp.is_current,
+          };
+          if (exp.company_id) workExp.company_id = exp.company_id;
+          if (exp.company_name) workExp.company_name = exp.company_name;
+          if (exp.city_id) workExp.city_id = exp.city_id;
+          if (exp.position) workExp.position = exp.position;
+          if (exp.profession_id) workExp.profession_id = exp.profession_id;
+          if (exp.start_month) workExp.start_month = exp.start_month;
+          if (exp.start_year) workExp.start_year = Number(exp.start_year);
+          if (exp.end_month) workExp.end_month = exp.end_month;
+          if (exp.end_year) workExp.end_year = Number(exp.end_year);
+          if (exp.responsibilities) workExp.responsibilities = exp.responsibilities;
+          return workExp;
+        });
 
-      const response = await fetch(`/api/resumes/${params.id}`, {
-        method: 'PUT',
+      // Формируем массив образования
+      requestData.educations = form.educations
+        .filter(edu => edu.institution_id || edu.specialization_id || edu.end_year)
+        .map(edu => {
+          const education: any = {};
+          if (edu.institution_id) education.institution_id = edu.institution_id;
+          if (edu.specialization_id) education.specialization_id = edu.specialization_id;
+          if (edu.end_year) education.end_year = Number(edu.end_year);
+          return education;
+        });
+
+      const response = await fetch(API_ENDPOINTS.resumes.create, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify(requestData),
       });
-
       if (!response.ok) {
-        let errorMessage = 'Произошла ошибка при обновлении резюме';
+        let errorMessage = 'Произошла ошибка при создании резюме';
         switch (response.status) {
           case 400:
             errorMessage = 'Проверьте правильность заполнения данных формы';
             break;
           case 401:
             localStorage.removeItem('token');
-            router.push('/login?redirect=/resume/' + params.id + '/edit');
+            router.push('/login?redirect=/resume/add');
             return;
           case 403:
             errorMessage = 'У вас нет прав для выполнения этого действия';
             break;
           case 404:
-            errorMessage = 'Резюме не найдено';
+            errorMessage = 'Страница не найдена';
             break;
           case 500:
             errorMessage = 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже';
@@ -723,23 +622,20 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         setIsErrorModalOpen(true);
         return;
       }
-
-      router.push('/resume/' + params.id);
+      router.push('/resume');
     } catch (error) {
-      console.error('Error updating resume:', error);
-      setErrorMessage('Произошла ошибка при обновлении резюме. Пожалуйста, попробуйте позже');
+      console.error('Error creating resume:', error);
+      setErrorMessage('Произошла ошибка при создании резюме. Пожалуйста, попробуйте позже');
       setIsErrorModalOpen(true);
     }
   };
-
-  // ... [Оставляем весь JSX из формы создания резюме] ...
 
   return (
     <div className="flex min-h-screen bg-[#FAFCFE]">
       {/* Sidebar */}
       <aside className="w-72 bg-gray-200 flex flex-col justify-between py-8 px-4 border-r border-gray-100 pt-16">
         <div>
-          <h2 className="text-lg font-bold mb-8 text-gray-900">Редактирование резюме</h2>
+          <h2 className="text-lg font-bold mb-8 text-gray-900">Добавление резюме</h2>
           <ol className="space-y-2">
             {steps.map((step, idx) => (
               <li key={step.label}>
@@ -1120,12 +1016,10 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
                   </div>
                   {/* Описание обязанностей */}
                   <div className="mb-4">
-                    <textarea
-                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                    <RichTextEditor
                       placeholder="Описание"
                       value={exp.responsibilities}
-                      onChange={e => handleWorkExpChange(idx, "responsibilities", e.target.value)}
-                      rows={4}
+                      onChange={value => handleWorkExpChange(idx, "responsibilities", value)}
                     />
                   </div>
                 </div>
@@ -1308,15 +1202,12 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
 
           {currentStep === 4 && (
             <section>
-              <h1 className="text-2xl font-bold mb-6">О себе</h1>
+              <h1 className="text-2xl font-bold mb-6">О себе (опыт, навыки и достижения)</h1>
               <div className="mb-8">
-                <label className="block text-lg font-medium mb-2">Расскажите о себе</label>
-                <textarea
-                  className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                <RichTextEditor
                   placeholder="Опишите свой опыт, навыки и достижения"
                   value={form.professional_summary}
                   onChange={handleProfessionalSummaryChange}
-                  rows={8}
                 />
               </div>
               <div className="flex justify-between mt-12">

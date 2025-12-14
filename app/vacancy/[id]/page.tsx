@@ -10,6 +10,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { API_ENDPOINTS } from '../../config/api'
 import { headers } from 'next/headers'
+import VacancyDetailClient from './VacancyDetailClient'
 
 interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
@@ -63,6 +64,7 @@ interface JobPosting {
   publish_in_all_cities?: boolean
   link?: string
   posted_by?: string
+  no_resume_apply?: boolean
   profession?: VacancyProfession | null
   profession_id?: number
   address?: VacancyAddress | null
@@ -243,6 +245,18 @@ function buildVacancyKeywords(job: JobPosting) {
   if (job.company_profile?.company_name) keywords.push(job.company_profile.company_name)
   if (job.address?.city) keywords.push(job.address.city)
   return keywords
+}
+
+const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
+
+function buildCompanyLogoSrc(value?: string) {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  if (/^(https?:)?\/\//i.test(trimmed)) return trimmed
+  if (/^(data|blob):/i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  return `${COMPANY_LOGO_PREFIX}${trimmed}`
 }
 
 export default async function VacancyPage({ params }: { params: { id: string } }) {
@@ -498,7 +512,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
             {logoUrl && (
               <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoUrl} alt={companyName} className="max-w-full max-h-full object-contain" />
+                <img src={buildCompanyLogoSrc(logoUrl)} alt={companyName} className="max-w-full max-h-full object-contain" />
               </div>
             )}
             <div className="text-gray-800">
@@ -518,22 +532,15 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         )}
 
         {/* Панель действий (sticky внутри карточки) */}
-        <div className="sticky bottom-0 -mx-6 md:-mx-8 border-t bg-white/90 backdrop-blur">
+        <div className="sticky bottom-0 -mx-6 md:-mx-8 mt-4 border-t bg-white/90 backdrop-blur">
           <div className="px-6 md:px-8 py-3 flex flex-wrap items-center gap-3">
-            {isPromo ? (
-              <Link
-                href={promoRedirectPath!}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
-              >
-                Откликнуться
-              </Link>
-            ) : (
-              <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">
-                Откликнуться
-              </button>
-            )}
+            <VacancyDetailClient 
+              jobId={idNum}
+              jobTitle={title}
+              isPromo={isPromo}
+              promoRedirectPath={promoRedirectPath}
+              noResumeApply={job.no_resume_apply}
+            />
             <button type="button" aria-label="Добавить в избранное" className="bg-gray-100 text-gray-800 p-2 rounded-md border border-gray-300 hover:bg-gray-200 transition">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true">
                 <path d="M11.645 20.91l-.007-.003-.022-.01a15.247 15.247 0 01-.383-.18 25.18 25.18 0 01-4.244-2.63C4.688 16.227 2.25 13.157 2.25 9.75 2.25 7.093 4.343 5 7 5c1.6 0 3.09.744 4.095 1.993A5.376 5.376 0 0115.19 5C17.846 5 19.94 7.093 19.94 9.75c0 3.407-2.438 6.477-4.74 8.337a25.175 25.175 0 01-4.244 2.63 15.247 15.247 0 01-.383.18l-.022.01-.007.003a.75.75 0 01-.6 0z" />

@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useUser } from './useUser';
 import { useEffect, useState, useRef } from 'react';
+import { useChat } from '../context/ChatContext';
 
 export default function Header() {
   const { role, logout } = useUser();
+  const { totalUnread, openChat } = useChat();
   const [isClient, setIsClient] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,16 +56,6 @@ export default function Header() {
                 <p className="text-xs text-gray-500 -mt-1">Работа мечты</p>
               </div>
             </Link>
-
-            <div className="hidden md:flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5 border border-gray-200">
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <Link href="#" className="text-gray-700 hover:text-blue-600 text-sm font-medium transition-colors">
-                Одинцово
-              </Link>
-            </div>
           </div>
 
           {/* Навигация для разных ролей */}
@@ -73,8 +65,7 @@ export default function Header() {
                 <Link href="/companies" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Компании
                 </Link>
-                <div className="w-px h-4 bg-gray-300 mx-2"></div>
-                <Link href="/vacancy" className="relative px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-all duration-200">
+                <Link href="/vacancy" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Вакансии
                 </Link>
               </>
@@ -87,18 +78,23 @@ export default function Header() {
                 <Link href="/companies" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Компании
                 </Link>
-                <Link href="/resume" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
+                <Link href="/user/resume" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Мои резюме
+                </Link>
+                <Link href="/user/my-applications" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
+                  Мои отклики
                 </Link>
               </>
             )}
             {role === 'employer' && (
               <>
+                <Link href="/resume" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
+                  Поиск резюме
+                </Link>
                 <Link href="/employer/vacancies" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Мои вакансии
                 </Link>
-                <div className="w-px h-4 bg-gray-300 mx-2"></div>
-                <Link href="/employer/applications" className="relative px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-all duration-200">
+                <Link href="/employer/applications" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Отклики
                 </Link>
               </>
@@ -119,7 +115,23 @@ export default function Header() {
             )}
 
             {(role === 'job_seeker' || role === 'employer') && (
-              <div className="relative" ref={dropdownRef}>
+              <>
+                <Link
+                  href="/chat"
+                  className="relative p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
+                  aria-label="Чаты"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  {totalUnread > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white box-content">
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                  )}
+                </Link>
+
+                <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen((open) => !open)}
                   className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 shadow-sm"
@@ -200,7 +212,7 @@ export default function Header() {
                             </div>
                           </Link>
                           <Link
-                            href="/resume"
+                            href="/user/resume"
                             className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-gray-50"
                             onClick={() => setDropdownOpen(false)}
                           >
@@ -258,6 +270,7 @@ export default function Header() {
                   </div>
                 )}
               </div>
+              </>
             )}
 
             {/* Мобильное меню */}
@@ -303,16 +316,36 @@ export default function Header() {
                   <Link href="/companies" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
                     Компании
                   </Link>
-                  <Link href="/resume" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <Link
+                    href="/chat"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full text-left block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Чаты {totalUnread > 0 && <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{totalUnread}</span>}
+                  </Link>
+                  <Link href="/user/resume" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
                     Мои резюме
+                  </Link>
+                  <Link href="/user/my-applications" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    Мои отклики
                   </Link>
                 </>
               )}
 
               {role === 'employer' && (
                 <>
+                  <Link href="/resume" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    Поиск резюме
+                  </Link>
                   <Link href="/employer/vacancies" className="block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors">
                     Мои вакансии
+                  </Link>
+                  <Link
+                    href="/chat"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full text-left block text-gray-700 hover:text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Чаты {totalUnread > 0 && <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{totalUnread}</span>}
                   </Link>
                   <Link href="/employer/applications" className="block text-blue-600 text-sm font-semibold py-2 px-3 bg-blue-50 rounded-lg">
                     Отклики

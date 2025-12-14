@@ -9,6 +9,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import JobFilters from '@/app/components/JobFilters'
 import Pagination from '@/app/components/Pagination'
+import VacancySlugClient from './VacancySlugClient'
 
 interface JobAddress {
   city?: string
@@ -32,6 +33,7 @@ interface JobListItem {
   publication_cities?: string[]
   work_format_ids?: number[]
   is_promo?: boolean
+  no_resume_apply?: boolean
 }
 
 interface PaginatedResponse {
@@ -40,6 +42,18 @@ interface PaginatedResponse {
   page: number
   total: number
   total_pages: number
+}
+
+const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
+
+function buildCompanyLogoSrc(value?: string) {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  if (/^(https?:)?\/\//i.test(trimmed)) return trimmed
+  if (/^(data|blob):/i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  return `${COMPANY_LOGO_PREFIX}${trimmed}`
 }
 
 function formatSalary(job: JobListItem) {
@@ -53,7 +67,7 @@ function formatSalary(job: JobListItem) {
 
 function getSalaryDetails(job: JobListItem) {
   const periodMap: Record<string, string> = {
-    month: 'за месяц',
+    month: 'в месяц',
     hour: 'в час',
     shift: 'смена',
     vahta: 'вахта',
@@ -231,21 +245,15 @@ export default async function VacancyBySlugPage({
                     {job.logo_url && (
                       <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={job.logo_url} alt={job.company_name} className="max-w-full max-h-full object-contain" />
+                        <img src={buildCompanyLogoSrc(job.logo_url)} alt={job.company_name} className="max-w-full max-h-full object-contain" />
                       </div>
                     )}
-                    {job.is_promo ? (
-                      <Link
-                        href={`/vacancy/${job.job_id}/to`}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
-                      >
-                        Откликнуться
-                      </Link>
-                    ) : (
-                      <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">Откликнуться</button>
-                    )}
+                    <VacancySlugClient 
+                      jobId={job.job_id}
+                      jobTitle={job.title}
+                      isPromo={job.is_promo || false}
+                      noResumeApply={job.no_resume_apply}
+                    />
                   </div>
                 </div>
               ))}

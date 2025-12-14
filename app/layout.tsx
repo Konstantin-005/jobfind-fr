@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import dynamic from 'next/dynamic'
 
-const Header = dynamic(() => import('./components/Header'), { ssr: false })
+const ClientLayout = dynamic(() => import('./client-layout'), { ssr: false })
 const CookieConsent = dynamic(() => import('./components/CookieConsent'), { ssr: true })
 const Footer = dynamic(() => import('./components/Footer'), { ssr: true })
 
@@ -48,10 +48,11 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <Header />
-        <main className="min-h-screen bg-gray-200">
-          {children}
-        </main>
+        <ClientLayout>
+          <div className="min-h-screen bg-gray-200">
+            {children}
+          </div>
+        </ClientLayout>
         <Footer />
         <CookieConsent />
       </body>

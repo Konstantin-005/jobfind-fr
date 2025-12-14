@@ -29,8 +29,9 @@ function isTokenExpired(token: string): boolean {
   return decoded.exp * 1000 < Date.now();
 }
 
-export function useUser(): { role: UserRole; logout: () => void } {
+export function useUser(): { role: UserRole; logout: () => void; isLoading: boolean } {
   const [role, setRole] = useState<UserRole>('guest');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     function updateRole() {
@@ -42,13 +43,20 @@ export function useUser(): { role: UserRole; logout: () => void } {
         localStorage.removeItem('token');
         localStorage.removeItem('user_type');
         setRole('guest');
+        setIsLoading(false);
         return;
       }
 
-      if (!userType) return setRole('guest');
-      if (userType === 'job_seeker') return setRole('job_seeker');
-      if (userType === 'employer') return setRole('employer');
-      setRole('guest');
+      if (!userType) {
+        setRole('guest');
+        setIsLoading(false);
+        return;
+      }
+      if (userType === 'job_seeker') setRole('job_seeker');
+      else if (userType === 'employer') setRole('employer');
+      else setRole('guest');
+      
+      setIsLoading(false);
     }
     updateRole();
     window.addEventListener('storage', updateRole);
@@ -84,5 +92,5 @@ export function useUser(): { role: UserRole; logout: () => void } {
     setRole('guest');
   }
 
-  return { role, logout };
-} 
+  return { role, logout, isLoading };
+}

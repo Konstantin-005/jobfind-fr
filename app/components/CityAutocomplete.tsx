@@ -42,6 +42,11 @@ export default function CityAutocomplete({ value, onChange, required = false, in
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(async () => {
+      // Don't search if query matches initial city name (user hasn't typed anything new)
+      if (initialCityName && query === initialCityName) {
+        return;
+      }
+
       if (query.length >= 2) {
         setLoading(true);
         try {
@@ -95,7 +100,7 @@ export default function CityAutocomplete({ value, onChange, required = false, in
         onChange={handleInputChange}
         required={required}
         className="w-full border rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition"
-        placeholder="Введите название города"
+        placeholder="Введите название"
       />
       {showSuggestions && (query.length >= 2 || loading) && (
         <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">

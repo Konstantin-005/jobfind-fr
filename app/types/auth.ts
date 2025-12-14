@@ -5,6 +5,7 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   email: string;
+  phone_number?: string;
   password: string;
   user_type: 'job_seeker' | 'employer';
 }
@@ -16,6 +17,15 @@ export interface ForgotPasswordRequest {
 export interface ResetPasswordRequest {
   token: string;
   password: string;
+}
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ResendVerificationRequest {
+  email: string;
+  new_email?: string;
 }
 
 export interface AuthResponse {

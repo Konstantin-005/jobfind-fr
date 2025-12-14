@@ -52,12 +52,12 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Работодателям</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/resume-search" className="text-gray-700 hover:text-blue-600 hover:underline transition">
+                <Link href="/resume" className="text-gray-700 hover:text-blue-600 hover:underline transition">
                   Поиск резюме
                 </Link>
               </li>
               <li>
-                <Link href="/post-vacancy" className="text-gray-700 hover:text-blue-600 hover:underline transition">
+                <Link href="/employer/vacancies/add" className="text-gray-700 hover:text-blue-600 hover:underline transition">
                   Добавить вакансию
                 </Link>
               </li>

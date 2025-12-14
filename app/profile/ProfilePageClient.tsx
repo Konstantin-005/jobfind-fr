@@ -41,7 +41,6 @@ export default function ProfilePageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [cities, setCities] = useState<{ id: number; name: string }[]>([]);
   const [form, setForm] = useState<any>({
     job_search_status: "actively_looking",
     last_name: "",
@@ -55,6 +54,7 @@ export default function ProfilePageClient() {
   });
   const [fromResumeAdd] = useState(searchParams.get("from") === "resumeAdd");
   const [showDrivingDropdown, setShowDrivingDropdown] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const drivingDropdownRef = useRef<HTMLDivElement>(null);
 
   // Проверка авторизации и типа пользователя
@@ -63,17 +63,11 @@ export default function ProfilePageClient() {
     const userType = localStorage.getItem("user_type");
 
     if (!token || userType !== "job_seeker") {
-      router.push("/vacancy");
+      router.push("/");
       return;
     }
+    setIsAuthorized(true);
   }, [router]);
-
-  // Получение городов
-  useEffect(() => {
-    fetch(API_ENDPOINTS.locations)
-      .then((r) => r.json())
-      .then((data) => setCities(data.cities || []));
-  }, []);
 
   // Получение профиля
   useEffect(() => {
@@ -84,9 +78,9 @@ export default function ProfilePageClient() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (r) => {
-        if (r.status === 404) {
+        if (r.status === 404 || r.status === 401) {
           setLoading(false);
-          return; // Пустая форма
+          return; // Пустая форма - профиль еще не создан
         }
         if (!r.ok) {
           setError("Ошибка загрузки профиля");
@@ -95,36 +89,17 @@ export default function ProfilePageClient() {
         }
         const data = await r.json();
 
-        // Получаем название города по ID
-        let cityName = "";
-        if (data.city_id) {
-          try {
-            const cityResponse = await fetch(API_ENDPOINTS.dictionaries.citiesByIds, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ city_ids: [data.city_id] }),
-            });
-            const cityData = await cityResponse.json();
-            if (cityData && cityData.length > 0) {
-              cityName = cityData[0].name;
-            }
-          } catch (error) {
-            console.error('Error fetching city name:', error);
-          }
-        }
-
         setForm({
           ...form,
           ...data,
+          city_id: data.city_id ? data.city_id.toString() : "",
           birth_date: data.birth_date ? data.birth_date.split("T")[0] : "",
-          languages: data.JobSeekerLanguages?.map((lang: any) => ({
+          languages: data.languages?.map((lang: any) => ({
             language_id: lang.language_id.toString(),
             proficiency_level: lang.proficiency_level
           })) || [],
-          driving_licenses: data.JobSeekerDrivingLicenses?.map((license: any) => license.category_id) || [],
-          city_name: cityName
+          driving_licenses: data.driving_licenses?.map((license: any) => license.category_id) || [],
+          city_name: data.city?.name || ""
         });
         setLoading(false);
       })
@@ -242,6 +217,10 @@ export default function ProfilePageClient() {
         setError("Ошибка сохранения профиля");
         setLoading(false);
       });
+  }
+
+  if (!isAuthorized) {
+    return null;
   }
 
   return (

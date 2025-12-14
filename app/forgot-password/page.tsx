@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { authApi } from '../utils/api';
-import { ForgotPasswordResponse } from '../types/auth';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,10 +20,15 @@ export default function ForgotPassword() {
       const response = await authApi.forgotPassword({ email });
       
       if (response.error) {
-        setError(response.error);
+        if (response.status === 400) {
+          setError(response.error);
+        } else if (response.status === 500) {
+          setError('Техническая ошибка. Попробуйте позже.');
+        } else {
+          setError(response.error);
+        }
       } else if (response.data) {
-        setSuccess('Инструкции по восстановлению пароля отправлены на ваш email');
-        setEmail('');
+        setSuccess('Если аккаунт существует, мы отправили письмо со ссылкой для сброса пароля. Проверьте почту и папку «Спам».');
       }
     } catch (err) {
       setError('Произошла ошибка при отправке запроса');
@@ -39,7 +44,7 @@ export default function ForgotPassword() {
           Восстановление пароля
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Введите email, указанный при регистрации
+          Если аккаунт существует, мы отправим письмо со ссылкой для сброса пароля.
         </p>
       </div>
 
@@ -81,10 +86,14 @@ export default function ForgotPassword() {
               disabled={isLoading}
               className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Отправка...' : 'Отправить инструкции'}
+              {isLoading ? 'Отправка...' : 'Отправить ссылку'}
             </button>
           </div>
         </form>
+
+        <p className="mt-4 text-center text-sm text-gray-500">
+          Если вы не получили письмо, проверьте папку «Спам» или повторите попытку.
+        </p>
 
         <p className="mt-10 text-center text-sm text-gray-500">
           <Link href="/login" className="font-semibold leading-6 text-blue-600 hover:text-blue-500">

@@ -12,6 +12,8 @@ import workFormatsConfig from '../config/work_formats_202505222228.json'
 import { useSearchParams } from 'next/navigation'
 import JobFilters from '../components/JobFilters'
 import Pagination from '../components/Pagination'
+import { useUser } from '../components/useUser'
+import ApplicationModal from '../components/ApplicationModal'
   const salaryPeriodOptions = [
     { label: 'за месяц', value: 'month' },
     { label: 'в час', value: 'hour' },
@@ -74,6 +76,7 @@ interface JobListItem {
   address?: JobAddress
   publication_cities?: string[]
   work_format_ids?: number[]
+  no_resume_apply?: boolean
 }
 
 interface PaginatedJobsResponse {
@@ -82,6 +85,18 @@ interface PaginatedJobsResponse {
   page: number
   total: number
   total_pages: number
+}
+
+const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
+
+function buildCompanyLogoSrc(value?: string) {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  if (/^(https?:)?\/\//i.test(trimmed)) return trimmed
+  if (/^(data|blob):/i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/')) return trimmed
+  return `${COMPANY_LOGO_PREFIX}${trimmed}`
 }
 
 export default function VacancyClient() {
@@ -102,6 +117,9 @@ export default function VacancyClient() {
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
   const periodMenuRef = useRef<HTMLDivElement>(null);
+  const { role } = useUser()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<JobListItem | null>(null)
 
   // Скролл к началу списка при смене страницы
   useEffect(() => {
@@ -311,6 +329,15 @@ export default function VacancyClient() {
     return cities[0]
   }
 
+  const handleApplyClick = (job: JobListItem) => {
+    if (role === 'job_seeker') {
+      setSelectedJob(job)
+      setIsModalOpen(true)
+    } else if (role === 'guest') {
+      window.location.href = '/login?redirect=' + encodeURIComponent(`/vacancy/${job.job_id}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -459,10 +486,16 @@ export default function VacancyClient() {
                   <div className="flex items-center gap-4 md:ml-4">
                     {job.logo_url && (
                       <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
-                        <img src={job.logo_url} alt={job.company_name} className="max-w-full max-h-full object-contain" />
+                        <img src={buildCompanyLogoSrc(job.logo_url)} alt={job.company_name} className="max-w-full max-h-full object-contain" />
                       </div>
                     )}
-                    <button type="button" className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition">Откликнуться</button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleApplyClick(job)}
+                      className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
+                    >
+                      Откликнуться
+                    </button>
                   </div>
                 </div>
               ))}
@@ -472,6 +505,18 @@ export default function VacancyClient() {
           )}
         </div>
       </div>
+      {selectedJob && (
+        <ApplicationModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedJob(null)
+          }}
+          jobId={selectedJob.job_id}
+          jobTitle={selectedJob.title}
+          noResumeApply={selectedJob.no_resume_apply}
+        />
+      )}
     </div>
   )
 }

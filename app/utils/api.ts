@@ -4,6 +4,8 @@ import {
   RegisterRequest, 
   ForgotPasswordRequest, 
   ResetPasswordRequest,
+  VerifyEmailRequest,
+  ResendVerificationRequest,
   AuthResponse,
   MessageResponse
 } from '../types/auth';
@@ -111,6 +113,38 @@ export async function uploadFile(
   }
 }
 
+export async function deleteFile(
+  fileName: string,
+  folder: 'companyLogo' | 'photo' = 'companyLogo'
+): Promise<ApiResponse<{ success: boolean }>> {
+  try {
+    const params = new URLSearchParams({ fileName, folder });
+    const response = await fetch(`${API_ENDPOINTS.upload}?${params.toString()}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { 
+        error: errorData.error || `Ошибка удаления файла: ${response.status} ${response.statusText}` 
+      };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('File deletion error:', error);
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      return { 
+        error: 'Сервер недоступен. Пожалуйста, проверьте подключение к интернету.' 
+      };
+    }
+    return { 
+      error: error instanceof Error ? error.message : 'Произошла неизвестная ошибка при удалении файла' 
+    };
+  }
+}
+
 export const authApi = {
   async login({ email, password }: LoginRequest) {
     return apiRequest<AuthResponse>(API_ENDPOINTS.auth.login, {
@@ -119,10 +153,17 @@ export const authApi = {
     });
   },
 
-  async register({ email, password, user_type }: RegisterRequest) {
-    return apiRequest<AuthResponse>(API_ENDPOINTS.auth.register, {
+  async register({ email, phone_number, password, user_type }: RegisterRequest) {
+    return apiRequest<MessageResponse>(API_ENDPOINTS.auth.register, {
       method: 'POST',
-      body: JSON.stringify({ email, password, user_type }),
+      body: JSON.stringify({ email, password, user_type, ...(phone_number ? { phone_number } : {}) }),
+    });
+  },
+
+  async resendVerification({ email, new_email }: ResendVerificationRequest) {
+    return apiRequest<MessageResponse>(API_ENDPOINTS.auth.resendVerification, {
+      method: 'POST',
+      body: JSON.stringify({ email, ...(new_email ? { new_email } : {}) }),
     });
   },
 
@@ -137,6 +178,13 @@ export const authApi = {
     return apiRequest<MessageResponse>(API_ENDPOINTS.auth.resetPassword, {
       method: 'POST',
       body: JSON.stringify({ token, password }),
+    });
+  },
+
+  async verifyEmail({ token }: VerifyEmailRequest) {
+    return apiRequest<MessageResponse>(API_ENDPOINTS.auth.verifyEmail, {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     });
   },
 };
@@ -190,6 +238,13 @@ export type JobPosting = {
   updated_at?: string;
 };
 
+type JobAddressUpsert = {
+  city_id: number;
+  district_id: number | null;
+  address: string;
+  metro_station_ids: number[];
+};
+
 export const jobsApi = {
   async listCompanyJobs(params?: { page?: number; page_size?: number; search?: string }) {
     const qs = new URLSearchParams();
@@ -225,5 +280,54 @@ export const jobsApi = {
   },
   async getCompanyJob(jobId: number) {
     return apiRequest<JobPosting>(API_ENDPOINTS.companies.jobById(jobId), { method: 'GET' });
+  },
+
+  async replaceAddresses(jobId: number, addresses: JobAddressUpsert[]) {
+    return apiRequest<{ message?: string }>(API_ENDPOINTS.jobAddresses(jobId), {
+      method: 'PUT',
+      body: JSON.stringify({ addresses }),
+    });
+  },
+};
+
+// Chat API
+import { ChatRoomSummary, ChatMessage, ChatMessagesResponse } from '../types/chat';
+
+export const chatApi = {
+  async getRooms(onlyUnread = false) {
+    const qs = onlyUnread ? '?only_unread=true' : '';
+    return apiRequest<ChatRoomSummary[]>(`${API_ENDPOINTS.chat.rooms}${qs}`, {
+      method: 'GET',
+    });
+  },
+
+  async getRoomByApplicationId(applicationId: number) {
+    return apiRequest<ChatRoomSummary>(API_ENDPOINTS.chat.roomByApplicationId(applicationId), {
+      method: 'GET',
+    });
+  },
+  
+  async getRoomById(roomId: number) {
+    return apiRequest<ChatRoomSummary>(API_ENDPOINTS.chat.roomById(roomId), {
+      method: 'GET',
+    });
+  },
+
+  async getMessages(roomId: number, limit?: number, offset?: number) {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    if (offset) params.set('offset', String(offset));
+    
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return apiRequest<ChatMessagesResponse>(`${API_ENDPOINTS.chat.messages(roomId)}${qs}`, {
+      method: 'GET',
+    });
+  },
+
+  async sendMessage(roomId: number, messageText: string) {
+    return apiRequest<ChatMessage>(API_ENDPOINTS.chat.messages(roomId), {
+      method: 'POST',
+      body: JSON.stringify({ message_text: messageText }),
+    });
   },
 };

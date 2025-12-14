@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../utils/api';
-import { RegisterRequest } from '../types/auth';
 
 export default function Register() {
   const router = useRouter();
@@ -40,8 +39,9 @@ export default function Register() {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
-        localStorage.setItem('token', response.data.token);
-        router.push('/');
+        // НЕ сохраняем токен - пользователь должен сначала подтвердить email
+        // Перенаправляем на страницу подтверждения email
+        router.push(`/register/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (err) {
       setError('Произошла ошибка при регистрации');

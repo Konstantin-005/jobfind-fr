@@ -37,6 +37,7 @@ export interface CompanyProfile {
   company_name: string;
   brand_name?: string;
   description?: string;
+  email?: string;
   website_url?: string;
   logo_url?: string;
   founded_year?: number;

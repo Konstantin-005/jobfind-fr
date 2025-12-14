@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { API_ENDPOINTS, API_BASE_URL } from "../../config/api";
-import employmentTypes from "../../config/employment_types_202505222228.json";
-import workFormats from "../../config/work_formats_202505222228.json";
-import educationTypes from "../../config/education_types_202505242225.json";
-import { uploadFile } from "../../utils/api";
+import { API_ENDPOINTS, API_BASE_URL } from "@/app/config/api";
+import employmentTypes from "@/app/config/employment_types_202505222228.json";
+import workFormats from "@/app/config/work_formats_202505222228.json";
+import educationTypes from "@/app/config/education_types_202505242225.json";
+import { uploadFile, deleteFile } from "@/app/utils/api";
+import RichTextEditor from "@/app/components/RichTextEditor";
 
 // Месяцы для select
 const months = [
@@ -144,15 +145,17 @@ function TitlePhotoBlock({ form, photoPreview, onEdit }: { form: any, photoPrevi
   );
 }
 
-function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, photoPreview: string | null, onClose: () => void, onSave: (data: any, photo: File | null) => void }) {
+function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, photoPreview: string | null, onClose: () => void, onSave: (data: any, photo: File | null, deletePhoto?: boolean) => void }) {
   const [title, setTitle] = useState(form.title);
   const [salary, setSalary] = useState(form.salary_expectation);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(photoPreview);
+  const [photoDeleted, setPhotoDeleted] = useState(false);
 
   const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     setPhoto(file);
+    setPhotoDeleted(false);
     if (file) {
       const reader = new FileReader();
       reader.onload = e => setPreview(e.target?.result as string);
@@ -160,6 +163,12 @@ function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, p
     } else {
       setPreview(null);
     }
+  };
+
+  const handleDeletePhoto = () => {
+    setPhoto(null);
+    setPreview(null);
+    setPhotoDeleted(true);
   };
 
   return (
@@ -206,7 +215,7 @@ function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, p
                 </label>
               </div>
               {preview && (
-                <button className="text-sm text-red-500 underline ml-2" onClick={() => { setPhoto(null); setPreview(null); }}>Удалить фото</button>
+                <button className="text-sm text-red-500 underline ml-2" onClick={handleDeletePhoto}>Удалить фото</button>
               )}
             </div>
           </div>
@@ -214,7 +223,7 @@ function TitlePhotoModal({ form, photoPreview, onClose, onSave }: { form: any, p
         <div className="flex justify-end gap-4 mt-8">
           <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
           <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => {
-            onSave({ title, salary_expectation: salary }, photo);
+            onSave({ title, salary_expectation: salary }, photo, photoDeleted);
 
           }}>Сохранить</button>
         </div>
@@ -243,7 +252,7 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
       start_year: experience?.start_year || currentYear,
       end_month: experience?.end_month || null,
       end_year: experience?.end_year || null,
-      is_current: experience?.is_current || true, // По умолчанию текущее место работы
+      is_current: experience?.is_current ?? true, // По умолчанию текущее место работы
       responsibilities: experience?.responsibilities || '',
       companySuggestions: [],
       citySuggestions: [],
@@ -256,6 +265,7 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -306,7 +316,12 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Ошибка сохранения');
+        const errorMessage = errorData.message || 'Ошибка сохранения';
+        // Перевод ошибок с бэкенда
+        const translatedMessage = errorMessage === 'Work experience periods overlap with another entry' 
+          ? 'Периоды опыта работы пересекаются с другой записью' 
+          : errorMessage;
+        throw new Error(translatedMessage);
       }
       
       onSaved();
@@ -404,8 +419,12 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
     }));
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Удалить этот опыт работы?')) return;
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -432,28 +451,46 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
         <div className="space-y-4 mb-6">
           <div className="mb-4 relative z-10">
             <div className="text-base font-medium mb-2">Компания</div>
-            <input 
-              type="text" 
-              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" 
-              value={localExp.company_name} 
-              onChange={e => handleCompanyInput(e.target.value)} 
-              placeholder="Название компании" 
-              autoComplete="off"
-            />
-            {localExp.isLoadingCompany && <div className="absolute right-4 top-3">...</div>}
-            {localExp.companySuggestions.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                {localExp.companySuggestions.map(company => (
-                  <li
-                    key={company.company_id}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleCompanySelect(company)}
-                  >
-                    {company.company_name} {company.brand_name && <span className="text-gray-400">({company.brand_name})</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="relative">
+              <input 
+                type="text" 
+                className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base" 
+                value={localExp.company_name} 
+                onChange={e => handleCompanyInput(e.target.value)} 
+                placeholder="Название компании" 
+                autoComplete="off"
+                readOnly={!!localExp.company_id}
+                style={{ wordBreak: 'break-word' }}
+              />
+              {localExp.company_id && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                  onClick={() => {
+                    setLocalExp(exp => ({ ...exp, company_name: "", company_id: undefined }));
+                  }}
+                  tabIndex={-1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              {localExp.isLoadingCompany && <div className="absolute right-4 top-3">...</div>}
+              {localExp.companySuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                  {localExp.companySuggestions.map(company => (
+                    <li
+                      key={company.company_id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleCompanySelect(company)}
+                    >
+                      {company.company_name} {company.brand_name && <span className="text-gray-400">({company.brand_name})</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
           <div className="mb-4 relative">
             <div className="text-base font-medium mb-2">Город</div>
@@ -500,28 +537,46 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
           </div>
           <div className="mb-4 relative">
             <div className="text-base font-medium mb-2">Должность</div>
-            <input
-              type="text"
-              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base"
-              placeholder="Должность"
-              value={localExp.position}
-              onChange={e => handleProfessionInput(e.target.value)}
-              autoComplete="off"
-            />
-            {localExp.isLoadingProfession && <div className="absolute right-4 top-3">...</div>}
-            {localExp.professionSuggestions.length > 0 && (
-              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
-                {localExp.professionSuggestions.map(prof => (
-                  <li
-                    key={prof.profession_id}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleProfessionSelect(prof)}
-                  >
-                    {prof.name}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="relative">
+              <input
+                type="text"
+                className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 pr-10 text-base"
+                placeholder="Должность"
+                value={localExp.position}
+                onChange={e => handleProfessionInput(e.target.value)}
+                autoComplete="off"
+                readOnly={!!localExp.profession_id}
+                style={{ wordBreak: 'break-word' }}
+              />
+              {localExp.profession_id && (
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center"
+                  onClick={() => {
+                    setLocalExp(exp => ({ ...exp, position: "", profession_id: undefined }));
+                  }}
+                  tabIndex={-1}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              {localExp.isLoadingProfession && <div className="absolute right-4 top-3">...</div>}
+              {localExp.professionSuggestions.length > 0 && (
+                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+                  {localExp.professionSuggestions.map(prof => (
+                    <li
+                      key={prof.profession_id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleProfessionSelect(prof)}
+                    >
+                      {prof.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
           <div className="mb-4">
             <div className="text-base font-medium mb-2">Период работы</div>
@@ -542,11 +597,15 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
               <label className="flex items-center">
                 <input type="checkbox" className="mr-2" checked={localExp.is_current} onChange={e => {
                   const isCurrent = e.target.checked;
+                  const currentDate = new Date();
+                  const currentMonth = currentDate.getMonth() + 1;
+                  const currentYear = currentDate.getFullYear();
+                  
                   setLocalExp(exp => ({ 
                     ...exp, 
                     is_current: isCurrent,
-                    end_year: isCurrent ? null : exp.end_year,
-                    end_month: isCurrent ? null : exp.end_month
+                    end_year: isCurrent ? null : (exp.end_year || currentYear),
+                    end_month: isCurrent ? null : (exp.end_month || currentMonth)
                   }));
                 }} />
                 По настоящее время
@@ -555,7 +614,11 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
           </div>
           <div className="mb-4">
             <div className="text-base font-medium mb-2">Обязанности</div>
-            <textarea className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" rows={4} value={localExp.responsibilities} onChange={e => setLocalExp(exp => ({ ...exp, responsibilities: e.target.value }))} placeholder="Описание обязанностей" />
+            <RichTextEditor
+              value={localExp.responsibilities}
+              onChange={(value) => setLocalExp(exp => ({ ...exp, responsibilities: value }))}
+              placeholder="Описание обязанностей"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-4 mt-8">
@@ -563,6 +626,28 @@ function WorkExperienceItemModal({ experience, resumeId, onClose, onSaved, onDel
           <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={handleSave} disabled={isLoading}>{isLoading ? 'Сохранение...' : 'Сохранить'}</button>
           {experience?.experience_id && <button className="px-6 py-2 rounded-lg bg-red-600 text-white" onClick={handleDelete} disabled={isLoading}>{isLoading ? 'Удаление...' : 'Удалить'}</button>}
         </div>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Подтвердите действие</h3>
+              <p className="text-gray-600 mb-6">Удалить этот опыт работы?</p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)} 
+                  className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={confirmDelete} 
+                  className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {isErrorModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -672,6 +757,7 @@ function EducationItemModal({ education, resumeId, onClose, onSaved, onDeleted }
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -715,8 +801,12 @@ function EducationItemModal({ education, resumeId, onClose, onSaved, onDeleted }
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Удалить этот период обучения?')) return;
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -856,6 +946,28 @@ function EducationItemModal({ education, resumeId, onClose, onSaved, onDeleted }
             )}
           </div>
         </form>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Подтвердите действие</h3>
+              <p className="text-gray-600 mb-6">Удалить этот период обучения?</p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)} 
+                  className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                >
+                  Отмена
+                </button>
+                <button 
+                  onClick={confirmDelete} 
+                  className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {isErrorModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -893,6 +1005,21 @@ function WorkExperienceBlock({ workExperiences, resumeId, onUpdated }: { workExp
     setShowModal(true);
   };
 
+  // Сортировка опыта работы: текущие места работы первыми, затем по убыванию даты начала
+  const sortedExperiences = [...workExperiences].sort((a, b) => {
+    // Текущие места работы (is_current) идут первыми
+    if (a.is_current && !b.is_current) return -1;
+    if (!a.is_current && b.is_current) return 1;
+    
+    // Сортировка по году начала (убывание)
+    if (a.start_year !== b.start_year) {
+      return (b.start_year || 0) - (a.start_year || 0);
+    }
+    
+    // Если годы равны, сортировка по месяцу начала (убывание)
+    return (b.start_month || 0) - (a.start_month || 0);
+  });
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4">
@@ -909,14 +1036,13 @@ function WorkExperienceBlock({ workExperiences, resumeId, onUpdated }: { workExp
         <div className="text-gray-500 text-sm">Нет добавленного опыта работы</div>
       ) : (
         <div className="space-y-4">
-          {workExperiences.map((exp) => (
-            <div key={exp.experience_id} className="border rounded-lg p-4 relative">
+          {sortedExperiences.map((exp, index) => (
+            <div key={exp.experience_id || `exp-${index}`} className="border rounded-lg p-4 relative">
               <div className="font-medium">{exp.position || 'Должность не указана'}</div>
               <div className="text-gray-600">{exp.company_name || 'Компания не указана'}</div>
               <div className="text-sm text-gray-500">
                 {exp.start_month ? `${months[exp.start_month - 1]} ` : ''}
-                {exp.start_year || ''} - 
-                {exp.is_current ? ' Настоящее время' : 
+                {exp.start_year || ''} - {exp.is_current ? 'Настоящее время' : 
                   `${exp.end_month ? months[exp.end_month - 1] + ' ' : ''}${exp.end_year || ''}`}
               </div>
               <button 
@@ -964,6 +1090,16 @@ function EducationBlock({ educations, resumeId, onUpdated }: { educations: any[]
     setShowModal(true);
   };
 
+  // Сортировка образования: текущее обучение первым, затем по убыванию года окончания
+  const sortedEducations = [...educations].sort((a, b) => {
+    // Текущее обучение (is_current) идет первым
+    if (a.is_current && !b.is_current) return -1;
+    if (!a.is_current && b.is_current) return 1;
+    
+    // Сортировка по году окончания (убывание)
+    return (b.end_year || 0) - (a.end_year || 0);
+  });
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4">
@@ -980,8 +1116,8 @@ function EducationBlock({ educations, resumeId, onUpdated }: { educations: any[]
         <div className="text-gray-500 text-sm">Нет добавленного образования</div>
       ) : (
         <div className="space-y-4">
-          {educations.map((edu) => (
-            <div key={edu.education_id} className="border rounded-lg p-4 relative">
+          {sortedEducations.map((edu, index) => (
+            <div key={edu.education_id || `edu-${index}`} className="border rounded-lg p-4 relative">
               <div className="font-medium">{edu.institution || 'Учебное заведение не указано'}</div>
               <div className="text-gray-600">{edu.specialization || 'Специальность не указана'}</div>
               {edu.end_year && (
@@ -1027,7 +1163,10 @@ function AboutBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
           <PencilIcon />
         </button>
       </div>
-      <div className="text-base text-gray-800 whitespace-pre-line min-h-[40px]">{form.professional_summary || <span className="text-gray-400">Нет информации</span>}</div>
+      <div 
+        className="text-base text-gray-800 min-h-[40px] prose prose-sm max-w-none"
+        dangerouslySetInnerHTML={{ __html: form.professional_summary || '<span class="text-gray-400">Нет информации</span>' }}
+      />
     </div>
   );
 }
@@ -1038,13 +1177,13 @@ function AboutModal({ form, onClose, onSave }: { form: any, onClose: () => void,
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white rounded-xl p-8 w-full max-w-md relative">
         <h2 className="text-xl font-bold mb-6">Редактировать о себе</h2>
-        <textarea
-          className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition mb-6"
-          rows={8}
-          value={summary}
-          onChange={e => setSummary(e.target.value)}
-          placeholder="Опишите свой опыт, навыки и достижения"
-        />
+        <div className="mb-6">
+          <RichTextEditor
+            value={summary}
+            onChange={(value) => setSummary(value)}
+            placeholder="Опишите свой опыт, навыки и достижения"
+          />
+        </div>
         <div className="flex justify-end gap-4 mt-8">
           <button className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700" onClick={onClose}>Отмена</button>
           <button className="px-6 py-2 rounded-lg bg-blue-600 text-white" onClick={() => { onSave({ professional_summary: summary }); onClose(); }}>Сохранить</button>
@@ -1233,6 +1372,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFileName, setPhotoFileName] = useState<string | null>(null);
+  const [currentPhotoName, setCurrentPhotoName] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     profession_id: undefined as number | undefined,
@@ -1376,48 +1516,24 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
   const handlePublish = async () => {
     await handlePartialSave({}, null);
     setIsErrorModalOpen(false);
-    router.push(`/resume/${params.id}`);
+    router.push(`/user/resume/${params.id}`);
   };
 
-  const handlePartialSave = async (updatedData: any, newPhoto: File | null) => {
+  const handlePartialSave = async (updatedData: any, newPhoto: File | null, deletePhoto: boolean = false) => {
     const token = localStorage.getItem('token');
-    const formData = new FormData();
 
-    const keyMap: { [key: string]: string } = {
-      hideNameAndPhoto: 'hide_full_name',
-      hidePhone: 'hide_phone',
-      hideEmail: 'hide_email',
-      hideCompanyNames: 'hide_experience',
-      hideOtherContacts: 'hide_other_contacts',
-      phoneComment: 'phone_comment',
-      website: 'website_url',
-      hasWhatsapp: 'has_whatsapp',
-      hasTelegram: 'has_telegram',
-    };
-
-    // Добавляем данные формы
+    // Объединяем данные формы с обновлениями
     const resumeData = { ...form, ...updatedData };
-    Object.keys(resumeData).forEach(key => {
-      const backendKey = keyMap[key] || key;
-      const value = resumeData[key as keyof typeof resumeData];
 
-      if (key === 'work_experiences' || key === 'educations' || key === 'photo') {
-        // Исключаем сложные объекты и фото, которое обрабатывается отдельно
-      } else if (Array.isArray(value)) {
-        value.forEach(item => formData.append(`${backendKey}[]`, String(item)));
-      } else if (value !== null && value !== undefined) {
-        formData.append(backendKey, String(value));
-      }
-    });
-
-    // Добавляем новое фото, если оно есть: сначала загружаем через /api/upload и передаем только имя файла
+    // Загружаем фото, если оно есть
+    let photoFileName = null;
     if (newPhoto) {
       try {
         const uploadRes = await uploadFile(newPhoto, 'photo');
         if (uploadRes.error || !uploadRes.data?.fileName) {
           throw new Error(uploadRes.error || 'Не удалось загрузить фото');
         }
-        formData.append('photo_url', uploadRes.data.fileName);
+        photoFileName = uploadRes.data.fileName;
       } catch (e: any) {
         setErrorMessage(e.message || 'Ошибка загрузки фото');
         setIsErrorModalOpen(true);
@@ -1425,16 +1541,64 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       }
     }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
+    // Формируем JSON-объект для отправки
+    const jsonData: any = {
+      title: resumeData.title ? resumeData.title : null,
+      profession_id: resumeData.profession_id ? resumeData.profession_id : null,
+      salary_expectation: resumeData.salary_expectation ? Number(resumeData.salary_expectation) : null,
+      employment_type_ids: resumeData.employment_type_ids || [],
+      work_format_ids: resumeData.work_format_ids || [],
+      business_trips: resumeData.business_trips ? resumeData.business_trips : null,
+      education_type_id: resumeData.education_type_id ? resumeData.education_type_id : null,
+      professional_summary: resumeData.professional_summary ? resumeData.professional_summary : null,
+      phone: resumeData.phone ? String(resumeData.phone).replace(/^\+/, '') : null,
+      phone_comment: resumeData.phoneComment ? resumeData.phoneComment : null,
+      has_whatsapp: resumeData.hasWhatsapp || false,
+      has_telegram: resumeData.hasTelegram || false,
+      email: resumeData.email ? resumeData.email : null,
+      website_url: resumeData.website ? resumeData.website : null,
+      hide_full_name: resumeData.hideNameAndPhoto || false,
+      hide_phone: resumeData.hidePhone || false,
+      hide_email: resumeData.hideEmail || false,
+      hide_other_contacts: resumeData.hideOtherContacts || false,
+      hide_experience: resumeData.hideCompanyNames || false,
+      visibility: resumeData.visibility || 'public',
+    };
+
+    // Добавляем photo_url: новое фото, null при удалении, или не трогаем
+    if (photoFileName) {
+      jsonData.photo_url = photoFileName;
+      // Если загрузили новое фото и было старое - удаляем старое
+      if (currentPhotoName && currentPhotoName !== photoFileName) {
+        try {
+          await deleteFile(currentPhotoName, 'photo');
+        } catch (e) {
+          console.error('Ошибка при удалении старого фото:', e);
         }
-      );
+      }
+      setCurrentPhotoName(photoFileName);
+    } else if (deletePhoto) {
+      jsonData.photo_url = null;
+      // Удаляем файл физически
+      if (currentPhotoName) {
+        try {
+          await deleteFile(currentPhotoName, 'photo');
+          setCurrentPhotoName(null);
+        } catch (e) {
+          console.error('Ошибка при удалении фото:', e);
+        }
+      }
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/resumes/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonData),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -1540,6 +1704,15 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
         });
         if (resume.photo_url) {
           const isPath = typeof resume.photo_url === 'string' && resume.photo_url.includes('/');
+          // Сохраняем имя файла для возможного удаления
+          if (!isPath) {
+            setCurrentPhotoName(resume.photo_url);
+          } else {
+            // Если это путь, попробуем извлечь имя файла
+            const parts = resume.photo_url.split('/');
+            setCurrentPhotoName(parts[parts.length - 1]);
+          }
+
           const photoUrl = isPath
             ? `${API_BASE_URL}/${resume.photo_url}`
             : `/uploads/photo/${resume.photo_url}`;
@@ -1935,7 +2108,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       if (form.professional_summary) formData.append('professional_summary', form.professional_summary);
       if (form.salary_expectation) formData.append('salary_expectation', form.salary_expectation);
       formData.append('visibility', form.visibility);
-      if (form.phone) formData.append('phone', form.phone);
+      if (form.phone) formData.append('phone', form.phone.replace(/^\+/, ''));
       if (form.email) formData.append('email', form.email);
       if (form.website) formData.append('website_url', form.website);
       formData.append('has_whatsapp', String(form.hasWhatsapp));
@@ -2033,7 +2206,7 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       if (form.professional_summary) formData.append('professional_summary', form.professional_summary);
       if (form.salary_expectation) formData.append('salary_expectation', form.salary_expectation);
       formData.append('visibility', form.visibility);
-      if (form.phone) formData.append('phone', form.phone);
+      if (form.phone) formData.append('phone', form.phone.replace(/^\+/, ''));
       if (form.email) formData.append('email', form.email);
       if (form.website) formData.append('website_url', form.website);
       formData.append('has_whatsapp', String(form.hasWhatsapp));
@@ -2145,8 +2318,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
             form={form}
             photoPreview={photoPreview}
             onClose={() => setIsTitlePhotoModalOpen(false)}
-            onSave={(data, newPhoto) => {
-              handlePartialSave(data, newPhoto);
+            onSave={(data, newPhoto, deletePhoto) => {
+              handlePartialSave(data, newPhoto, deletePhoto);
               setIsTitlePhotoModalOpen(false);
             }}
           />
