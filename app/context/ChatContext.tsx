@@ -41,7 +41,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
     const { data } = await chatApi.getRooms();
     if (data) {
-      const count = data.reduce((acc, room) => acc + room.unread_count, 0);
+      const rooms = Array.isArray(data) ? data : [];
+      const count = rooms.reduce((acc, room) => acc + room.unread_count, 0);
       setTotalUnread(count);
     }
   };

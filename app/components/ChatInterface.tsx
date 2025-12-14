@@ -70,7 +70,7 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
   };
 
   const formatRoomDate = (value?: string | null) => {
-    if (!value) return '';
+    if (!value || typeof value !== 'string') return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
 
@@ -128,9 +128,10 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
       setLoadingRooms(true);
       const { data, error } = await chatApi.getRooms(onlyUnread);
       if (data) {
-        setRooms(data);
+        setRooms(Array.isArray(data) ? data : []);
       } else {
         console.error('Failed to load rooms:', error);
+        setRooms([]);
       }
       setLoadingRooms(false);
     };
@@ -158,11 +159,14 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
       setLoadingMessages(true);
       const { data, error } = await chatApi.getMessages(selectedRoomId);
       if (data) {
-        const msgs = Array.isArray(data.messages) ? data.messages : [];
+        const envelope = Array.isArray(data)
+          ? { messages: data, job: undefined, resume: undefined }
+          : data;
+        const msgs = Array.isArray((envelope as any)?.messages) ? (envelope as any).messages : [];
         // API возвращает отсортированные по DESC (новые сверху), развернем для отображения снизу вверх
         setMessages([...msgs].reverse());
-        setJobContext(data.job);
-        setResumeContext(data.resume);
+        setJobContext((envelope as any)?.job);
+        setResumeContext((envelope as any)?.resume);
       } else {
         console.error('Failed to load messages:', error);
         setMessages([]);
@@ -191,9 +195,10 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
 
   // Скролл к низу при новых сообщениях (только если пользователь у низа)
   useEffect(() => {
-    if (isAtBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (!isAtBottom) return;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }, [messages, isTyping, isAtBottom]);
 
   // WebSocket подключение (для выбранной комнаты)
@@ -400,18 +405,18 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
   }, []);
 
   return (
-    <div className="flex h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-col md:flex-row">
+    <div className="flex h-full min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex-col md:flex-row">
       {/* Список комнат */}
       <div
-        className={`bg-gray-50/50 border-gray-100 flex flex-col h-full overflow-hidden shrink-0 ${
+        className={`bg-gray-50/50 border-gray-100 flex flex-col h-full overflow-hidden ${
           isMobile
             ? selectedRoomId
               ? 'hidden'
               : 'flex'
             : 'flex'
-        } ${isMobile ? 'w-full' : 'md:w-[40%] lg:w-[35%] xl:w-[30%] border-r'}`}
+        } ${isMobile ? 'w-full' : 'md:w-[45%] lg:w-[42%] xl:w-[42%] border-r shrink-0'}`}
       >
-        <div className="p-4 border-b border-gray-100 bg-white z-30 shrink-0">
+        <div className="p-4 border-b border-gray-100 bg-white shrink-0">
           <label className="flex items-center cursor-pointer select-none">
             <input 
               type="checkbox" 
@@ -423,7 +428,7 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
           </label>
         </div>
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
             {loadingRooms ? (
                 <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -492,18 +497,56 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
 
       {/* Область чата */}
       <div
-        className={`flex-1 flex flex-col bg-white ${
+        className={`flex-1 flex flex-col bg-white overflow-hidden min-h-0 ${
           isMobile && !selectedRoomId ? 'hidden' : 'flex'
         }`}
-        style={{ minWidth: isMobile ? '100%' : '55%' }}
+        style={{ minWidth: isMobile ? '100%' : '50%' }}
       >
         {selectedRoomId ? (
             <>
                 {/* Шапка чата + карточка контекста (для соискателя) */}
                 <div className="sticky top-0 z-20 bg-white shadow-sm">
-                  <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {isMobile && (
+                  {role !== 'job_seeker' ? (
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {isMobile && (
+                          <button
+                            onClick={handleBackToList}
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
+                            aria-label="Назад к списку чатов"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+                        )}
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
+                          {buildPhotoSrc(activeRoom?.photo_url || resumeContext?.photo_url) ? (
+                            <img
+                              src={buildPhotoSrc(activeRoom?.photo_url || resumeContext?.photo_url) || undefined}
+                              alt={resumeContext?.applicant_full_name || activeRoom?.applicant_full_name || 'Соискатель'}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs font-semibold text-gray-500">
+                              {getInitials(resumeContext?.applicant_full_name || activeRoom?.applicant_full_name)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-gray-800 truncate">
+                            {resumeContext?.applicant_full_name || activeRoom?.applicant_full_name || 'Соискатель'}
+                          </h3>
+                          <p className="text-xs text-gray-500 truncate">
+                            {activeRoom?.job_title || jobContext?.job_title}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    isMobile && (
+                      <div className="p-2 border-b border-gray-100">
                         <button
                           onClick={handleBackToList}
                           className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
@@ -513,21 +556,33 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                           </svg>
                         </button>
-                      )}
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-gray-800 truncate">
-                            {role === 'job_seeker'
-                              ? jobContext?.company_brand_name || jobContext?.company_name || 'Чат'
-                              : activeRoom?.applicant_full_name || 'Чат'}
-                        </h3>
-                        <p className="text-xs text-gray-500 truncate">
-                             {role === 'job_seeker'
-                               ? 'Вакансия'
-                               : activeRoom?.job_title || jobContext?.job_title}
-                        </p>
+                      </div>
+                    )
+                  )}
+
+                  {role !== 'job_seeker' && resumeContext?.link_uuid && (
+                    <div className="px-4 pb-4 border-b border-gray-100 bg-white">
+                      <div className="border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 bg-white">
+                        <div className="min-w-0">
+                          <p className="text-xs text-gray-500">Резюме</p>
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {resumeContext.resume_title}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/resume/${resumeContext.link_uuid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 whitespace-nowrap"
+                        >
+                          Перейти
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h10M19 5v10M19 5l-14 14" />
+                          </svg>
+                        </Link>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {role === 'job_seeker' && jobContext && (
                     <div className="px-4 pb-4 border-b border-gray-100 bg-white space-y-3">
@@ -550,7 +605,6 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
                           <p className="text-sm font-semibold text-gray-900 truncate">
                             {jobContext.company_brand_name || jobContext.company_name || 'Компания'}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">Был(а) онлайн</p>
                         </div>
                       </div>
 
@@ -582,7 +636,7 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
                 <div
                   ref={messagesContainerRef}
                   onScroll={handleMessagesScroll}
-                  className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"
+                  className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50"
                 >
                   {loadingMessages ? (
                       <div className="flex justify-center py-8">
@@ -681,7 +735,10 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
                             type="button"
                             onClick={() => {
                                 setIsAtBottom(true);
-                                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                                const container = messagesContainerRef.current;
+                                if (container) {
+                                  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                                }
                                 setHasNewMessages(false);
                             }}
                             className="text-xs px-3 py-1 rounded-full bg-blue-600 text-white shadow hover:bg-blue-700 transition-colors"

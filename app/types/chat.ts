@@ -37,7 +37,8 @@ export interface ChatJobContext {
 }
 
 export interface ChatResumeContext {
-  resume_id: number;
+  resume_id?: number;
+  link_uuid?: string;
   resume_title: string;
   applicant_full_name?: string;
   photo_url?: string | null;

@@ -10,7 +10,7 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-24 pb-12 flex justify-center">
+      <div className="h-screen bg-gray-50 pt-24 pb-4 flex justify-center items-center">
          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -36,10 +36,10 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Сообщения</h1>
-        <div className="h-[600px] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="fixed inset-0 top-[60px] bg-gray-50 flex flex-col overflow-hidden">
+      <div className="max-w-[1920px] w-full mx-auto px-4 flex-1 flex flex-col min-h-0">
+        <h1 className="text-2xl font-bold text-gray-900 py-3 shrink-0">Сообщения</h1>
+        <div className="flex-1 min-h-0 pb-4 flex flex-col">
           <ChatInterface />
         </div>
       </div>

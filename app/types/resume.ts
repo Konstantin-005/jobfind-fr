@@ -3,6 +3,7 @@ export interface Resume {
   photo_url?: string | null;
   title: string;
   salary_expectation?: number | null;
+  professional_summary?: string | null;
   link_uuid: string;
   phone?: string | null;
   email?: string | null;

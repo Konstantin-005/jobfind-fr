@@ -41,7 +41,7 @@ export default function ChatFloatingButton() {
             onClick={closeChat}
           />
           
-          <div className="pointer-events-auto w-full sm:w-[600px] h-[80vh] sm:h-[600px] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up">
+          <div className="pointer-events-auto w-full sm:w-[70vw] h-[80vh] sm:h-[600px] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden transform transition-all animate-fade-in-up">
             <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
               <h2 className="text-lg font-bold text-gray-900">Чаты</h2>
               <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export default function ChatFloatingButton() {
               </div>
             </div>
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 {/* Используем тот же интерфейс, но стилизуем под модалку (убираем лишние отступы если надо) */}
                <ChatInterface initialRoomId={initialRoomId || undefined} /> 
             </div>
