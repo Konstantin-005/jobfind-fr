@@ -23,6 +23,8 @@ jobs:
         run: npm ci
 
       - name: Build application
+        env:
+          NEXT_PUBLIC_WS_BASE_URL: wss://e77.top
         run: npm run build
 
       - name: Create deployment package

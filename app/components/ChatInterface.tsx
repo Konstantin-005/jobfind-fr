@@ -214,12 +214,20 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // В dev-окружении фронтенд крутится на 4000, а Go-бэкенд (Gin) по умолчанию слушает 8081.
-    // Жёстко указываем backend-хост для WebSocket-подключения.
-    const backendHost = 'localhost:8081';
-    // URL для WS: /ws/chat/{room_id} на порту Go-бэкенда
-    const wsUrl = `${protocol}//${backendHost}/ws/chat/${selectedRoomId}?token=${encodeURIComponent(`Bearer ${token}`)}`;
+    const envWsBase = process.env.NEXT_PUBLIC_WS_BASE_URL;
+    const fallbackHttpBase = `${window.location.protocol}//localhost:8081`;
+    const httpBase = (envWsBase && envWsBase.trim().length > 0 ? envWsBase.trim() : fallbackHttpBase).replace(/\/+$/, '');
+    const wsBase = httpBase.startsWith('wss://')
+      ? httpBase
+      : httpBase.startsWith('ws://')
+        ? httpBase
+        : httpBase.startsWith('https://')
+          ? `wss://${httpBase.slice('https://'.length)}`
+          : httpBase.startsWith('http://')
+            ? `ws://${httpBase.slice('http://'.length)}`
+            : `ws://${httpBase}`;
+
+    const wsUrl = `${wsBase}/ws/chat/${selectedRoomId}?token=${encodeURIComponent(`Bearer ${token}`)}`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

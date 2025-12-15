@@ -228,11 +228,9 @@ export default function ProfilePageClient() {
       <h1 className="text-3xl font-bold mb-8">Данные профиля</h1>
       {fromResumeAdd && (
         <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded">
-          Видимость ФИО для работодателей можно будет указать в настройках резюме.
+          Видимость ФИО и контактов для работодателей можно будет указать в настройках резюме.
         </div>
       )}
-      {error && <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 text-red-800 rounded">{error}</div>}
-      {success && <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 text-green-800 rounded">{success}</div>}
       <form className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4" onSubmit={handleSubmit}>
         <label className="font-semibold text-sm flex items-center gap-1">Статус поиска работы <span className="text-red-500">*</span></label>
         <select name="job_search_status" value={form.job_search_status} onChange={handleChange} required className="border rounded-lg px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition placeholder-gray-400">
@@ -312,10 +310,13 @@ export default function ProfilePageClient() {
             </div>
           )}
         </div>
+
         <div className="md:col-span-2 flex justify-end mt-6">
           <button type="submit" className="bg-[#2B81B0] text-white px-8 py-3 rounded-lg font-semibold shadow hover:bg-[#18608a] hover:shadow-lg transition text-lg">Сохранить</button>
         </div>
+        {error && <div className="md:col-span-2 mt-4 p-3 bg-red-50 border-l-4 border-red-400 text-red-800 rounded">{error}</div>}
+        {success && <div className="md:col-span-2 mt-4 p-3 bg-green-50 border-l-4 border-green-400 text-green-800 rounded">{success}</div>}
       </form>
     </div>
   );
-} 
+}
