@@ -1,19 +1,6 @@
-'use client'
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function Home() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const router = useRouter()
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (searchTerm) {
-      router.push(`/vacancy?query=${encodeURIComponent(searchTerm)}`)
-    }
-  }
-
   const popularSearches = [
     'Разработчик Python',
     'Frontend Developer',
@@ -51,7 +38,7 @@ export default function Home() {
             </p>
 
             {/* Поисковая форма */}
-            <form className="max-w-2xl mx-auto mb-8" onSubmit={handleSearch}>
+            <form className="max-w-2xl mx-auto mb-8" method="get" action="/vacancy">
               <div className="flex flex-col md:flex-row gap-3 bg-white rounded-xl shadow-lg p-2 border border-gray-200">
                 <div className="flex-1 relative">
                   <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,8 +48,7 @@ export default function Home() {
                     type="text"
                     placeholder="Профессия, компания или навык"
                     className="w-full pl-10 pr-4 py-4 text-lg rounded-lg border-0 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    name="query"
                   />
                 </div>
                 <button
@@ -80,14 +66,14 @@ export default function Home() {
             {/* Популярные запросы */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
               <span className="text-sm text-gray-500 mr-2">Популярные запросы:</span>
-              {popularSearches.map((search, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSearchTerm(search)}
+              {popularSearches.map((search) => (
+                <Link
+                  key={search}
+                  href={`/vacancy?query=${encodeURIComponent(search)}`}
                   className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition px-2 py-1 rounded"
                 >
                   {search}
-                </button>
+                </Link>
               ))}
             </div>
           </div>

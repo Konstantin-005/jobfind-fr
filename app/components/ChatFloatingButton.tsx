@@ -12,7 +12,7 @@ export default function ChatFloatingButton() {
   const { isChatOpen, toggleChat, closeChat, totalUnread, initialRoomId } = useChat();
 
   if (role === 'guest') return null;
-  if (pathname === '/chat') return null;
+  if (pathname === '/chat' || pathname?.startsWith('/chat/')) return null;
 
   return (
     <>

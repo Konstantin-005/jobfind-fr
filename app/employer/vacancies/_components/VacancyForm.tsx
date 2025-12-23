@@ -18,12 +18,31 @@ import { API_ENDPOINTS } from '../../../config/api';
 import employmentTypesData from '../../../config/employment_types_202505222228.json';
 import educationTypesData from '../../../config/education_types_202505242225.json';
 import workFormatsData from '../../../config/work_formats_202505222228.json';
-import workScheduleTypesData from '../../../config/work_schedule_types_20251028.json';
 import workSchedulesData from '../../../config/work_schedules_20251028.json';
 import workDayLengthsData from '../../../config/work_day_lengths_20251028.json';
 import shiftTypesData from '../../../config/shift_types_20251028.json';
+import languagesData from '../../../config/languages_202505172245.json';
+import drivingLicenseData from '../../../config/driving_license_categories_202505172315.json';
 
-type FormState = Partial<JobPosting> & { id?: number };
+type FormExtraFields = {
+  auto_apply?: boolean;
+  accessible_for_disabled?: boolean;
+  cover_letter_required?: boolean;
+  notify_by_email?: boolean;
+  chat_enabled?: boolean;
+  show_contacts?: boolean;
+  is_contract_possible?: boolean;
+  contract_with_ip?: boolean;
+  contract_with_self_employed?: boolean;
+  employment_contract?: boolean;
+  contact_full_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_phone_comment?: string | null;
+  contact_telegram?: string | null;
+};
+
+type FormState = Partial<JobPosting> & FormExtraFields & { id?: number };
 
 type JobUpsertPayload = {
   profession_id?: number;
@@ -32,6 +51,22 @@ type JobUpsertPayload = {
   experience_level?: string;
   work_experience?: string;
   is_contract_possible?: boolean;
+  auto_apply?: boolean;
+  accessible_for_disabled?: boolean;
+  cover_letter_required?: boolean;
+  notify_by_email?: boolean;
+  chat_enabled?: boolean;
+  show_contacts?: boolean;
+  contract_with_ip?: boolean;
+  contract_with_self_employed?: boolean;
+  employment_contract?: boolean;
+  contact_full_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  contact_phone_comment?: string | null;
+  contact_telegram?: string | null;
+  languages?: Array<{ language_id: number; proficiency_level: string }>;
+  driving_license_category_ids?: number[];
   addresses?: { city_id: number; district_id: number | null; address: string; metro_station_ids: number[] }[];
   salary_min?: number;
   salary_max?: number;
@@ -42,7 +77,6 @@ type JobUpsertPayload = {
   employment_type_ids?: number[];
   work_format_ids?: number[];
   work_schedule_ids?: number[];
-  work_schedule_type_ids?: number[];
   day_length_ids?: number[];
   shift_type_ids?: number[];
   education_type_ids?: number[];
@@ -57,6 +91,8 @@ type CityOption = { id: number; name: string };
 type RegionOption = { id: number; name: string; type?: string };
 
 type VacancyAddressFormItem = { city_id: string; city_name?: string; address: string };
+
+type JobLanguageFormItem = { language_id: number | null; proficiency_level: string };
 
 type Props = {
   mode: 'create' | 'edit';
@@ -73,16 +109,21 @@ export default function VacancyForm({ mode, jobId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [form, setForm] = useState<FormState>({ title: '' });
+  const [form, setForm] = useState<FormState>({ title: '' } as FormState);
 
   const [regionIds, setRegionIds] = useState<number[]>([]);
   const [employmentTypeIds, setEmploymentTypeIds] = useState<number[]>([]);
   const [educationTypeIds, setEducationTypeIds] = useState<number[]>([]);
   const [workFormatIds, setWorkFormatIds] = useState<number[]>([]);
-  const [workScheduleTypeIds, setWorkScheduleTypeIds] = useState<number[]>([]);
   const [workScheduleIds, setWorkScheduleIds] = useState<number[]>([]);
   const [dayLengthIds, setDayLengthIds] = useState<number[]>([]);
   const [shiftTypeIds, setShiftTypeIds] = useState<number[]>([]);
+
+  const [drivingLicenseCategoryIds, setDrivingLicenseCategoryIds] = useState<number[]>([]);
+  const [jobLanguages, setJobLanguages] = useState<JobLanguageFormItem[]>([]);
+  const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [newLanguageId, setNewLanguageId] = useState<number | null>(null);
+  const [newLanguageLevel, setNewLanguageLevel] = useState<string>('');
 
   const [addresses, setAddresses] = useState<VacancyAddressFormItem[]>([{ city_id: '', city_name: '', address: '' }]);
   const [addressesTouched, setAddressesTouched] = useState(false);
@@ -107,7 +148,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
   const [isEmploymentOpen, setIsEmploymentOpen] = useState(false);
   const [isEducationOpen, setIsEducationOpen] = useState(false);
   const [isWorkFormatOpen, setIsWorkFormatOpen] = useState(false);
-  const [isWorkScheduleTypeOpen, setIsWorkScheduleTypeOpen] = useState(false);
   const [isWorkScheduleOpen, setIsWorkScheduleOpen] = useState(false);
   const [isDayLengthOpen, setIsDayLengthOpen] = useState(false);
   const [isShiftTypeOpen, setIsShiftTypeOpen] = useState(false);
@@ -129,7 +169,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
   const employmentRef = useRef<HTMLDivElement | null>(null);
   const educationRef = useRef<HTMLDivElement | null>(null);
   const workFormatRef = useRef<HTMLDivElement | null>(null);
-  const workScheduleTypeRef = useRef<HTMLDivElement | null>(null);
   const workScheduleRef = useRef<HTMLDivElement | null>(null);
   const dayLengthRef = useRef<HTMLDivElement | null>(null);
   const shiftTypeRef = useRef<HTMLDivElement | null>(null);
@@ -137,10 +176,19 @@ export default function VacancyForm({ mode, jobId }: Props) {
   const employmentTypes = (employmentTypesData as any)?.employment_types ?? [];
   const educationTypes = (educationTypesData as any)?.education_types ?? [];
   const workFormats = (workFormatsData as any)?.work_formats ?? [];
-  const workScheduleTypes = (workScheduleTypesData as any)?.work_schedule_types ?? [];
   const workSchedules = (workSchedulesData as any)?.work_schedules ?? [];
   const workDayLengths = (workDayLengthsData as any)?.work_day_lengths ?? [];
   const shiftTypes = (shiftTypesData as any)?.shift_types ?? [];
+
+  const PROFICIENCY_LEVELS = [
+    { value: 'A1', label: 'A1 — Начальный' },
+    { value: 'A2', label: 'A2 — Элементарный' },
+    { value: 'B1', label: 'B1 — Средний' },
+    { value: 'B2', label: 'B2 — Выше среднего' },
+    { value: 'C1', label: 'C1 — Продвинутый' },
+    { value: 'C2', label: 'C2 — Владение в совершенстве' },
+    { value: 'native', label: 'Родной' },
+  ];
 
   const salaryFrequencyOptions = [
     { label: 'раз в месяц', value: 'month' },
@@ -166,8 +214,8 @@ export default function VacancyForm({ mode, jobId }: Props) {
     { label: 'без опыта', value: '0' },
     { label: 'до 1 года', value: '0_1' },
     { label: 'от 1 до 3 лет', value: '1_3' },
-    { label: 'от 3 до 6 лет', value: '3_5' },
-    { label: 'более 6 лет', value: 'more_5' },
+    { label: 'от 3 до 5 лет', value: '3_5' },
+    { label: 'более 5 лет', value: 'more_5' },
   ];
 
   const hasCriticalErrors = useMemo(() => {
@@ -265,6 +313,20 @@ export default function VacancyForm({ mode, jobId }: Props) {
         publication_city_id: undefined,
         is_active: true,
         is_contract_possible: false,
+        auto_apply: false,
+        accessible_for_disabled: false,
+        cover_letter_required: false,
+        notify_by_email: false,
+        chat_enabled: true,
+        show_contacts: false,
+        contract_with_ip: false,
+        contract_with_self_employed: false,
+        employment_contract: false,
+        contact_full_name: null,
+        contact_email: null,
+        contact_phone: null,
+        contact_phone_comment: null,
+        contact_telegram: null,
         salary_min: undefined,
         salary_max: undefined,
         salary_currency: 'RUB',
@@ -288,10 +350,14 @@ export default function VacancyForm({ mode, jobId }: Props) {
       setEmploymentTypeIds([]);
       setEducationTypeIds([]);
       setWorkFormatIds([]);
-      setWorkScheduleTypeIds([]);
       setWorkScheduleIds([]);
       setDayLengthIds([]);
       setShiftTypeIds([]);
+      setDrivingLicenseCategoryIds([]);
+      setJobLanguages([]);
+      setShowAddLanguage(false);
+      setNewLanguageId(null);
+      setNewLanguageLevel('');
       setAddresses([{ city_id: '', city_name: '', address: '' }]);
       setAddressesTouched(false);
       return;
@@ -307,38 +373,72 @@ export default function VacancyForm({ mode, jobId }: Props) {
             setError(res.error);
             return;
           }
-          const full = res.data as JobPosting | undefined;
-          if (!full) {
-            setError('Не удалось загрузить данные вакансии.');
-            return;
-          }
+
+          const full = (res.data || {}) as any;
+          const extra = full as unknown as FormExtraFields;
 
           setForm({
-            id: full.job_id,
-            title: full.title,
-            description: full.description,
+            ...(full || {}),
+            id: Number(full.job_id ?? full.id ?? jobId),
+            title: full.title ?? '',
+            description: full.description ?? '',
             profession_id: full.profession_id,
             publication_city_id: full.publication_city_id,
             is_active: full.is_active,
             is_contract_possible: full.is_contract_possible,
+            auto_apply: extra.auto_apply ?? false,
+            accessible_for_disabled: extra.accessible_for_disabled ?? false,
+            cover_letter_required: extra.cover_letter_required ?? false,
+            notify_by_email: extra.notify_by_email ?? false,
+            chat_enabled: extra.chat_enabled ?? false,
+            show_contacts: extra.show_contacts ?? false,
+            contract_with_ip: extra.contract_with_ip ?? false,
+            contract_with_self_employed: extra.contract_with_self_employed ?? false,
+            employment_contract: extra.employment_contract ?? false,
+            contact_full_name: extra.contact_full_name ?? null,
+            contact_email: extra.contact_email ?? null,
+            contact_phone: extra.contact_phone ?? null,
+            contact_phone_comment: extra.contact_phone_comment ?? null,
+            contact_telegram: extra.contact_telegram ?? null,
             salary_min: full.salary_min,
             salary_max: full.salary_max,
             salary_currency: full.salary_currency,
             salary_frequency: full.salary_frequency,
             salary_period: full.salary_period,
             salary_type: full.salary_type,
-            employment_type: (full as any).employment_type,
+            employment_type: full.employment_type,
             experience_level: full.experience_level,
             work_experience: full.work_experience,
-            work_format: (full as any).work_format,
-            work_schedule: (full as any).work_schedule,
-            hours_per_day: (full as any).hours_per_day,
-            shifts: (full as any).shifts,
+            work_format: full.work_format,
+            work_schedule: full.work_schedule,
+            hours_per_day: full.hours_per_day,
+            shifts: full.shifts,
             expiration_date: full.expiration_date,
           });
 
           try {
-            const jobAddressesRaw = Array.isArray((full as any)?.addresses) ? ((full as any).addresses as any[]) : [];
+            const fromEntity = Array.isArray(full?.languages) ? (full.languages as any[]) : [];
+            const mapped: JobLanguageFormItem[] = fromEntity
+              .map((l: any) => ({
+                language_id: Number(l?.language_id) || null,
+                proficiency_level: String(l?.proficiency_level || ''),
+              }))
+              .filter((l: JobLanguageFormItem) => !!l.language_id && !!l.proficiency_level);
+            setJobLanguages(mapped);
+          } catch {
+            setJobLanguages([]);
+          }
+
+          try {
+            const driving = Array.isArray(full?.driving_licenses) ? (full.driving_licenses as any[]) : [];
+            const ids = driving.map((d: any) => Number(d?.category_id)).filter((n: any) => Number.isFinite(n));
+            setDrivingLicenseCategoryIds(ids);
+          } catch {
+            setDrivingLicenseCategoryIds([]);
+          }
+
+          try {
+            const jobAddressesRaw = Array.isArray(full?.addresses) ? (full.addresses as any[]) : [];
             if (jobAddressesRaw.length > 0) {
               setAddresses(
                 jobAddressesRaw
@@ -361,20 +461,20 @@ export default function VacancyForm({ mode, jobId }: Props) {
           }
 
           try {
-            const profName = String((full as any)?.profession?.name || '');
+            const profName = String(full?.profession?.name || '');
             if (profName) setProfessionInput(profName);
           } catch {
             // ignore
           }
 
           try {
-            const cityIdsFromEntity = Array.isArray((full as any)?.cities)
-              ? ((full as any).cities as any[]).map((c) => Number((c as any).city_id)).filter(Boolean)
+            const cityIdsFromEntity = Array.isArray(full?.cities)
+              ? (full.cities as any[]).map((c) => Number((c as any).city_id)).filter(Boolean)
               : [];
             if (cityIdsFromEntity.length > 0) setPublicationCityIds(cityIdsFromEntity);
 
-            const cityNamesFromEntity: CityOption[] = Array.isArray((full as any)?.cities)
-              ? ((full as any).cities as any[])
+            const cityNamesFromEntity: CityOption[] = Array.isArray(full?.cities)
+              ? (full.cities as any[])
                   .map((c: any) => ({ id: Number(c.city_id), name: String(c.name || c.city_name || '') }))
                   .filter((c: CityOption) => !!c.id && !!c.name)
               : [];
@@ -399,9 +499,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
 
             const initWorkFormats = pickIds(anyV.work_format_ids, anyV.work_formats, 'work_format_id');
             setWorkFormatIds(initWorkFormats);
-
-            const initScheduleTypes = pickIds(anyV.work_schedule_type_ids, anyV.work_schedule_types, 'schedule_type_id');
-            setWorkScheduleTypeIds(initScheduleTypes);
 
             const initSchedules = pickIds(anyV.work_schedule_ids, anyV.work_schedules, 'schedule_id');
             setWorkScheduleIds(initSchedules);
@@ -577,10 +674,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
         const el = workFormatRef.current;
         if (el && !el.contains(target)) setIsWorkFormatOpen(false);
       }
-      if (isWorkScheduleTypeOpen) {
-        const el = workScheduleTypeRef.current;
-        if (el && !el.contains(target)) setIsWorkScheduleTypeOpen(false);
-      }
       if (isWorkScheduleOpen) {
         const el = workScheduleRef.current;
         if (el && !el.contains(target)) setIsWorkScheduleOpen(false);
@@ -608,7 +701,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
     isEmploymentOpen,
     isEducationOpen,
     isWorkFormatOpen,
-    isWorkScheduleTypeOpen,
     isWorkScheduleOpen,
     isDayLengthOpen,
     isShiftTypeOpen,
@@ -634,10 +726,33 @@ export default function VacancyForm({ mode, jobId }: Props) {
     const payload: JobUpsertPayload = {
       profession_id: form.profession_id,
       title: form.title || '',
-      description: form.description,
+      description: form.description || '',
       experience_level: form.experience_level,
       work_experience: form.work_experience,
       is_contract_possible: form.is_contract_possible,
+
+      auto_apply: form.auto_apply,
+      accessible_for_disabled: form.accessible_for_disabled,
+      cover_letter_required: form.cover_letter_required,
+      notify_by_email: form.notify_by_email,
+      chat_enabled: form.chat_enabled,
+      show_contacts: form.show_contacts,
+
+      contract_with_ip: form.contract_with_ip,
+      contract_with_self_employed: form.contract_with_self_employed,
+      employment_contract: form.employment_contract,
+
+      contact_full_name: form.contact_full_name ? String(form.contact_full_name).trim() : null,
+      contact_email: form.contact_email ? String(form.contact_email).trim() : null,
+      contact_phone: form.contact_phone ? String(form.contact_phone).trim() : null,
+      contact_phone_comment: form.contact_phone_comment ? String(form.contact_phone_comment).trim() : null,
+      contact_telegram: form.contact_telegram ? String(form.contact_telegram).trim() : null,
+
+      languages: (jobLanguages || [])
+        .filter((l) => !!l.language_id && !!l.proficiency_level)
+        .map((l) => ({ language_id: Number(l.language_id), proficiency_level: l.proficiency_level })),
+
+      driving_license_category_ids: drivingLicenseCategoryIds,
       salary_min: form.salary_min,
       salary_max: form.salary_max,
       salary_currency: form.salary_currency,
@@ -648,7 +763,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
       employment_type_ids: employmentTypeIds,
       education_type_ids: educationTypeIds,
       work_format_ids: workFormatIds,
-      work_schedule_type_ids: workScheduleTypeIds,
       work_schedule_ids: workScheduleIds,
       day_length_ids: dayLengthIds,
       shift_type_ids: shiftTypeIds,
@@ -841,7 +955,7 @@ export default function VacancyForm({ mode, jobId }: Props) {
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-left bg-white"
             >
               {(() => {
-                const cur = workExperienceOptions.find((o) => o.value === (form as any).work_experience);
+                const cur = workExperienceOptions.find((o) => o.value === form.work_experience);
                 return cur ? cur.label : 'Выберите опыт работы';
               })()}
             </button>
@@ -853,7 +967,7 @@ export default function VacancyForm({ mode, jobId }: Props) {
                       key={opt.value}
                       className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                       onClick={() => {
-                        setForm((s) => ({ ...s, work_experience: opt.value as any }));
+                        setForm((s) => ({ ...s, work_experience: opt.value }));
                         setIsWorkExperienceOpen(false);
                         setErrors((prev) => {
                           const { work_experience, ...rest } = (prev || {}) as any;
@@ -1023,17 +1137,297 @@ export default function VacancyForm({ mode, jobId }: Props) {
               </div>
             )}
           </div>
-                    <div className="flex items-center gap-2 mt-6">
-            <input
-              id="is_contract_possible"
-              type="checkbox"
-              checked={!!form.is_contract_possible}
-              onChange={(e) => setForm((s) => ({ ...s, is_contract_possible: e.target.checked }))}
-              className="h-4 w-4"
-            />
-            <label htmlFor="is_contract_possible" className="text-sm text-gray-700">
-              Возможно заключение договора ГПХ/с ИП/с самозанятыми
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="text-sm font-medium text-gray-900 mb-3">Поведение вакансии</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.auto_apply}
+                onChange={(e) => setForm((s) => ({ ...s, auto_apply: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Автоотклик
             </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.accessible_for_disabled}
+                onChange={(e) => setForm((s) => ({ ...s, accessible_for_disabled: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Доступно для людей с инвалидностью
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.cover_letter_required}
+                onChange={(e) => setForm((s) => ({ ...s, cover_letter_required: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Требовать сопроводительное письмо
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.notify_by_email}
+                onChange={(e) => setForm((s) => ({ ...s, notify_by_email: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Уведомлять по email
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.chat_enabled}
+                onChange={(e) => setForm((s) => ({ ...s, chat_enabled: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Включить чат
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="text-sm font-medium text-gray-900 mb-3">Оформление</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!form.employment_contract}
+                  onChange={(e) => setForm((s) => ({ ...s, employment_contract: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Трудовой договор
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!form.contract_with_ip}
+                  onChange={(e) => setForm((s) => ({ ...s, contract_with_ip: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Договор с ИП
+              </label>
+            </div>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!form.contract_with_self_employed}
+                  onChange={(e) => setForm((s) => ({ ...s, contract_with_self_employed: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Договор с самозанятым
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  id="is_contract_possible"
+                  type="checkbox"
+                  checked={!!form.is_contract_possible}
+                  onChange={(e) => setForm((s) => ({ ...s, is_contract_possible: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Договор ГПХ
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="text-sm font-medium text-gray-900 mb-3">Контакты (необязательно)</div>
+          <div className="mb-3">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!form.show_contacts}
+                onChange={(e) => setForm((s) => ({ ...s, show_contacts: e.target.checked }))}
+                className="h-4 w-4"
+              />
+              Показывать контакты
+            </label>
+          </div>
+
+          {!form.show_contacts ? null : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Контактное лицо</label>
+              <input
+                value={form.contact_full_name ?? ''}
+                onChange={(e) => setForm((s) => ({ ...s, contact_full_name: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="Иван Петров"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Email</label>
+              <input
+                value={form.contact_email ?? ''}
+                onChange={(e) => setForm((s) => ({ ...s, contact_email: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="hr@company.ru"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Телефон</label>
+              <input
+                value={form.contact_phone ?? ''}
+                maxLength={20}
+                onChange={(e) => setForm((s) => ({ ...s, contact_phone: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="+79991234567"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Комментарий к телефону</label>
+              <input
+                value={form.contact_phone_comment ?? ''}
+                onChange={(e) => setForm((s) => ({ ...s, contact_phone_comment: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="Пн–Пт 10:00–18:00"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Telegram</label>
+              <input
+                value={form.contact_telegram ?? ''}
+                onChange={(e) => setForm((s) => ({ ...s, contact_telegram: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                placeholder="@company_hr"
+              />
+            </div>
+          </div>
+          )}
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">Категории водительских прав</label>
+              <div className="flex flex-wrap gap-2">
+                {(drivingLicenseData as any).driving_license_categories?.map((cat: any) => {
+                  const id = Number(cat.category_id);
+                  const checked = drivingLicenseCategoryIds.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setDrivingLicenseCategoryIds((prev) =>
+                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                        )
+                      }
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                        checked
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      }`}
+                    >
+                      {String(cat.code)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">Языки</label>
+              {jobLanguages.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {jobLanguages.map((lang, idx) => {
+                    const langData = (languagesData as any).languages?.find((l: any) => l.language_id === lang.language_id);
+                    const levelData = PROFICIENCY_LEVELS.find((l) => l.value === lang.proficiency_level);
+                    return (
+                      <div
+                        key={`${String(lang.language_id)}-${idx}`}
+                        className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2"
+                      >
+                        <span className="text-sm">
+                          {langData?.name || 'Язык'} — {levelData?.label || lang.proficiency_level}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setJobLanguages((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {showAddLanguage ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={newLanguageId || ''}
+                    onChange={(e) => setNewLanguageId(e.target.value ? Number(e.target.value) : null)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Выберите язык</option>
+                    {(languagesData as any).languages?.map((lang: any) => (
+                      <option key={lang.language_id} value={lang.language_id}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={newLanguageLevel}
+                    onChange={(e) => setNewLanguageLevel(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Уровень</option>
+                    {PROFICIENCY_LEVELS.map((level) => (
+                      <option key={level.value} value={level.value}>
+                        {level.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newLanguageId || !newLanguageLevel) return;
+                      setJobLanguages((prev) => {
+                        if (prev.some((x) => x.language_id === newLanguageId)) return prev;
+                        return [...prev, { language_id: newLanguageId, proficiency_level: newLanguageLevel }];
+                      });
+                      setNewLanguageId(null);
+                      setNewLanguageLevel('');
+                      setShowAddLanguage(false);
+                    }}
+                    disabled={!newLanguageId || !newLanguageLevel}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                  >
+                    Добавить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddLanguage(false);
+                      setNewLanguageId(null);
+                      setNewLanguageLevel('');
+                    }}
+                    className="px-3 py-1.5 text-gray-600 hover:text-gray-800 text-sm"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAddLanguage(true)}
+                  className="text-blue-600 text-sm hover:underline"
+                >
+                  + Добавить язык
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1101,35 +1495,6 @@ export default function VacancyForm({ mode, jobId }: Props) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="relative" ref={workScheduleTypeRef}>
-            <label className="block text-xs text-gray-500 mb-1">График работы</label>
-            <button
-              type="button"
-              onClick={() => setIsWorkScheduleTypeOpen((v) => !v)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-left bg-white"
-            >
-              {workScheduleTypeIds.length > 0 ? `Выбрано: ${workScheduleTypeIds.length}` : 'Выберите график(и)'}
-            </button>
-            {isWorkScheduleTypeOpen && (
-              <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg max-h-72 overflow-auto border border-gray-200 p-2 space-y-1">
-                {workScheduleTypes.map((t: any) => {
-                  const id = Number(t.schedule_type_id);
-                  const checked = workScheduleTypeIds.includes(id);
-                  return (
-                    <label key={id} className="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => setWorkScheduleTypeIds((prev) => (checked ? prev.filter((v) => v !== id) : [...prev, id]))}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-sm">{t.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
           <div className="relative" ref={workScheduleRef}>
             <label className="block text-xs text-gray-500 mb-1">Расписание</label>
             <button

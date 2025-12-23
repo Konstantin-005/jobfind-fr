@@ -399,12 +399,18 @@ definitions:
     type: object
   controllers.JobDetailResponse:
     properties:
+      accessible_for_disabled:
+        type: boolean
       address:
         $ref: '#/definitions/controllers.JobAddress'
       addresses:
         items:
           $ref: '#/definitions/models.JobPostingAddress'
         type: array
+      auto_apply:
+        type: boolean
+      chat_enabled:
+        type: boolean
       cities:
         items:
           $ref: '#/definitions/models.City'
@@ -415,6 +421,22 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.CompanyProfile'
         description: Relations
+      contact_email:
+        type: string
+      contact_full_name:
+        type: string
+      contact_phone:
+        type: string
+      contact_phone_comment:
+        type: string
+      contact_telegram:
+        type: string
+      contract_with_ip:
+        type: boolean
+      contract_with_self_employed:
+        type: boolean
+      cover_letter_required:
+        type: boolean
       day_lengths:
         items:
           $ref: '#/definitions/models.WorkDayLength'
@@ -423,10 +445,16 @@ definitions:
         type: boolean
       description:
         type: string
+      driving_licenses:
+        items:
+          $ref: '#/definitions/models.JobPostingDrivingLicense'
+        type: array
       education_types:
         items:
           $ref: '#/definitions/models.EducationType'
         type: array
+      employment_contract:
+        type: boolean
       employment_types:
         items:
           $ref: '#/definitions/models.EmploymentType'
@@ -443,9 +471,15 @@ definitions:
         type: boolean
       job_id:
         type: integer
+      languages:
+        items:
+          $ref: '#/definitions/models.JobPostingLanguage'
+        type: array
       link:
         type: string
       no_resume_apply:
+        type: boolean
+      notify_by_email:
         type: boolean
       posted_by:
         type: string
@@ -477,6 +511,8 @@ definitions:
         items:
           $ref: '#/definitions/models.ShiftType'
         type: array
+      show_contacts:
+        type: boolean
       skills:
         items:
           $ref: '#/definitions/models.Skill'
@@ -557,26 +593,61 @@ definitions:
     - address
     - city_id
     type: object
+  controllers.JobPostingLanguageInput:
+    properties:
+      language_id:
+        type: integer
+      proficiency_level:
+        type: string
+    type: object
   controllers.JobUpsertRequest:
     properties:
+      accessible_for_disabled:
+        type: boolean
       addresses:
         items:
           $ref: '#/definitions/controllers.JobPostingAddressInput'
         type: array
+      auto_apply:
+        type: boolean
+      chat_enabled:
+        type: boolean
       city_ids:
         items:
           type: integer
         type: array
+      contact_email:
+        type: string
+      contact_full_name:
+        type: string
+      contact_phone:
+        type: string
+      contact_phone_comment:
+        type: string
+      contact_telegram:
+        type: string
+      contract_with_ip:
+        type: boolean
+      contract_with_self_employed:
+        type: boolean
+      cover_letter_required:
+        type: boolean
       day_length_ids:
         items:
           type: integer
         type: array
       description:
         type: string
+      driving_license_category_ids:
+        items:
+          type: integer
+        type: array
       education_type_ids:
         items:
           type: integer
         type: array
+      employment_contract:
+        type: boolean
       employment_type_ids:
         items:
           type: integer
@@ -585,7 +656,13 @@ definitions:
         type: string
       is_contract_possible:
         type: boolean
+      languages:
+        items:
+          $ref: '#/definitions/controllers.JobPostingLanguageInput'
+        type: array
       no_resume_apply:
+        type: boolean
+      notify_by_email:
         type: boolean
       profession_id:
         type: integer
@@ -609,6 +686,8 @@ definitions:
         items:
           type: integer
         type: array
+      show_contacts:
+        type: boolean
       title:
         type: string
       work_experience:
@@ -754,10 +833,10 @@ definitions:
     properties:
       applicant_full_name:
         type: string
+      link_uuid:
+        type: string
       photo_url:
         type: string
-      resume_id:
-        type: integer
       resume_title:
         type: string
     type: object
@@ -779,8 +858,8 @@ definitions:
     type: object
   controllers.UpdateEmployerStatusRequest:
     description: 'Новый статус заявки со стороны работодателя. Допустимые значения
-      enum_job_applications_employer_status: not_processed, in_progress, phone_interview,
-      evaluation, interview, job_offer, onboarding, rejected.'
+      enum_job_applications_employer_status: not_processed, in_progress, thinking,
+      processing, test_task, interview, job_offer, onboarding, rejected.'
     properties:
       status:
         example: in_progress
@@ -1096,6 +1175,8 @@ definitions:
         type: string
       company_type:
         type: string
+      deleted:
+        type: boolean
       description:
         type: string
       email:
@@ -1113,6 +1194,8 @@ definitions:
       inn:
         type: string
       is_it_company:
+        type: boolean
+      is_moderated:
         type: boolean
       job_postings:
         items:
@@ -1138,6 +1221,15 @@ definitions:
       district_id:
         type: integer
       name:
+        type: string
+    type: object
+  models.DrivingLicenseCategory:
+    properties:
+      category_id:
+        type: integer
+      code:
+        type: string
+      description:
         type: string
     type: object
   models.Education:
@@ -1266,10 +1358,16 @@ definitions:
     type: object
   models.JobPosting:
     properties:
+      accessible_for_disabled:
+        type: boolean
       addresses:
         items:
           $ref: '#/definitions/models.JobPostingAddress'
         type: array
+      auto_apply:
+        type: boolean
+      chat_enabled:
+        type: boolean
       cities:
         items:
           $ref: '#/definitions/models.City'
@@ -1280,6 +1378,22 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.CompanyProfile'
         description: Relations
+      contact_email:
+        type: string
+      contact_full_name:
+        type: string
+      contact_phone:
+        type: string
+      contact_phone_comment:
+        type: string
+      contact_telegram:
+        type: string
+      contract_with_ip:
+        type: boolean
+      contract_with_self_employed:
+        type: boolean
+      cover_letter_required:
+        type: boolean
       day_lengths:
         items:
           $ref: '#/definitions/models.WorkDayLength'
@@ -1288,10 +1402,16 @@ definitions:
         type: boolean
       description:
         type: string
+      driving_licenses:
+        items:
+          $ref: '#/definitions/models.JobPostingDrivingLicense'
+        type: array
       education_types:
         items:
           $ref: '#/definitions/models.EducationType'
         type: array
+      employment_contract:
+        type: boolean
       employment_types:
         items:
           $ref: '#/definitions/models.EmploymentType'
@@ -1308,9 +1428,15 @@ definitions:
         type: boolean
       job_id:
         type: integer
+      languages:
+        items:
+          $ref: '#/definitions/models.JobPostingLanguage'
+        type: array
       link:
         type: string
       no_resume_apply:
+        type: boolean
+      notify_by_email:
         type: boolean
       posted_by:
         type: string
@@ -1342,6 +1468,8 @@ definitions:
         items:
           $ref: '#/definitions/models.ShiftType'
         type: array
+      show_contacts:
+        type: boolean
       skills:
         items:
           $ref: '#/definitions/models.Skill'
@@ -1383,6 +1511,30 @@ definitions:
         type: integer
       job_id:
         type: integer
+    type: object
+  models.JobPostingDrivingLicense:
+    properties:
+      category:
+        $ref: '#/definitions/models.DrivingLicenseCategory'
+      category_id:
+        type: integer
+      id:
+        type: integer
+      job_id:
+        type: integer
+    type: object
+  models.JobPostingLanguage:
+    properties:
+      id:
+        type: integer
+      job_id:
+        type: integer
+      language:
+        $ref: '#/definitions/models.Language'
+      language_id:
+        type: integer
+      proficiency_level:
+        type: string
     type: object
   models.JobSeekerDrivingLicense:
     properties:
@@ -1631,6 +1783,8 @@ definitions:
         type: string
       email:
         type: string
+      email_verified:
+        type: boolean
       is_active:
         type: boolean
       job_seeker_profile:
@@ -1808,9 +1962,9 @@ paths:
       description: 'Обновляет статус заявки со стороны работодателя (только для employer).
         Требует, чтобы вакансия принадлежала компании текущего пользователя. Автоматические
         изменения: ''in_progress'' -> viewed = текущее время, applicant_status = ''waiting'';
-        ''rejected'' -> applicant_status = ''rejected''; ''phone_interview'' или ''interview''
-        -> applicant_status = ''interview''; ''job_offer'' -> applicant_status = ''invitation'';
-        ''onboarding'' -> applicant_status = ''job_start''.'
+        ''rejected'' -> applicant_status = ''rejected''; ''interview'' -> applicant_status
+        = ''interview''; ''job_offer'' -> applicant_status = ''invitation''; ''onboarding''
+        -> applicant_status = ''job_start''.'
       parameters:
       - description: ID заявки
         in: path
@@ -1989,8 +2143,8 @@ paths:
         name: job_id
         required: true
         type: integer
-      - description: Фильтр по employer_status (not_processed, in_progress, phone_interview,
-          evaluation, interview, job_offer, onboarding, rejected)
+      - description: Фильтр по employer_status (not_processed, in_progress, thinking,
+          processing, test_task, interview, job_offer, onboarding, rejected)
         in: query
         name: employer_status
         type: string

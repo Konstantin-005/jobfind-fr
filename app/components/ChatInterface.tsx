@@ -16,9 +16,10 @@ import {
 
 interface ChatInterfaceProps {
   initialRoomId?: number; // Если нужно сразу открыть конкретный чат
+  onRoomSelect?: (roomId: number | null) => void; // Колбэк для синхронизации выбора комнаты (например, с URL)
 }
 
-export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
+export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInterfaceProps) {
   const { role } = useUser();
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(initialRoomId || null);
@@ -139,13 +140,36 @@ export default function ChatInterface({ initialRoomId }: ChatInterfaceProps) {
     fetchRooms();
   }, [role, onlyUnread]);
 
+  // Синхронизация initialRoomId с загруженными комнатами (для прямых ссылок /chat/[id])
+  useEffect(() => {
+    if (initialRoomId == null) return;
+    if (!rooms.length) return;
+
+    const hasRoom = rooms.some((r) => r.room_id === initialRoomId);
+
+    if (hasRoom) {
+      setSelectedRoomId((prev) => (prev === initialRoomId ? prev : initialRoomId));
+    } else {
+      setSelectedRoomId((prev) => (prev === null ? prev : null));
+      if (onRoomSelect) {
+        onRoomSelect(null);
+      }
+    }
+  }, [initialRoomId, rooms, onRoomSelect]);
+
   // Выбор комнаты
   const handleRoomSelect = (roomId: number) => {
     setSelectedRoomId(roomId);
+    if (onRoomSelect) {
+      onRoomSelect(roomId);
+    }
   };
 
   const handleBackToList = () => {
     setSelectedRoomId(null);
+    if (onRoomSelect) {
+      onRoomSelect(null);
+    }
   };
 
   // Загрузка сообщений при выборе комнаты

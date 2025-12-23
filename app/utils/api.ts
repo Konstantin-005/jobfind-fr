@@ -10,6 +10,21 @@ import {
   MessageResponse
 } from '../types/auth';
 
+export type UserProfile = {
+  user_id: string;
+  email: string;
+  user_type: string;
+  phone_number?: string;
+  password_hash?: string;
+};
+
+export type UpdateUserProfilePayload = {
+  email?: string;
+  phone_number?: string;
+  password?: string;
+  currentPassword?: string;
+};
+
 type FileUploadResponse = {
   filePath: string;
   originalName: string;
@@ -185,6 +200,21 @@ export const authApi = {
     return apiRequest<MessageResponse>(API_ENDPOINTS.auth.verifyEmail, {
       method: 'POST',
       body: JSON.stringify({ token }),
+    });
+  },
+};
+
+export const usersApi = {
+  async getProfile() {
+    return apiRequest<UserProfile>(API_ENDPOINTS.users.profile, {
+      method: 'GET',
+    });
+  },
+
+  async updateProfile(payload: UpdateUserProfilePayload) {
+    return apiRequest<UserProfile>(API_ENDPOINTS.users.profile, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     });
   },
 };

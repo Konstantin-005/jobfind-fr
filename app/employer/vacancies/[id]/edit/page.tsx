@@ -4,17 +4,16 @@
  * @dependencies: app/employer/vacancies/_components/VacancyForm
  * @created: 2025-12-13
  */
+import type { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 
-'use client';
+const EmployerVacancyEditPageClient = dynamic(() => import('./EmployerVacancyEditPageClient'), { ssr: false });
 
-import { useParams } from 'next/navigation';
-
-import VacancyForm from '../../_components/VacancyForm';
+export const metadata: Metadata = {
+  title: 'Редактирование вакансии | E77.top',
+  description: 'Редактирование вакансии: условия, требования, контакты и дополнительные параметры публикации.',
+};
 
 export default function EmployerVacancyEditPage() {
-  const params = useParams();
-  const rawId = (params as any)?.id;
-  const jobId = Number(rawId);
-
-  return <VacancyForm mode="edit" jobId={Number.isFinite(jobId) ? jobId : undefined} />;
+  return <EmployerVacancyEditPageClient />;
 }

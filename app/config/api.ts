@@ -9,6 +9,9 @@ export const API_ENDPOINTS = {
     resetPassword: `${API_BASE_URL}/api/auth/reset-password`,
     verifyEmail: `${API_BASE_URL}/api/auth/verify-email`,
   },
+  users: {
+    profile: `${API_BASE_URL}/api/users/profile`,
+  },
   locations: `${API_BASE_URL}/api/locations/`,
   jobs: `${API_BASE_URL}/api/jobs`,
   jobById: (jobId: number) => `${API_BASE_URL}/api/jobs/${jobId}`,
