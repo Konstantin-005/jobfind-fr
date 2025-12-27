@@ -15,22 +15,22 @@ import Pagination from '../components/Pagination'
 import { useUser } from '../components/useUser'
 import ApplicationModal from '../components/ApplicationModal'
   const salaryPeriodOptions = [
-    { label: 'за месяц', value: 'month' },
+    { label: 'в месяц', value: 'month' },
     { label: 'в час', value: 'hour' },
-    { label: 'смена', value: 'shift' },
-    { label: 'вахта', value: 'vahta' },
-    { label: 'проект', value: 'project' },
+    { label: 'за смену', value: 'shift' },
+    { label: 'за вахту', value: 'vahta' },
+    { label: 'за проект', value: 'project' },
   ]
   const salaryTypeOptions = [
     { label: 'на руки', value: 'after_tax' },
     { label: 'до вычета налогов', value: 'before_tax' },
   ]
   const workExperienceOptions = [
-    { label: 'без опыта', value: '0' },
-    { label: 'до 1 года', value: '0_1' },
-    { label: 'от 1 до 3 лет', value: '1_3' },
-    { label: 'от 3 до 6 лет', value: '3_5' },
-    { label: 'более 6 лет', value: 'more_5' },
+    { label: 'Без опыта', value: '0' },
+    { label: 'Опыт до 1 года', value: '0_1' },
+    { label: 'Опыт 1-3 года', value: '1_3' },
+    { label: 'Опыт 3-5 лет', value: '3_5' },
+    { label: 'Опыт от 5 лет', value: 'more_5' },
   ]
   const workFormatsMap: Record<number, string> = (workFormatsConfig as any)?.work_formats?.reduce((acc: Record<number, string>, wf: any) => {
     if (wf && typeof wf.work_format_id === 'number' && typeof wf.name === 'string') {
@@ -55,12 +55,6 @@ import ApplicationModal from '../components/ApplicationModal'
   const getExperienceLabel = (value?: string) => workExperienceOptions.find(o => o.value === value)?.label
   const getWorkFormatLabels = (ids?: number[]) => (ids || []).map(id => workFormatsMap[id]).filter(Boolean)
  
-interface JobAddress {
-  city?: string
-  district?: string
-  address?: string
-}
-
 interface JobListItem {
   job_id: number
   company_id: number
@@ -73,7 +67,18 @@ interface JobListItem {
   salary_currency?: string
   salary_type?: string
   salary_period?: string
-  address?: JobAddress
+  // Старое поле address оставляем для обратной совместимости
+  address?: {
+    city?: string
+    district?: string
+    address?: string
+  }
+  // Новый формат: массив адресов вакансии
+  addresses?: {
+    city?: string
+    city_name_prepositional?: string
+    address?: string
+  }[]
   publication_cities?: string[]
   work_format_ids?: number[]
   no_resume_apply?: boolean
@@ -320,8 +325,16 @@ export default function VacancyClient() {
     window.location.search = params.toString();
   };
 
+  const getPrimaryAddress = (job: JobListItem) => {
+    if (Array.isArray(job.addresses) && job.addresses.length > 0) {
+      return job.addresses[0]
+    }
+    return job.address || undefined
+  }
+
   const resolveCity = (job: JobListItem) => {
-    if (job.address && job.address.city) return job.address.city
+    const primary = getPrimaryAddress(job)
+    if (primary && primary.city) return primary.city
     const cities = job.publication_cities || []
     if (cities.length === 0) return ''
     const match = selectedCityNames.find(n => cities.includes(n))
@@ -355,7 +368,7 @@ export default function VacancyClient() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-16">
+    <div className="max-w-6xl mx-auto px-4 py-8 pt-16">
       <div className="flex gap-8">
         <JobFilters />
         <div className="flex-1">
@@ -444,25 +457,36 @@ export default function VacancyClient() {
             <div className="grid gap-6">
               {jobs.map((job) => (
                 <div key={job.job_id} className="bg-white rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex-1">
-                    <h2 className="text-xl font-semibold mb-1">
+                  <div className="flex-1 flex flex-col gap-2">
+                    <h2 className="text-xl font-semibold">
                       <Link href={`/vacancy/${job.job_id}`} className="text-[#2B81B0] hover:underline">{job.title}</Link>
                     </h2>
-                    <div className="text-gray-700 mb-2">{job.company_name}</div>
-                    <div className="flex flex-wrap gap-2">
+
+                    {(job.salary_min || job.salary_max) && (
+                      <div className="text-lg font-semibold text-gray-800">
+                        {formatSalary(job)} {job.salary_currency === 'RUB' ? '₽' : ''}
+                        {getSalaryDetails(job) && <span className="text-gray-600 font-normal"> ({getSalaryDetails(job)})</span>}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {getExperienceLabel(job.work_experience) && (
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">{getExperienceLabel(job.work_experience)}</span>
+                        <span className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm max-w-max">{getExperienceLabel(job.work_experience)}</span>
                       )}
                       {getWorkFormatLabels(job.work_format_ids).map((name) => (
                         <span key={name} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">{name}</span>
                       ))}
                     </div>
+
+                    <div className="text-gray-700 mt-1">{job.company_name}</div>
+
                     {(() => {
-                      const city = job.address?.city || resolveCity(job)
-                      const addr = job.address?.address
+                      const primary = getPrimaryAddress(job)
+                      const city = primary?.city || resolveCity(job)
+                      const addr = primary?.address
                       const line = [city, addr].filter(Boolean).join(', ')
                       return line ? (
-                        <div className="mt-2 text-gray-600 text-sm flex items-center gap-1">
+                        <div className="mt-1 text-gray-600 text-sm flex items-center gap-1">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -476,26 +500,21 @@ export default function VacancyClient() {
                         </div>
                       ) : null
                     })()}
-                    {(job.salary_min || job.salary_max) && (
-                      <div className="text-lg font-semibold text-gray-800">
-                        {formatSalary(job)} {job.salary_currency === 'RUB' ? '₽' : ''}
-                        {getSalaryDetails(job) && <span className="text-gray-600 font-normal"> ({getSalaryDetails(job)})</span>}
-                      </div>
-                    )}
+
+                    <button 
+                      type="button" 
+                      onClick={() => handleApplyClick(job)}
+                      className="mt-3 inline-flex justify-center bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition w-auto self-start"
+                    >
+                      Откликнуться
+                    </button>
                   </div>
-                  <div className="flex items-center gap-4 md:ml-4">
+                  <div className="flex items-start gap-4 md:ml-4">
                     {job.logo_url && (
                       <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
                         <img src={buildCompanyLogoSrc(job.logo_url)} alt={job.company_name} className="max-w-full max-h-full object-contain" />
                       </div>
                     )}
-                    <button 
-                      type="button" 
-                      onClick={() => handleApplyClick(job)}
-                      className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
-                    >
-                      Откликнуться
-                    </button>
                   </div>
                 </div>
               ))}

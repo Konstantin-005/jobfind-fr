@@ -293,7 +293,7 @@ export default function ResumeAddPage() {
 
   // Сохранить и выйти (заглушка)
   const handleSaveAndExit = () => {
-    router.push("/resume");
+    router.push("/user/resume");
   };
 
   const handleSearchCityInput = async (value: string) => {

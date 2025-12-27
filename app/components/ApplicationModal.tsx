@@ -6,6 +6,7 @@
  */
 'use client'
 import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { API_ENDPOINTS } from '../config/api'
 import RichTextEditor from './RichTextEditor'
 
@@ -31,6 +32,11 @@ export default function ApplicationModal({ isOpen, onClose, jobId, jobTitle, noR
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -40,6 +46,17 @@ export default function ApplicationModal({ isOpen, onClose, jobId, jobTitle, noR
       setError(null)
       setCoverLetter('')
       setSelectedResumeId(null)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalOverflow
     }
   }, [isOpen])
 
@@ -130,9 +147,9 @@ export default function ApplicationModal({ isOpen, onClose, jobId, jobTitle, noR
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
-  return (
+  const modal = (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
@@ -292,4 +309,6 @@ export default function ApplicationModal({ isOpen, onClose, jobId, jobTitle, noR
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }

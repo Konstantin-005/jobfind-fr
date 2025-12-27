@@ -401,11 +401,9 @@ definitions:
     properties:
       accessible_for_disabled:
         type: boolean
-      address:
-        $ref: '#/definitions/controllers.JobAddress'
       addresses:
         items:
-          $ref: '#/definitions/models.JobPostingAddress'
+          $ref: '#/definitions/controllers.JobAddress'
         type: array
       auto_apply:
         type: boolean
@@ -463,6 +461,8 @@ definitions:
         type: string
       expiration_date:
         type: string
+      imported:
+        type: boolean
       is_active:
         type: boolean
       is_contract_possible:
@@ -540,8 +540,10 @@ definitions:
     type: object
   controllers.JobListItem:
     properties:
-      address:
-        $ref: '#/definitions/controllers.JobAddress'
+      addresses:
+        items:
+          $ref: '#/definitions/controllers.JobAddress'
+        type: array
       company_id:
         type: integer
       company_name:
@@ -554,10 +556,6 @@ definitions:
         type: string
       no_resume_apply:
         type: boolean
-      publication_cities:
-        items:
-          type: string
-        type: array
       salary_currency:
         type: string
       salary_max:
@@ -1420,6 +1418,8 @@ definitions:
         type: string
       expiration_date:
         type: string
+      imported:
+        type: boolean
       is_active:
         type: boolean
       is_contract_possible:
@@ -1785,6 +1785,8 @@ definitions:
         type: string
       email_verified:
         type: boolean
+      imported:
+        type: boolean
       is_active:
         type: boolean
       job_seeker_profile:
@@ -1922,6 +1924,39 @@ info:
   title: JobFind Go API
   version: "1.0"
 paths:
+  /api/admin/companies/generate-users:
+    post:
+      consumes:
+      - application/json
+      description: Генерирует пользователей типа employer для компаний, у которых
+        user_id IS NULL и заполнен email. Доступ по секретному ключу.
+      parameters:
+      - description: Секретный ключ админа
+        in: header
+        name: X-Admin-Secret
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Генерация пользователей для компаний
+      tags:
+      - Admin
   /api/applications/{application_id}:
     get:
       description: Возвращает заявку с JobPosting и Resume

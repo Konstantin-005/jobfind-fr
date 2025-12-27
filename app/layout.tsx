@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import dynamic from 'next/dynamic'
+import ClientLayout from './client-layout'
 
-const ClientLayout = dynamic(() => import('./client-layout'), { ssr: false })
 const CookieConsent = dynamic(() => import('./components/CookieConsent'), { ssr: true })
 const Footer = dynamic(() => import('./components/Footer'), { ssr: true })
 

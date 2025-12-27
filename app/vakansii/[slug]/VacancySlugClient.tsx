@@ -35,7 +35,7 @@ export default function VacancySlugClient({ jobId, jobTitle, isPromo, noResumeAp
         href={`/vacancy/${jobId}/to`}
         target="_blank"
         rel="noreferrer noopener"
-        className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
+        className="inline-flex justify-center bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition w-auto"
       >
         Откликнуться
       </Link>
@@ -47,7 +47,7 @@ export default function VacancySlugClient({ jobId, jobTitle, isPromo, noResumeAp
       <button 
         type="button" 
         onClick={handleApplyClick}
-        className="bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition"
+        className="inline-flex justify-center bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition w-auto"
       >
         Откликнуться
       </button>

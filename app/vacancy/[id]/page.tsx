@@ -1,6 +1,6 @@
 /**
  * @file: app/vacancy/[id]/page.tsx
- * @description: Страница детального просмотра вакансии с SSR, хлебными крошками и кнопкой-заглушкой «Откликнуться»
+ * @description: Страница детального просмотра вакансии с SSR, хлебными крошками и кнопкой «Откликнуться»
  * @dependencies: app/config/api.ts (API_ENDPOINTS.jobById)
  * @created: 2025-11-10
  */
@@ -14,8 +14,7 @@ import VacancyDetailClient from './VacancyDetailClient'
 
 interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
-interface CompanyAddress { address?: string; city?: City | null }
-interface VacancyAddress { city?: string; city_name_prepositional?: string; address?: string }
+interface VacancyAddress { city?: string; city_name_prepositional?: string; district?: string; address?: string }
 interface Region { region_id?: number; name?: string }
 interface Skill { skill_id?: number; name?: string }
 interface NamedId {
@@ -36,8 +35,6 @@ interface JobPosting {
   title: string
   description?: string
   company_profile?: CompanyProfile | null
-  company_address?: CompanyAddress | null
-  company_address_id?: number
   company_id?: number
   salary_min?: number
   salary_max?: number
@@ -67,8 +64,7 @@ interface JobPosting {
   no_resume_apply?: boolean
   profession?: VacancyProfession | null
   profession_id?: number
-  address?: VacancyAddress | null
-  cities?: City[]
+  addresses?: VacancyAddress[]
   regions?: Region[]
   skills?: Skill[]
   user?: JobUser | null
@@ -86,9 +82,9 @@ const EMPLOYMENT_TYPE_SCHEMA_MAP: Record<number, string> = {
 const salaryPeriodMap: Record<string, string> = {
   month: 'в месяц',
   hour: 'в час',
-  shift: 'смена',
-  vahta: 'вахта',
-  project: 'проект',
+  shift: 'за смену',
+  vahta: 'за вахту',
+  project: 'за проект',
 }
 const salaryTypeMap: Record<string, string> = {
   after_tax: 'на руки',
@@ -108,8 +104,8 @@ const workExperienceMap: Record<string, string> = {
   '0': 'без опыта',
   '0_1': 'до 1 года',
   '1_3': 'от 1 до 3 лет',
-  '3_5': 'от 3 до 6 лет',
-  'more_5': 'более 6 лет',
+  '3_5': 'от 3 до 5 лет',
+  'more_5': 'более 5 лет',
 }
 
 function formatSalary(job: JobPosting) {
@@ -121,6 +117,10 @@ function formatSalary(job: JobPosting) {
       : max
         ? `до ${max.toLocaleString('ru-RU')}`
         : ''
+
+  // Если нет числового значения (min/max), не показываем блок зарплаты и не выводим одну только валюту
+  if (!range) return ''
+
   const currency = cur === 'RUB' ? '₽' : (cur || '')
   return [range, currency].filter(Boolean).join(' ')
 }
@@ -144,19 +144,20 @@ function chipsFrom(names?: NamedId[]) {
 }
 
 function getPrimaryCity(job: JobPosting) {
-  const cityFromAddress = job.address?.city || ''
-  const cityFromCompanyAddress = job.company_address?.city?.name || ''
-  const cityFromList = (job.cities || []).find(city => city?.name)?.name || ''
-  return cityFromAddress || cityFromCompanyAddress || cityFromList || ''
+  const addresses = job.addresses || []
+  if (addresses.length === 1) {
+    return addresses[0]?.city || ''
+  }
+  return ''
 }
 
 function getCityPrepositional(job: JobPosting) {
-  const cityFromAddress = job.address?.city_name_prepositional || job.address?.city || ''
-  const companyCity = job.company_address?.city
-  const cityFromCompanyAddress = companyCity?.name_prepositional || companyCity?.name || ''
-  const cityFromList = (job.cities || []).find(city => (city?.name_prepositional || city?.name))
-  const listValue = cityFromList?.name_prepositional || cityFromList?.name || ''
-  return cityFromAddress || cityFromCompanyAddress || listValue
+  const addresses = job.addresses || []
+  if (addresses.length === 1) {
+    const addr = addresses[0] || {}
+    return addr.city_name_prepositional || addr.city || ''
+  }
+  return ''
 }
 
 function formatMoney(value?: number, currency?: string) {
@@ -243,7 +244,8 @@ function buildVacancyKeywords(job: JobPosting) {
   const keywords = ['вакансия', 'работа']
   if (job.title) keywords.push(job.title)
   if (job.company_profile?.company_name) keywords.push(job.company_profile.company_name)
-  if (job.address?.city) keywords.push(job.address.city)
+  const addr = (job.addresses || [])
+  if (addr.length === 1 && addr[0]?.city) keywords.push(addr[0].city!)
   return keywords
 }
 
@@ -308,9 +310,12 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const salaryFrequency = formatSalaryFrequency(job.salary_frequency)
   const companyName = job.company_profile?.company_name || ''
   const logoUrl = job.company_profile?.logo_url
-  const city = getPrimaryCity(job)
-  const streetAddress = job.address?.address || job.company_address?.address || ''
-  const addressLine = [city, streetAddress].filter(Boolean).join(', ')
+  const addresses = job.addresses || []
+  const primaryAddress = addresses[0]
+  const city = primaryAddress?.city || ''
+  const district = primaryAddress?.district || ''
+  const streetAddress = primaryAddress?.address || ''
+  const addressLine = [city, district, streetAddress].filter(Boolean).join(', ')
   const experience = job.work_experience ? workExperienceMap[job.work_experience] : undefined
   const workFormats = chipsFrom(job.work_formats)
   const employment = chipsFrom(job.employment_types)
@@ -382,25 +387,34 @@ export default async function VacancyPage({ params }: { params: { id: string } }
       }
     : undefined
 
-  const postalAddress = (streetAddress || city)
-    ? {
+  const postalAddresses = addresses.length
+    ? addresses.map(addr => ({
         '@type': 'PostalAddress',
-        streetAddress: streetAddress || undefined,
-        addressLocality: city || undefined,
+        streetAddress: addr.address || undefined,
+        addressLocality: addr.city || undefined,
+        addressRegion: addr.district || undefined,
         addressCountry: 'RU',
-      }
-    : undefined
+      }))
+    : [{
+        '@type': 'PostalAddress',
+        addressCountry: 'RU',
+      }]
 
-  const jobLocation = postalAddress
-    ? {
+  const jobLocation = !hasRemoteFormat
+    ? postalAddresses.map(address => ({
         '@type': 'Place',
-        address: postalAddress,
-      }
+        address,
+      }))
     : undefined
 
-  const schemaDescription = [job.description, hasRemoteFormat ? 'Вакансия, связанная с работой из дома.' : undefined]
-    .filter(Boolean)
-    .join(' ')
+  const schemaDescription = job.description || undefined
+
+  const applicantLocationRequirements = hasRemoteFormat
+    ? {
+        '@type': 'Country',
+        name: 'RU',
+      }
+    : undefined
 
   const protocol = proto
   const hostname = host
@@ -425,6 +439,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     },
     jobLocation,
     jobLocationType: hasRemoteFormat ? 'TELECOMMUTE' : undefined,
+    applicantLocationRequirements,
     baseSalary,
     url: jobUrl,
   }
@@ -436,7 +451,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
       />
       <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4 py-10 pt-20">
+        <div className="max-w-6xl mx-auto px-4 py-10 pt-20">
       {/* Хлебные крошки */}
       <nav className="text-xs md:text-sm text-gray-500 mb-3 md:mb-5">
         <ol className="flex flex-wrap items-center gap-1">

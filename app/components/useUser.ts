@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 // В реальном проекте здесь будет логика получения пользователя из localStorage, cookie или контекста
 export type UserRole = 'guest' | 'job_seeker' | 'employer';
 
-function parseJwt(token: string): any {
+export function parseJwt(token: string): any {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

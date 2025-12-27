@@ -34,7 +34,7 @@ export default function Home() {
               Найдите работу своей <span className="text-blue-600">мечты</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Тысячи вакансий от лучших IT-компаний России ждут вас. Начните поиск прямо сейчас.
+              Тысячи вакансий от лучших компаний России ждут вас. Начните поиск прямо сейчас.
             </p>
 
             {/* Поисковая форма */}
@@ -176,7 +176,7 @@ export default function Home() {
                 href={`/vakansii/${c.slug}`}
                 className="text-slate-200 hover:text-white underline decoration-slate-500/60 hover:decoration-white underline-offset-4 transition"
               >
-                В {c.name}
+               {`В ${c.name}`}
               </Link>
             ))}
           </div>
