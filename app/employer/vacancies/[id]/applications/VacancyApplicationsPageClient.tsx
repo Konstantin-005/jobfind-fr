@@ -28,6 +28,7 @@ type Application = {
   applicant_id: number;
   resume_id?: number;
   resume_title?: string;
+  link_uuid?: string;
   full_name?: string;
   age_years?: number;
   photo_url?: string;
@@ -471,22 +472,48 @@ export default function VacancyApplicationsPageClient() {
                       <div className="text-sm text-gray-500 mb-1">Отклик от {formatDate(app.applied_date)}</div>
 
                       {/* Название резюме */}
-                      {app.resume_title && <h3 className="text-lg font-semibold text-gray-900 mb-1">{app.resume_title}</h3>}
+                      {app.resume_title && app.link_uuid ? (
+                        <a
+                          href={`/resume/${app.link_uuid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-lg font-semibold mb-1 hover:underline"
+                        >
+                          <span>{app.resume_title}</span>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 17L17 7M10 7h7v7"
+                            />
+                          </svg>
+                        </a>
+                      ) : (
+                        app.resume_title && (
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">{app.resume_title}</h3>
+                        )
+                      )}
 
                       {/* ФИО и возраст */}
-                      <div className="text-gray-600 mb-2">
+                      <div className="mb-2">
                         {app.full_name || 'Имя не указано'}
-                        {app.age_years && <span className="text-gray-500">, {app.age_years} лет</span>}
+                        {app.age_years && <span>, {app.age_years} лет</span>}
                       </div>
 
                       {/* Опыт работы */}
                       <div className="mb-3">
-                        <div className="text-sm text-gray-700">
+                        <div className="text-sm">
                           <span className="font-medium">Опыт работы:</span>{' '}
                           {formatExperience(app.total_experience_years, app.total_experience_months)}
                         </div>
                         {app.last_work_experience && (
-                          <div className="text-sm text-gray-600 mt-1">
+                          <div className="text-sm mt-1">
                             <span className="font-medium">Последнее место работы:</span>{' '}
                             {app.last_work_experience.company_name && <span>{app.last_work_experience.company_name}</span>}
                             {app.last_work_experience.position && <span> • {app.last_work_experience.position}</span>}
@@ -510,11 +537,11 @@ export default function VacancyApplicationsPageClient() {
                             <a href={`tel:+${app.phone}`} className="text-black-600 hover:underline">
                               +{app.phone}
                             </a>
-                            {app.has_whatsapp && <span className="text-green-600" title="WhatsApp">WhatsApp</span>}
-                            {app.has_telegram && <span className="text-blue-500" title="Telegram">Telegram</span>}
+                            {app.has_whatsapp && <span title="WhatsApp">WhatsApp</span>}
+                            {app.has_telegram && <span title="Telegram">Telegram</span>}
                           </div>
                         )}
-                        {app.email && <div className="text-gray-600">{app.email}</div>}
+                        {app.email && <div>{app.email}</div>}
                       </div>
 
                       {/* Действия */}
@@ -646,11 +673,19 @@ export default function VacancyApplicationsPageClient() {
                     {/* Фото */}
                     <div className="flex-shrink-0">
                       {app.photo_url ? (
-                        <img
-                          src={app.photo_url}
-                          alt={app.full_name || 'Кандидат'}
-                          className="w-20 h-20 rounded-lg object-cover"
-                        />
+                        (() => {
+                          const raw = app.photo_url;
+                          const photoSrc = raw.startsWith('http') || raw.startsWith('/')
+                            ? raw
+                            : `/uploads/photo/${raw}`;
+                          return (
+                            <img
+                              src={photoSrc}
+                              alt={app.full_name || 'Кандидат'}
+                              className="w-20 h-20 rounded-lg object-cover"
+                            />
+                          );
+                        })()
                       ) : (
                         <div className="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
                           <svg className="w-10 h-10 text-gray-400" fill="currentColor" viewBox="0 0 20 20">

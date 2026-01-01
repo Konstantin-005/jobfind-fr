@@ -275,8 +275,22 @@ type JobAddressUpsert = {
   metro_station_ids: number[];
 };
 
+export type CompanyJobsListResponse = {
+  data: JobPosting[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+
 export const jobsApi = {
-  async listCompanyJobs(params?: { page?: number; page_size?: number; search?: string }) {
+  async listCompanyJobs(params?: {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    is_active?: boolean;
+    sort_by?: 'job_id' | 'posted_date' | 'expiration_date';
+    sort_dir?: 'asc' | 'desc';
+  }) {
     const qs = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
@@ -284,7 +298,7 @@ export const jobsApi = {
       });
     }
     const endpoint = `${API_ENDPOINTS.companies.jobs}${qs.toString() ? `?${qs.toString()}` : ''}`;
-    return apiRequest<JobPosting[]>(endpoint, { method: 'GET' });
+    return apiRequest<CompanyJobsListResponse>(endpoint, { method: 'GET' });
   },
 
   async get(jobId: number) {
@@ -310,6 +324,18 @@ export const jobsApi = {
   },
   async getCompanyJob(jobId: number) {
     return apiRequest<JobPosting>(API_ENDPOINTS.companies.jobById(jobId), { method: 'GET' });
+  },
+
+  async archive(jobId: number) {
+    return apiRequest<JobPosting>(API_ENDPOINTS.companies.jobArchive(jobId), {
+      method: 'POST',
+    });
+  },
+
+  async restore(jobId: number) {
+    return apiRequest<JobPosting>(API_ENDPOINTS.companies.jobRestore(jobId), {
+      method: 'POST',
+    });
   },
 
   async replaceAddresses(jobId: number, addresses: JobAddressUpsert[]) {

@@ -4,6 +4,7 @@ import { Resume, WorkExperience } from '../types/resume';
 
 interface ResumeCardProps {
   resume: Resume;
+  onOfferClick?: () => void;
 }
 
 function WorkExperienceItem({ experience }: { experience: WorkExperience }) {
@@ -37,7 +38,7 @@ function WorkExperienceItem({ experience }: { experience: WorkExperience }) {
   );
 }
 
-export default function ResumeCard({ resume }: ResumeCardProps) {
+export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
   const pluralize = (num: number, one: string, two: string, five: string) => {
     let n = Math.abs(num);
     n %= 100;
@@ -180,8 +181,8 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
                 </span>
               </div>
             </div>
-            
-            <div className="flex gap-2">
+
+            <div className="flex gap-2 items-center">
               <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded-full transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -249,6 +250,18 @@ export default function ResumeCard({ resume }: ResumeCardProps) {
             )}
 
           </div>
+
+          {onOfferClick && (
+            <div className="mt-6 flex justify-start">
+              <button
+                type="button"
+                onClick={onOfferClick}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+              >
+                Предложить вакансию
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

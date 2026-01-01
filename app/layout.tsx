@@ -34,9 +34,9 @@ export default function RootLayout({
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'JobFind',
-    url: 'https://jobfind-fr.vercel.app',
-    description: 'Найдите свою идеальную работу с JobFind',
+    name: 'e77.top',
+    url: 'https://e77.top',
+    description: 'Найдите свою идеальную работу с e77.top',
   }
 
   return (

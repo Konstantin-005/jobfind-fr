@@ -9,6 +9,7 @@ import { apiRequest } from '../utils/api';
 import { API_ENDPOINTS } from '../config/api';
 import Link from 'next/link';
 import ResumeFiltersModal, { ResumeFilters } from '../components/ResumeFiltersModal';
+import { JobOfferModal } from '../components/JobOfferModal';
 
 export default function ResumeSearchPageClient() {
   const { role, isLoading: isAuthLoading } = useUser();
@@ -27,6 +28,24 @@ export default function ResumeSearchPageClient() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<Partial<ResumeFilters>>({});
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+  const [quickFilterModal, setQuickFilterModal] = useState<null | (typeof quickFiltersConfig)[number]['key']>(null);
+  const [offerResumeLinkUuid, setOfferResumeLinkUuid] = useState<string | null>(null);
+
+  const isLocationActive = (f: Partial<ResumeFilters>) => (f.region_ids?.length || f.city_ids?.length);
+  const isJobSearchStatusActive = (f: Partial<ResumeFilters>) => f.job_search_status?.length;
+  const isEmploymentTypeActive = (f: Partial<ResumeFilters>) => f.employment_type_ids?.length;
+  const isWorkFormatActive = (f: Partial<ResumeFilters>) => f.work_format_ids?.length;
+  const isExperienceActive = (f: Partial<ResumeFilters>) => f.total_experience_level?.length;
+  const isSalaryActive = (f: Partial<ResumeFilters>) => f.salary_min !== undefined || f.salary_max !== undefined;
+
+  const quickFiltersConfig = [
+    { key: 'location', label: 'Локация', isActive: isLocationActive },
+    { key: 'job_search_status', label: 'Статус поиска', isActive: isJobSearchStatusActive },
+    { key: 'employment_type', label: 'Тип занятости', isActive: isEmploymentTypeActive },
+    { key: 'work_format', label: 'График работы', isActive: isWorkFormatActive },
+    { key: 'experience', label: 'Общий опыт', isActive: isExperienceActive },
+    { key: 'salary', label: 'Уровень дохода', isActive: isSalaryActive },
+  ] as const;
 
   const countActiveFilters = (f: Partial<ResumeFilters>) => {
     let count = 0;
@@ -321,14 +340,25 @@ export default function ResumeSearchPageClient() {
 
         {/* Quick Filters */}
         <div className="flex flex-wrap gap-2 mb-8">
-          {['Регион', 'Статус поиска', 'Тип занятости', 'График работы', 'Общий опыт', 'Уровень дохода'].map((filter) => (
-            <button
-              key={filter}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
-            >
-              <span className="text-gray-400 font-normal">+</span> {filter}
-            </button>
-          ))}
+          {quickFiltersConfig.map((filter) => {
+            const active = !!filter.isActive(filters);
+            return (
+              <button
+                key={filter.key}
+                onClick={() => setQuickFilterModal(filter.key)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                  active
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+             >
+                <span className={active ? 'text-blue-500 font-normal' : 'text-gray-400 font-normal'}>
+                  {active ? '•' : '+'}
+                </span>{' '}
+                {filter.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Results Header */}
@@ -437,7 +467,13 @@ export default function ResumeSearchPageClient() {
           {isLoading && resumes.length === 0 ? (
             <div className="text-center py-12 text-gray-500">Загрузка резюме...</div>
           ) : resumes.length > 0 ? (
-            resumes.map((resume) => <ResumeCard key={resume.link_uuid} resume={resume} />)
+            resumes.map((resume) => (
+              <ResumeCard
+                key={resume.link_uuid}
+                resume={resume}
+                onOfferClick={role === 'employer' ? () => setOfferResumeLinkUuid(resume.link_uuid) : undefined}
+              />
+            ))
           ) : (
             <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
               <div className="text-gray-400 mb-2">
@@ -524,13 +560,34 @@ export default function ResumeSearchPageClient() {
         )}
       </div>
 
-      {/* Filters Modal */}
+      {/* Main Filters Modal */}
       <ResumeFiltersModal
         isOpen={isFiltersOpen}
         onClose={() => setIsFiltersOpen(false)}
         onApply={handleApplyFilters}
         initialFilters={filters}
+        mode="all"
       />
+
+      {/* Quick Filter Modal */}
+      <ResumeFiltersModal
+        isOpen={quickFilterModal !== null}
+        onClose={() => setQuickFilterModal(null)}
+        onApply={(newFilters) => {
+          handleApplyFilters(newFilters);
+          setQuickFilterModal(null);
+        }}
+        initialFilters={filters}
+        mode={quickFilterModal ?? 'all'}
+      />
+
+      {role === 'employer' && offerResumeLinkUuid && (
+        <JobOfferModal
+          isOpen={!!offerResumeLinkUuid}
+          onClose={() => setOfferResumeLinkUuid(null)}
+          resumeLinkUuid={offerResumeLinkUuid}
+        />
+      )}
     </div>
   );
 }

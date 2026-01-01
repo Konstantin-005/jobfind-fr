@@ -49,6 +49,8 @@ export const API_ENDPOINTS = {
     profile: `${API_BASE_URL}/api/companies/profile`,
     jobs: `${API_BASE_URL}/api/companies/jobs`,
     jobById: (jobId: number) => `${API_BASE_URL}/api/companies/jobs/${jobId}`,
+    jobArchive: (jobId: number) => `${API_BASE_URL}/api/companies/jobs/${jobId}/archive`,
+    jobRestore: (jobId: number) => `${API_BASE_URL}/api/companies/jobs/${jobId}/restore`,
   },
   applications: {
     apply: (jobId: number) => `${API_BASE_URL}/api/jobs/${jobId}/apply`,

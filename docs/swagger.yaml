@@ -467,6 +467,8 @@ definitions:
         type: boolean
       is_contract_possible:
         type: boolean
+      is_moderated:
+        type: boolean
       is_promo:
         type: boolean
       job_id:
@@ -574,6 +576,23 @@ definitions:
         items:
           type: integer
         type: array
+    type: object
+  controllers.JobModerationItem:
+    properties:
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      is_active:
+        type: boolean
+      is_moderated:
+        type: boolean
+      job_id:
+        type: integer
+      posted_date:
+        type: string
+      title:
+        type: string
     type: object
   controllers.JobPostingAddressInput:
     properties:
@@ -764,6 +783,21 @@ definitions:
       message:
         example: Password reset email sent
         type: string
+    type: object
+  controllers.ModerateJobRequest:
+    properties:
+      is_moderated:
+        example: true
+        type: boolean
+    type: object
+  controllers.OfferJobRequest:
+    description: Данные предложения вакансии (resume_link_uuid)
+    properties:
+      resume_link_uuid:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - resume_link_uuid
     type: object
   controllers.OptionalString:
     properties:
@@ -1207,6 +1241,10 @@ definitions:
         description: Relations
       user_id:
         type: string
+      vacancy_imported:
+        type: boolean
+      vacancy_imported_date:
+        type: string
       website_url:
         type: string
     type: object
@@ -1423,6 +1461,8 @@ definitions:
       is_active:
         type: boolean
       is_contract_possible:
+        type: boolean
+      is_moderated:
         type: boolean
       is_promo:
         type: boolean
@@ -2816,6 +2856,11 @@ paths:
         in: query
         name: sort_dir
         type: string
+      - description: 'Фильтр по активности вакансии: true — только активные, false
+          — только архивные'
+        in: query
+        name: is_active
+        type: boolean
       produces:
       - application/json
       responses:
@@ -2878,6 +2923,98 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить полную информацию о вакансии компании по ID
+      tags:
+      - Companies
+  /api/companies/jobs/{id}/archive:
+    post:
+      description: Устанавливает флаг is_active = false для вакансии компании текущего
+        работодателя
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Перенести вакансию компании в архив
+      tags:
+      - Companies
+  /api/companies/jobs/{id}/restore:
+    post:
+      description: Устанавливает флаг is_active = true для вакансии компании текущего
+        работодателя
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Восстановить вакансию компании из архива
       tags:
       - Companies
   /api/companies/profile:
@@ -3688,6 +3825,131 @@ paths:
       security:
       - BearerAuth: []
       summary: Откликнуться на вакансию
+      tags:
+      - Jobs
+  /api/jobs/{job_id}/moderate:
+    put:
+      consumes:
+      - application/json
+      description: Установить флаг модерации вакансии (только для админов).
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Параметры модерации
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ModerateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.JobPosting'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Модерировать вакансию
+      tags:
+      - Jobs
+  /api/jobs/{job_id}/offer:
+    post:
+      consumes:
+      - application/json
+      description: Отправить предложение вакансии конкретному соискателю по его резюме
+        (link_uuid) (только для работодателя).
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: Данные предложения (resume_link_uuid)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.OfferJobRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.JobApplication'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Предложить вакансию соискателю
+      tags:
+      - Jobs
+  /api/jobs/moderation:
+    get:
+      description: Получить список вакансий, ожидающих модерации (только для админов).
+      parameters:
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Количество элементов на странице (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.JobModerationItem'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Список вакансий на модерации
       tags:
       - Jobs
   /api/jobs/searchBySlug:

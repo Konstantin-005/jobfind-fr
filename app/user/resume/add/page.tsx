@@ -622,7 +622,7 @@ export default function ResumeAddPage() {
         setIsErrorModalOpen(true);
         return;
       }
-      router.push('/resume');
+      router.push('/user/resume');
     } catch (error) {
       console.error('Error creating resume:', error);
       setErrorMessage('Произошла ошибка при создании резюме. Пожалуйста, попробуйте позже');

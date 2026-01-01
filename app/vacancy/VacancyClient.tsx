@@ -53,7 +53,13 @@ import ApplicationModal from '../components/ApplicationModal'
     return [period, sType].filter(Boolean).join(', ')
   }
   const getExperienceLabel = (value?: string) => workExperienceOptions.find(o => o.value === value)?.label
-  const getWorkFormatLabels = (ids?: number[]) => (ids || []).map(id => workFormatsMap[id]).filter(Boolean)
+  const getWorkFormatLabels = (ids?: number[]) => {
+    const allowedIds = new Set<number>([1, 2, 4])
+    return (ids || [])
+      .filter(id => allowedIds.has(id))
+      .map(id => workFormatsMap[id])
+      .filter(Boolean)
+  }
  
 interface JobListItem {
   job_id: number

@@ -424,6 +424,11 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     base.setDate(base.getDate() - 1)
     return base.toISOString()
   })()
+  const validThrough = (() => {
+    const base = new Date()
+    base.setDate(base.getDate() + 30)
+    return base.toISOString()
+  })()
 
   const jobPostingSchema = {
     '@context': 'https://schema.org',
@@ -431,7 +436,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     title,
     description: schemaDescription || undefined,
     datePosted,
-    validThrough: job.expiration_date || undefined,
+    validThrough,
     employmentType: employmentSchemaValues.length ? employmentSchemaValues : undefined,
     hiringOrganization: {
       '@type': 'Organization',

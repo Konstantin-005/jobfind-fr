@@ -94,9 +94,6 @@ export default function Header() {
                 <Link href="/employer/vacancies" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
                   Мои вакансии
                 </Link>
-                <Link href="/employer/applications" className="relative px-4 py-2 text-gray-700 hover:text-blue-600 text-sm font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg">
-                  Отклики
-                </Link>
               </>
             )}
           </nav>

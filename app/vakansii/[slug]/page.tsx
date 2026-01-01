@@ -10,6 +10,7 @@ import { headers } from 'next/headers'
 import JobFilters from '@/app/components/JobFilters'
 import Pagination from '@/app/components/Pagination'
 import VacancySlugClient from './VacancySlugClient'
+import workFormatsConfig from '@/app/config/work_formats_202505222228.json'
 
 interface JobListItem {
   job_id: number
@@ -96,6 +97,24 @@ function getExperienceLabel(value?: string) {
     'more_5': 'Опыт от 5 лет',
   }
   return value ? map[value] : undefined
+}
+
+const workFormatsMap: Record<number, string> = (workFormatsConfig as any)?.work_formats?.reduce(
+  (acc: Record<number, string>, wf: any) => {
+    if (wf && typeof wf.work_format_id === 'number' && typeof wf.name === 'string') {
+      acc[wf.work_format_id] = wf.name
+    }
+    return acc
+  },
+  {}
+) || {}
+
+function getWorkFormatLabels(ids?: number[]) {
+  const allowedIds = new Set<number>([1, 2, 4])
+  return (ids || [])
+    .filter((id) => allowedIds.has(id))
+    .map((id) => workFormatsMap[id])
+    .filter(Boolean)
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -252,9 +271,18 @@ export default async function VacancyBySlugPage({
                       </div>
                     )}
 
-                    {getExperienceLabel(job.work_experience) && (
-                      <span className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mt-1 max-w-max">{getExperienceLabel(job.work_experience)}</span>
-                    )}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {getExperienceLabel(job.work_experience) && (
+                        <span className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm max-w-max">
+                          {getExperienceLabel(job.work_experience)}
+                        </span>
+                      )}
+                      {getWorkFormatLabels(job.work_format_ids).map((name) => (
+                        <span key={name} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                          {name}
+                        </span>
+                      ))}
+                    </div>
 
                     <div className="text-gray-700 mt-1">{job.company_name}</div>
 

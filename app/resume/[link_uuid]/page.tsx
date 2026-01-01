@@ -12,6 +12,8 @@ import { useParams } from "next/navigation";
 import { API_ENDPOINTS } from "../../config/api";
 import { apiRequest } from "../../utils/api";
 import type { Resume, SearchResumesResponse } from "../../types/resume";
+import { useUser } from "../../components/useUser";
+import { JobOfferModal } from "../../components/JobOfferModal";
 
 const pluralize = (num: number, one: string, two: string, five: string) => {
   let n = Math.abs(num);
@@ -110,9 +112,13 @@ export default function ResumePublicPage() {
     ? params.link_uuid[0]
     : (params?.link_uuid as string | undefined);
 
+  const { role } = useUser();
+
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [chatRoomIdFromOffer, setChatRoomIdFromOffer] = useState<number | null>(null);
 
   useEffect(() => {
     if (!linkUuid) return;
@@ -495,7 +501,35 @@ export default function ResumePublicPage() {
             </section>
           ) : null}
 
+          {role === "employer" && linkUuid && (
+            <div className="sticky bottom-4 z-20">
+              <div className="w-full">
+                <div className="flex items-center gap-3 bg-white/90 border border-gray-200 rounded-xl shadow-md px-4 py-3 backdrop-blur-sm">
+                  <span className="text-sm text-gray-700">Отправить приглашение этому соискателю</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsOfferModalOpen(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                  >
+                    Предложить вакансию
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
+
+        {role === "employer" && linkUuid && (
+          <JobOfferModal
+            isOpen={isOfferModalOpen}
+            onClose={() => setIsOfferModalOpen(false)}
+            resumeLinkUuid={linkUuid}
+            onSuccess={(chatRoomId) => {
+              setChatRoomIdFromOffer(chatRoomId ?? null);
+            }}
+          />
+        )}
       </div>
     </div>
   );

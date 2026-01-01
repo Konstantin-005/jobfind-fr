@@ -28,6 +28,15 @@ interface LanguageFilter {
   proficiency_level: string;
 }
 
+type ResumeFilterMode =
+  | 'all'
+  | 'location'
+  | 'job_search_status'
+  | 'employment_type'
+  | 'work_format'
+  | 'experience'
+  | 'salary';
+
 export interface ResumeFilters {
   region_ids: number[];
   city_ids: number[];
@@ -53,6 +62,7 @@ interface ResumeFiltersModalProps {
   onClose: () => void;
   onApply: (filters: ResumeFilters) => void;
   initialFilters?: Partial<ResumeFilters>;
+  mode?: ResumeFilterMode;
 }
 
 const PROFICIENCY_LEVELS = [
@@ -79,7 +89,7 @@ const EXPERIENCE_LEVELS = [
   { value: 'more_5', label: 'Более 6 лет' },
 ];
 
-export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFilters }: ResumeFiltersModalProps) {
+export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFilters, mode = 'all' }: ResumeFiltersModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   
   // Filter states
@@ -117,6 +127,25 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
   const [newLanguageId, setNewLanguageId] = useState<number | null>(null);
   const [newLanguageLevel, setNewLanguageLevel] = useState<string>('');
 
+  // Sync internal state with initialFilters when modal opens or filters change
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setJobSearchStatus(initialFilters?.job_search_status || []);
+    setAgeMin(initialFilters?.age_min?.toString() || '');
+    setAgeMax(initialFilters?.age_max?.toString() || '');
+    setHasPhoto(initialFilters?.has_photo || false);
+    setEmploymentTypeIds(initialFilters?.employment_type_ids || []);
+    setWorkFormatIds(initialFilters?.work_format_ids || []);
+    setExperienceLevels(initialFilters?.total_experience_level || []);
+    setGender(initialFilters?.gender || '');
+    setSalaryMin(initialFilters?.salary_min?.toString() || '');
+    setSalaryMax(initialFilters?.salary_max?.toString() || '');
+    setEducationTypeIds(initialFilters?.education_type_ids || []);
+    setDrivingLicenseIds(initialFilters?.driving_license_category_ids || []);
+    setLanguages(initialFilters?.languages || []);
+  }, [isOpen, initialFilters]);
+
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -139,15 +168,18 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
           const response = await fetch(`${API_ENDPOINTS.locations}?query=${encodeURIComponent(locationQuery)}`);
           const data = await response.json();
           const locations: Location[] = [];
+
           if (Array.isArray(data)) {
             data.forEach((item: any) => {
-              if (item.city_id) {
-                locations.push({ city_id: item.city_id, name: item.name, type: 'city' });
-              } else if (item.region_id) {
-                locations.push({ region_id: item.region_id, name: item.name, type: 'region' });
+              // Бэкенд возвращает объекты вида { id, name, type: "city" | "reg" }
+              if (item.type === 'city') {
+                locations.push({ city_id: item.id, name: item.name, type: 'city' });
+              } else if (item.type === 'reg') {
+                locations.push({ region_id: item.id, name: item.name, type: 'region' });
               }
             });
           }
+
           setLocationSuggestions(locations);
         } catch (error) {
           console.error('Error fetching locations:', error);
@@ -158,6 +190,7 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
         setLocationSuggestions([]);
       }
     }, 300);
+
     return () => clearTimeout(timer);
   }, [locationQuery]);
 
@@ -269,22 +302,53 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
   };
 
   const handleReset = () => {
-    setSelectedLocations([]);
-    setJobSearchStatus([]);
-    setAgeMin('');
-    setAgeMax('');
-    setHasPhoto(false);
-    setEmploymentTypeIds([]);
-    setWorkFormatIds([]);
-    setExperienceLevels([]);
-    setSelectedProfessions([]);
-    setGender('');
-    setSalaryMin('');
-    setSalaryMax('');
-    setEducationTypeIds([]);
-    setSelectedSkills([]);
-    setDrivingLicenseIds([]);
-    setLanguages([]);
+    if (mode === 'all') {
+      // Полный сброс всех фильтров
+      setSelectedLocations([]);
+      setJobSearchStatus([]);
+      setAgeMin('');
+      setAgeMax('');
+      setHasPhoto(false);
+      setEmploymentTypeIds([]);
+      setWorkFormatIds([]);
+      setExperienceLevels([]);
+      setSelectedProfessions([]);
+      setGender('');
+      setSalaryMin('');
+      setSalaryMax('');
+      setEducationTypeIds([]);
+      setSelectedSkills([]);
+      setDrivingLicenseIds([]);
+      setLanguages([]);
+      return;
+    }
+
+    // Быстрые модалки: локальный сброс только связанных с mode полей
+    switch (mode) {
+      case 'location':
+        setSelectedLocations([]);
+        setLocationQuery('');
+        setLocationSuggestions([]);
+        break;
+      case 'job_search_status':
+        setJobSearchStatus([]);
+        break;
+      case 'employment_type':
+        setEmploymentTypeIds([]);
+        break;
+      case 'work_format':
+        setWorkFormatIds([]);
+        break;
+      case 'experience':
+        setExperienceLevels([]);
+        break;
+      case 'salary':
+        setSalaryMin('');
+        setSalaryMax('');
+        break;
+      default:
+        break;
+    }
   };
 
   if (!isOpen) return null;
@@ -294,7 +358,15 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
       <div ref={modalRef} className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 my-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Фильтры поиска резюме</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {mode === 'all' && 'Фильтры поиска резюме'}
+            {mode === 'location' && 'Фильтр по локации'}
+            {mode === 'job_search_status' && 'Фильтр по статусу поиска'}
+            {mode === 'employment_type' && 'Фильтр по типу занятости'}
+            {mode === 'work_format' && 'Фильтр по графику работы'}
+            {mode === 'experience' && 'Фильтр по опыту работы'}
+            {mode === 'salary' && 'Фильтр по уровню дохода'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -303,11 +375,18 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto space-y-6">
+        <div
+          className={
+            mode === 'all'
+              ? 'px-6 py-4 max-h-[70vh] overflow-y-auto space-y-6'
+              : 'px-6 py-4 space-y-6'
+          }
+        >
           
-          {/* Регион */}
+          {/* локация */}
+          {(mode === 'all' || mode === 'location') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Регион</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Населенный пункт или регион</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {selectedLocations.map((loc, idx) => (
                 <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
@@ -350,8 +429,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               )}
             </div>
           </div>
+          )}
 
           {/* Статус поиска */}
+          {(mode === 'all' || mode === 'job_search_status') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Статус поиска</label>
             <div className="space-y-2">
@@ -368,8 +449,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* Возраст и Фото */}
+          {mode === 'all' && (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Возраст и фото</label>
@@ -404,8 +487,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               </label>
             </div>
           </div>
+          )}
 
           {/* Тип занятости */}
+          {(mode === 'all' || mode === 'employment_type') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Тип занятости</label>
             <div className="space-y-2">
@@ -422,8 +507,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* График работы (Work Format) */}
+          {(mode === 'all' || mode === 'work_format') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">График работы</label>
             <div className="space-y-2">
@@ -440,8 +527,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* Требуемый опыт работы */}
+          {(mode === 'all' || mode === 'experience') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Требуемый опыт работы</label>
             <div className="space-y-2">
@@ -458,8 +547,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* Специализация (Profession) */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Специализация</label>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -504,8 +595,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               )}
             </div>
           </div>
+          )}
 
           {/* Пол */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Пол</label>
             <div className="flex gap-4">
@@ -544,8 +637,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               </label>
             </div>
           </div>
+          )}
 
           {/* Зарплата */}
+          {(mode === 'all' || mode === 'salary') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Зарплата</label>
             <div className="flex items-center gap-2">
@@ -568,8 +663,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               <span className="text-sm text-gray-500">₽</span>
             </div>
           </div>
+          )}
 
           {/* Образование */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Образование</label>
             <div className="space-y-2">
@@ -586,8 +683,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* Навыки */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Навыки</label>
             <input
@@ -612,8 +711,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               </div>
             )}
           </div>
+          )}
 
           {/* Категория прав */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Категория прав</label>
             <div className="flex flex-wrap gap-2">
@@ -632,8 +733,10 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               ))}
             </div>
           </div>
+          )}
 
           {/* Языки */}
+          {mode === 'all' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Языки</label>
             {languages.length > 0 && (
@@ -710,6 +813,7 @@ export default function ResumeFiltersModal({ isOpen, onClose, onApply, initialFi
               <span className="text-sm text-gray-700">Подтверждённые знания</span>
             </label>
           </div>
+          )}
 
         </div>
 
