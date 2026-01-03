@@ -25,16 +25,9 @@ const pluralize = (num: number, one: string, two: string, five: string) => {
   return five;
 };
 
-const getAge = (birthDate?: string) => {
-  if (!birthDate) return null;
-  const birth = new Date(birthDate);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
-    age--;
-  }
-  return age;
+const getAgeFromProfile = (ageYears?: number | null) => {
+  if (typeof ageYears !== "number" || Number.isNaN(ageYears) || ageYears <= 0) return null;
+  return ageYears;
 };
 
 const calculateTotalExperience = (resume: Resume) => {
@@ -189,21 +182,35 @@ export default function ResumePublicPage() {
     );
   }
 
-  const age = getAge(resume.job_seeker_profile.birth_date);
+  const age = getAgeFromProfile((resume.job_seeker_profile as any).age_years);
   const statusInfo = getJobSearchStatusLabel(resume.job_seeker_profile.job_search_status);
   const updateLabel = getUpdateDateLabel(resume.updated_at);
-  const fullName = `${resume.job_seeker_profile.last_name} ${resume.job_seeker_profile.first_name}${
-    resume.job_seeker_profile.middle_name ? ` ${resume.job_seeker_profile.middle_name}` : ""
-  }`;
+
+  const rawLastName = resume.job_seeker_profile.last_name?.trim() || "";
+  const rawFirstName = resume.job_seeker_profile.first_name?.trim() || "";
+  const rawMiddleName = resume.job_seeker_profile.middle_name?.trim() || "";
+  const hasFullName = !!(rawLastName || rawFirstName || rawMiddleName);
+
+  const fullName = hasFullName
+    ? `${rawLastName} ${rawFirstName}${rawMiddleName ? ` ${rawMiddleName}` : ""}`.trim()
+    : "";
+
+  const headerTitle = hasFullName ? fullName : "";
   const totalExperience = calculateTotalExperience(resume);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Шапка с ФИО и основной информацией */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8 flex items-center gap-5">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4 flex items-center gap-5">
           <div className="flex-shrink-0">
-            <div className="w-20 h-20 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center text-gray-400">
+            <div
+              className={
+                resume.photo_url
+                  ? "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-white"
+                  : "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-gray-100 text-gray-500"
+              }
+            >
               {resume.photo_url ? (
                 <img
                   src={`/uploads/photo/${resume.photo_url}`}
@@ -226,24 +233,16 @@ export default function ResumePublicPage() {
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <div className="text-lg font-semibold text-gray-900 mb-1 break-words">
-                  {fullName}
+                  {headerTitle}
                 </div>
                 <div className="text-sm text-gray-600 space-x-1">
                   {resume.job_seeker_profile.gender === "male" && "Мужчина"}
                   {resume.job_seeker_profile.gender === "female" && "Женщина"}
-                  {age && (
-                    <span>
-                      , {age} {pluralize(age, "год", "года", "лет")}
-                    </span>
-                  )}
-                  {resume.job_seeker_profile.birth_date && (
-                    <span className="text-gray-500">
-                      {", "}
-                      {new Date(
-                        resume.job_seeker_profile.birth_date,
-                      ).toLocaleDateString("ru-RU")}
-                    </span>
-                  )}
+                  <span>
+                    {age
+                      ? `, ${age} ${pluralize(age, "год", "года", "лет")}`
+                      : ", Возраст не указан"}
+                  </span>
                 </div>
                 <div className="text-sm text-gray-600 mt-1">
                   {resume.job_seeker_profile.city_name && (
@@ -335,14 +334,14 @@ export default function ResumePublicPage() {
         </div>
 
         {/* Основной контент резюме */}
-        <div className="space-y-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-8">
           {/* Заголовок резюме и зарплата */}
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">{resume.title}</h1>
               {resume.profession_name && (
                 <div className="text-sm text-gray-600">
-                  Специализация: {resume.profession_name}
+                  Профессия: {resume.profession_name}
                 </div>
               )}
               <div className="mt-1 text-sm text-gray-600 space-y-0.5">
@@ -389,11 +388,11 @@ export default function ResumePublicPage() {
                 .map((exp, index) => {
                 const periodStart = `${exp.start_month
                   .toString()
-                  .padStart(2, "0")} ${exp.start_year}`;
+                  .padStart(2, "0")}/${exp.start_year}`;
                 const periodEnd = exp.is_current
                   ? "по настоящее время"
                   : exp.end_month && exp.end_year
-                  ? `${exp.end_month.toString().padStart(2, "0")} ${exp.end_year}`
+                  ? `${exp.end_month.toString().padStart(2, "0")}/${exp.end_year}`
                   : "";
 
                 const startDate = new Date(exp.start_year, exp.start_month - 1);

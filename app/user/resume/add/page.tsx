@@ -71,8 +71,8 @@ export default function ResumeAddPage() {
     professional_summary: "",
     phone: "",
     phoneComment: "",
-    hasWhatsapp: false,
-    hasTelegram: false,
+    whatsapp: "",
+    telegram: "",
     email: "",
     website: "",
     hideNameAndPhoto: false,
@@ -445,12 +445,12 @@ export default function ResumeAddPage() {
     setForm((prev) => ({ ...prev, phoneComment: e.target.value }));
   };
 
-  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, hasWhatsapp: e.target.checked }));
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, whatsapp: e.target.value }));
   };
 
-  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, hasTelegram: e.target.checked }));
+  const handleTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, telegram: e.target.value }));
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -537,8 +537,8 @@ export default function ResumeAddPage() {
         title: form.title,
         profession_id: form.profession_id,
         visibility: form.visibility,
-        has_whatsapp: form.hasWhatsapp,
-        has_telegram: form.hasTelegram,
+        whatsapp: form.whatsapp && form.whatsapp.trim() !== "" ? form.whatsapp.trim() : undefined,
+        telegram: form.telegram && form.telegram.trim() !== "" ? form.telegram.trim() : undefined,
         education_type_id: form.education_type_id,
         hide_full_name: form.hideNameAndPhoto,
         hide_phone: form.hidePhone,
@@ -1241,25 +1241,21 @@ export default function ResumeAddPage() {
                       onChange={handlePhoneChange}
                     />
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={form.hasWhatsapp}
-                        onChange={handleHasWhatsappChange}
-                      />
-                      Есть Вотсап
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={form.hasTelegram}
-                        onChange={handleHasTelegramChange}
-                      />
-                      Есть Телеграм
-                    </label>
+                  <div className="flex flex-col space-y-3">
+                    <input
+                      type="text"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="WhatsApp"
+                      value={form.whatsapp}
+                      onChange={handleWhatsappChange}
+                    />
+                    <input
+                      type="text"
+                      className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                      placeholder="Telegram"
+                      value={form.telegram}
+                      onChange={handleTelegramChange}
+                    />
                   </div>
                   <div>
                     <input

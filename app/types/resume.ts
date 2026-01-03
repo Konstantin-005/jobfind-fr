@@ -5,12 +5,6 @@ export interface Resume {
   salary_expectation?: number | null;
   professional_summary?: string | null;
   link_uuid: string;
-  phone?: string | null;
-  email?: string | null;
-  phone_comment?: string | null;
-  website_url?: string | null;
-  has_whatsapp: boolean;
-  has_telegram: boolean;
   business_trips?: string | null;
   created_at: string;
   updated_at: string;
@@ -18,7 +12,7 @@ export interface Resume {
     first_name: string;
     last_name: string;
     middle_name?: string;
-    birth_date: string;
+    age_years?: number;
     gender: string;
     job_search_status: string;
     city_name?: string;

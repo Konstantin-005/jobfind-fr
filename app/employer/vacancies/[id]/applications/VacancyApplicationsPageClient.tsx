@@ -35,8 +35,8 @@ type Application = {
   email?: string;
   phone?: string;
   phone_comment?: string;
-  has_whatsapp?: boolean;
-  has_telegram?: boolean;
+  whatsapp?: string | null;
+  telegram?: string | null;
   salary_expectation?: number;
   cover_letter?: string;
   applied_date: string;
@@ -537,8 +537,18 @@ export default function VacancyApplicationsPageClient() {
                             <a href={`tel:+${app.phone}`} className="text-black-600 hover:underline">
                               +{app.phone}
                             </a>
-                            {app.has_whatsapp && <span title="WhatsApp">WhatsApp</span>}
-                            {app.has_telegram && <span title="Telegram">Telegram</span>}
+                          </div>
+                        )}
+                        {app.whatsapp && app.whatsapp.trim() !== '' && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium">WhatsApp:</span>
+                            <span>{app.whatsapp}</span>
+                          </div>
+                        )}
+                        {app.telegram && app.telegram.trim() !== '' && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-medium">Telegram:</span>
+                            <span>{app.telegram}</span>
                           </div>
                         )}
                         {app.email && <div>{app.email}</div>}

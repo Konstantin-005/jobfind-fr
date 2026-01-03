@@ -14,10 +14,24 @@ function WorkExperienceItem({ experience }: { experience: WorkExperience }) {
 
   return (
     <div className="mb-2 last:mb-0">
-      <div className="font-medium text-gray-900">{experience.position}</div>
-      <div className="text-gray-600">
-        {experience.company_name} • {experience.start_month}/{experience.start_year} — {experience.is_current ? 'Наст. время' : `${experience.end_month}/${experience.end_year}`}
-      </div>
+      {(() => {
+        const start = `${experience.start_month}/${experience.start_year}`;
+        const end = experience.is_current
+          ? 'Наст. время'
+          : `${experience.end_month}/${experience.end_year}`;
+        const period = `${start} — ${end}`;
+
+        return (
+          <>
+            <div className="font-medium text-gray-900">
+              {experience.company_name}
+            </div>
+            <div className="text-gray-700 mt-0.5">
+              {experience.position} • {period}
+            </div>
+          </>
+        );
+      })()}
       {experience.responsibilities && (
         <div className="mt-1 text-gray-700">
           <div 
@@ -49,15 +63,9 @@ export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
     return five;
   };
 
-  const getAge = (birthDate?: string) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const m = now.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
-      age--;
-    }
+  const getAgeFromProfile = () => {
+    const age = resume.job_seeker_profile.age_years;
+    if (typeof age !== 'number' || Number.isNaN(age) || age <= 0) return null;
     return age;
   };
 
@@ -126,7 +134,7 @@ export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
     return { label, isRecent };
   };
 
-  const age = getAge(resume.job_seeker_profile.birth_date);
+  const age = getAgeFromProfile();
   const statusInfo = getJobSearchStatusLabel(resume.job_seeker_profile.job_search_status);
   const updateInfo = getUpdateDateLabel(resume.updated_at);
 
@@ -135,7 +143,13 @@ export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
       <div className="flex gap-6">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <div className="w-20 h-20 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center text-gray-400">
+          <div
+            className={
+              resume.photo_url
+                ? "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-white"
+                : "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-gray-100 text-gray-500"
+            }
+          >
             {resume.photo_url ? (
               <img src={`/uploads/photo/${resume.photo_url}`} alt="Photo" className="w-full h-full object-cover" />
             ) : (
@@ -166,19 +180,20 @@ export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
               )}
 
               <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-                {age && <span>{age} {pluralize(age, 'год', 'года', 'лет')}</span>}
-                {resume.job_seeker_profile.city_name && (
-                  <>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                    <span>{resume.job_seeker_profile.city_name}</span>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-2 flex flex-wrap gap-2">
+                <span>
+                  {age
+                    ? `${age} ${pluralize(age, 'год', 'года', 'лет')}`
+                    : 'Возраст не указан'}
+                  {resume.job_seeker_profile.gender === 'male' && ', М'}
+                  {resume.job_seeker_profile.gender === 'female' && ', Ж'}
+                </span>
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
                   {statusInfo.label}
                 </span>
+              </div>
+
+              <div className="text-sm text-gray-600 mt-1">
+                {resume.job_seeker_profile.city_name && <span>{resume.job_seeker_profile.city_name}</span>}
               </div>
             </div>
 

@@ -1201,13 +1201,16 @@ function ContactsBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
     form.hideOtherContacts && 'Скрыть остальные контакты',
     form.hideCompanyNames && 'Скрыть названия компаний в опыте работы',
   ].filter(Boolean).join(', ');
-  const visibilityMap: Record<string, string> = {
+
+  const visibilityLabels: Record<string, string> = {
     public: 'Видно всем зарегистрированным работодателям на сайте',
     excluded_companies: 'Видно всем, кроме работодателей из черного списка',
     selected_companies: 'Видно только работодателям из белого списка',
     link_only: 'Доступ только по прямой ссылке',
     private: 'Не видно никому',
   };
+  const getVisibilityLabel = (visibility: string) => visibilityLabels[visibility] || 'Не указано';
+
   return (
     <div className="p-6 border rounded-xl relative mb-6 bg-white">
       <div className="flex items-center justify-between mb-4">
@@ -1216,12 +1219,38 @@ function ContactsBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
           <PencilIcon />
         </button>
       </div>
-      <div className="mb-2"><span className="text-gray-400">Телефон:</span> {form.phone || <span className="text-gray-400">Не указано</span>} {form.hasWhatsapp && <span className="ml-2 text-green-600">WhatsApp</span>} {form.hasTelegram && <span className="ml-2 text-blue-500">Telegram</span>}</div>
-      {form.phoneComment && <div className="mb-2 text-gray-500 text-sm">{form.phoneComment}</div>}
-      <div className="mb-2"><span className="text-gray-400">Email:</span> {form.email || <span className="text-gray-400">Не указано</span>}</div>
-      <div className="mb-2"><span className="text-gray-400">Веб-сайт:</span> {form.website || <span className="text-gray-400">Не указано</span>}</div>
-      <div className="mb-2"><span className="text-gray-400">Приватность:</span> {privacy || <span className="text-gray-400">Нет</span>}</div>
-      <div className="mb-2"><span className="text-gray-400">Видимость резюме:</span> {visibilityMap[form.visibility] || 'Не указано'}</div>
+      <div className="mb-2">
+        <span className="text-gray-400">Телефон:</span>{' '}
+        {form.phone ? (
+          <>
+            {form.phone}
+            {form.phoneComment && ` (${form.phoneComment})`}
+          </>
+        ) : (
+          <span className="text-gray-400">Не указано</span>
+        )}
+      </div>
+      {form.whatsapp && form.whatsapp.trim() !== '' && (
+        <div className="mb-1 text-sm"><span className="text-gray-400">WhatsApp:</span> {form.whatsapp}</div>
+      )}
+      {form.telegram && form.telegram.trim() !== '' && (
+        <div className="mb-1 text-sm"><span className="text-gray-400">Telegram:</span> {form.telegram}</div>
+      )}
+      {form.email && form.email.trim() !== '' && (
+        <div className="mb-2"><span className="text-gray-400">Email:</span> {form.email}</div>
+      )}
+      {form.website && form.website.trim() !== '' && (
+        <div className="mb-2"><span className="text-gray-400">Веб-сайт:</span> {form.website}</div>
+      )}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-gray-400 text-sm mb-1">Настройки приватности</div>
+          <div className="text-base font-medium">{getVisibilityLabel(form.visibility)}</div>
+        </div>
+        <button className="px-4 py-2 text-blue-600 hover:text-blue-700" onClick={onEdit}>
+          Изменить
+        </button>
+      </div>
     </div>
   );
 }
@@ -1253,8 +1282,8 @@ function ContactsModal({ form, onClose, onSave }: { form: any, onClose: () => vo
   };
 
   const [phone, setPhone] = useState(form.phone ? formatPhone(form.phone) : '');
-  const [hasWhatsapp, setHasWhatsapp] = useState(form.hasWhatsapp || false);
-  const [hasTelegram, setHasTelegram] = useState(form.hasTelegram || false);
+  const [whatsapp, setWhatsapp] = useState(form.whatsapp || '');
+  const [telegram, setTelegram] = useState(form.telegram || '');
   const [phoneComment, setPhoneComment] = useState(form.phoneComment || '');
   const [email, setEmail] = useState(form.email || '');
   const [website, setWebsite] = useState(form.website || '');
@@ -1303,11 +1332,23 @@ function ContactsModal({ form, onClose, onSave }: { form: any, onClose: () => vo
               });
             }}
           />
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hasWhatsapp} onChange={e => setHasWhatsapp(e.target.checked)} />Есть WhatsApp</label>
-            <label className="flex items-center"><input type="checkbox" className="mr-2" checked={hasTelegram} onChange={e => setHasTelegram(e.target.checked)} />Есть Telegram</label>
-          </div>
           <input type="text" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Комментарий к номеру телефона" value={phoneComment} onChange={e => setPhoneComment(e.target.value)} />
+          <div className="space-y-3 mt-3">
+            <input
+              type="text"
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base"
+              placeholder="WhatsApp"
+              value={whatsapp}
+              onChange={e => setWhatsapp(e.target.value)}
+            />
+            <input
+              type="text"
+              className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base"
+              placeholder="Telegram"
+              value={telegram}
+              onChange={e => setTelegram(e.target.value)}
+            />
+          </div>
           <input type="email" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <input type="text" className="w-full bg-[#F5F8FB] border border-gray-200 rounded-lg px-4 py-3 text-base" placeholder="Веб-сайт" value={website} onChange={e => setWebsite(e.target.value)} />
         </div>
@@ -1345,8 +1386,8 @@ function ContactsModal({ form, onClose, onSave }: { form: any, onClose: () => vo
             const cleanPhone = getCleanPhone(phone);
             onSave({ 
               phone: cleanPhone,
-              hasWhatsapp, 
-              hasTelegram, 
+              whatsapp: whatsapp && whatsapp.trim() !== "" ? whatsapp.trim() : null,
+              telegram: telegram && telegram.trim() !== "" ? telegram.trim() : null,
               phoneComment, 
               email, 
               website, 
@@ -1421,8 +1462,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
     professional_summary: "",
     phone: "",
     phoneComment: "",
-    hasWhatsapp: false,
-    hasTelegram: false,
+    whatsapp: "",
+    telegram: "",
     email: "",
     website: "",
     hideNameAndPhoto: false,
@@ -1553,8 +1594,18 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       professional_summary: resumeData.professional_summary ? resumeData.professional_summary : null,
       phone: resumeData.phone ? String(resumeData.phone).replace(/^\+/, '') : null,
       phone_comment: resumeData.phoneComment ? resumeData.phoneComment : null,
-      has_whatsapp: resumeData.hasWhatsapp || false,
-      has_telegram: resumeData.hasTelegram || false,
+      whatsapp:
+        typeof resumeData.whatsapp === 'string'
+          ? (resumeData.whatsapp as string).trim() || null
+          : resumeData.whatsapp === null
+            ? null
+            : undefined,
+      telegram:
+        typeof resumeData.telegram === 'string'
+          ? (resumeData.telegram as string).trim() || null
+          : resumeData.telegram === null
+            ? null
+            : undefined,
       email: resumeData.email ? resumeData.email : null,
       website_url: resumeData.website ? resumeData.website : null,
       hide_full_name: resumeData.hideNameAndPhoto || false,
@@ -1691,8 +1742,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
           professional_summary: resume.professional_summary || "",
           phone: resume.phone || "",
           phoneComment: resume.phone_comment || "",
-          hasWhatsapp: resume.has_whatsapp || false,
-          hasTelegram: resume.has_telegram || false,
+          whatsapp: typeof resume.whatsapp === "string" ? resume.whatsapp : "",
+          telegram: typeof resume.telegram === "string" ? resume.telegram : "",
           email: resume.email || "",
           website: resume.website_url || "",
           hideNameAndPhoto: resume.hide_full_name || false,
@@ -2015,11 +2066,11 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       input.setSelectionRange(newPosition, newPosition);
     });
   };
-  const handleHasWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, hasWhatsapp: e.target.checked }));
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, whatsapp: e.target.value }));
   };
-  const handleHasTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, hasTelegram: e.target.checked }));
+  const handleTelegramChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, telegram: e.target.value }));
   };
   const handlePhoneCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, phoneComment: e.target.value }));
@@ -2111,8 +2162,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       if (form.phone) formData.append('phone', form.phone.replace(/^\+/, ''));
       if (form.email) formData.append('email', form.email);
       if (form.website) formData.append('website_url', form.website);
-      formData.append('has_whatsapp', String(form.hasWhatsapp));
-      formData.append('has_telegram', String(form.hasTelegram));
+      if (form.whatsapp && form.whatsapp.trim() !== "") formData.append('whatsapp', form.whatsapp.trim());
+      if (form.telegram && form.telegram.trim() !== "") formData.append('telegram', form.telegram.trim());
       formData.append('education_type_id', String(form.education_type_id));
       if (photoFileName) formData.append('photo_url', photoFileName);
       formData.append('hide_full_name', String(form.hideNameAndPhoto));
@@ -2209,8 +2260,8 @@ export default function ResumeEditPage({ params }: { params: { id: string } }) {
       if (form.phone) formData.append('phone', form.phone.replace(/^\+/, ''));
       if (form.email) formData.append('email', form.email);
       if (form.website) formData.append('website_url', form.website);
-      formData.append('has_whatsapp', String(form.hasWhatsapp));
-      formData.append('has_telegram', String(form.hasTelegram));
+      if (form.whatsapp && form.whatsapp.trim() !== "") formData.append('whatsapp', form.whatsapp.trim());
+      if (form.telegram && form.telegram.trim() !== "") formData.append('telegram', form.telegram.trim());
       formData.append('education_type_id', String(form.education_type_id));
       if (photo) formData.append('photo', photo);
       formData.append('hide_full_name', String(form.hideNameAndPhoto));

@@ -81,15 +81,15 @@ export default function Home() {
           {/* Статистика */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">10,000+</div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">1 млн+</div>
               <div className="text-gray-600">Активных вакансий</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">500+</div>
+              <div className="text-3xl font-bold text-green-600 mb-2">500 тыс+</div>
               <div className="text-gray-600">Компаний</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">50,000+</div>
+              <div className="text-3xl font-bold text-purple-600 mb-2">3 млн+</div>
               <div className="text-gray-600">Соискателей</div>
             </div>
             <div className="text-center">

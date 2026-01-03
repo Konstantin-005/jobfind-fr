@@ -172,10 +172,6 @@ definitions:
         items:
           type: integer
         type: array
-      has_telegram:
-        type: boolean
-      has_whatsapp:
-        type: boolean
       hide_email:
         type: boolean
       hide_experience:
@@ -198,11 +194,15 @@ definitions:
         type: string
       salary_expectation:
         type: number
+      telegram:
+        type: string
       title:
         type: string
       visibility:
         type: string
       website_url:
+        type: string
+      whatsapp:
         type: string
       work_experiences:
         items:
@@ -357,10 +357,6 @@ definitions:
         type: string
       full_name:
         type: string
-      has_telegram:
-        type: boolean
-      has_whatsapp:
-        type: boolean
       last_work_experience:
         $ref: '#/definitions/controllers.LastWorkExperience'
       link_uuid:
@@ -377,11 +373,15 @@ definitions:
         type: string
       salary_expectation:
         type: number
+      telegram:
+        type: string
       total_experience_months:
         type: integer
       total_experience_years:
         type: integer
       viewed:
+        type: string
+      whatsapp:
         type: string
     type: object
   controllers.JobChatContext:
@@ -791,8 +791,13 @@ definitions:
         type: boolean
     type: object
   controllers.OfferJobRequest:
-    description: Данные предложения вакансии (resume_link_uuid)
+    description: Данные предложения вакансии (resume_link_uuid, текст сообщения для
+      чата и письма)
     properties:
+      message_text:
+        example: Здравствуйте! Мы посмотрели ваше резюме и хотели бы пригласить вас
+          на интервью.
+        type: string
       resume_link_uuid:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
@@ -956,10 +961,6 @@ definitions:
         items:
           type: integer
         type: array
-      has_telegram:
-        type: boolean
-      has_whatsapp:
-        type: boolean
       hide_email:
         type: boolean
       hide_experience:
@@ -982,11 +983,15 @@ definitions:
         type: string
       salary_expectation:
         type: number
+      telegram:
+        type: string
       title:
         type: string
       visibility:
         type: string
       website_url:
+        type: string
+      whatsapp:
         type: string
       work_format_ids:
         items:
@@ -1389,6 +1394,8 @@ definitions:
         items:
           type: integer
         type: array
+      send_from_employer:
+        type: boolean
       viewed:
         type: string
     type: object
@@ -1710,10 +1717,6 @@ definitions:
         items:
           $ref: '#/definitions/models.EmploymentType'
         type: array
-      has_telegram:
-        type: boolean
-      has_whatsapp:
-        type: boolean
       hide_email:
         type: boolean
       hide_experience:
@@ -1754,6 +1757,8 @@ definitions:
         type: array
       salary_expectation:
         type: number
+      telegram:
+        type: string
       title:
         type: string
       updated_at:
@@ -1761,6 +1766,8 @@ definitions:
       visibility:
         type: string
       website_url:
+        type: string
+      whatsapp:
         type: string
       work_experiences:
         items:
@@ -3877,14 +3884,14 @@ paths:
       consumes:
       - application/json
       description: Отправить предложение вакансии конкретному соискателю по его резюме
-        (link_uuid) (только для работодателя).
+        (link_uuid) с текстом сообщения для чата и письма (только для работодателя).
       parameters:
       - description: ID вакансии
         in: path
         name: job_id
         required: true
         type: integer
-      - description: Данные предложения (resume_link_uuid)
+      - description: Данные предложения (resume_link_uuid, message_text)
         in: body
         name: data
         required: true
@@ -4207,14 +4214,14 @@ paths:
         in: formData
         name: business_trips
         type: string
-      - description: Разрешить WhatsApp
+      - description: Контакт WhatsApp
         in: formData
-        name: has_whatsapp
-        type: boolean
-      - description: Разрешить Telegram
+        name: whatsapp
+        type: string
+      - description: Контакт Telegram
         in: formData
-        name: has_telegram
-        type: boolean
+        name: telegram
+        type: string
       - description: Телефон
         in: formData
         name: phone
