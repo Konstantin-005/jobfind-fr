@@ -1332,7 +1332,7 @@ export default function ResumeAddPage() {
                       checked={form.hideCompanyNames}
                       onChange={handleHideCompanyNamesChange}
                     />
-                    Скрыть названия компаний в опыте работы
+                    Скрыть названия компаний и описание в опыте работы
                   </label>
                   <div>
                     <label className="block text-base mb-2">Видимость резюме</label>

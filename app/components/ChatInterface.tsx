@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import Link from 'next/link';
 import { useUser } from './useUser';
 import { chatApi } from '../utils/api';
@@ -32,6 +33,7 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
   const [isMobile, setIsMobile] = useState(false);
   const [jobContext, setJobContext] = useState<ChatJobContext | undefined>(undefined);
   const [resumeContext, setResumeContext] = useState<ChatResumeContext | undefined>(undefined);
+  const [employerStatus, setEmployerStatus] = useState<string | undefined>(undefined);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,34 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const sanitizeMessageHtml = useCallback((value?: string | null) => {
+    if (!value) return '';
+    return DOMPurify.sanitize(value, {
+      ALLOWED_TAGS: [
+        'p',
+        'br',
+        'strong',
+        'b',
+        'em',
+        'i',
+        'u',
+        'ul',
+        'ol',
+        'li',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'span',
+        'a',
+        'blockquote',
+        'code',
+        'pre',
+      ],
+      ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'style'],
+    });
+  }, []);
 
   const getInitials = (value?: string | null) => {
     if (!value) return '??';
@@ -176,6 +206,7 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
   useEffect(() => {
     if (!selectedRoomId) {
       setMessages([]);
+      setEmployerStatus(undefined);
       return;
     }
 
@@ -191,11 +222,13 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
         setMessages([...msgs].reverse());
         setJobContext((envelope as any)?.job);
         setResumeContext((envelope as any)?.resume);
+        setEmployerStatus((envelope as any)?.employer_status);
       } else {
         console.error('Failed to load messages:', error);
         setMessages([]);
         setJobContext(undefined);
         setResumeContext(undefined);
+        setEmployerStatus(undefined);
       }
       setLoadingMessages(false);
       
@@ -385,6 +418,7 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoomId || !messageText.trim()) return;
+    if (employerStatus === 'rejected') return;
 
     // Отправляем текст через REST, затем дожидаемся ответа
     const text = messageText;
@@ -418,6 +452,7 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
   };
 
   const activeRoom = rooms.find(r => r.room_id === selectedRoomId) || null;
+  const isSendBlocked = employerStatus === 'rejected';
 
   const formatMessageGroupDate = (value: string) => {
     const date = new Date(value);
@@ -508,9 +543,14 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
                               </div>
                               <p className="text-xs text-gray-600 line-clamp-1">{subtitle}</p>
                               <div className="flex items-center justify-between gap-2 mt-1">
-                                <p className={`text-sm line-clamp-1 flex-1 ${room.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-                                  {room.last_message_text || <span className="italic text-gray-400">Нет сообщений</span>}
-                                </p>
+                                <div
+                                  className={`text-sm line-clamp-1 flex-1 ${room.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}
+                                  dangerouslySetInnerHTML={{
+                                    __html: room.last_message_text
+                                      ? sanitizeMessageHtml(room.last_message_text)
+                                      : '<span class="italic text-gray-400">Нет сообщений</span>',
+                                  }}
+                                />
                                 {room.unread_count > 0 && (
                                   <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
                                     {room.unread_count}
@@ -696,7 +736,12 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
                                         ? 'bg-blue-600 text-white rounded-br-none' 
                                         : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
                                     }`}>
-                                        <p className="text-sm leading-relaxed">{msg.message_text}</p>
+                                        <div
+                                          className="text-sm leading-relaxed"
+                                          dangerouslySetInnerHTML={{
+                                            __html: sanitizeMessageHtml(msg.message_text),
+                                          }}
+                                        />
                                         <div className={`text-[10px] mt-1 text-right ${
                                             isOwn ? 'text-blue-100' : 'text-gray-400'
                                         }`}>
@@ -787,12 +832,16 @@ export default function ChatInterface({ initialRoomId, onRoomSelect }: ChatInter
                             type="text"
                             value={messageText}
                             onChange={handleInputChange}
-                            placeholder="Напишите сообщение..."
-                            className="flex-1 bg-gray-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            placeholder={isSendBlocked ? 'Отправка сообщений недоступна' : 'Напишите сообщение...'}
+                            disabled={isSendBlocked}
+                            className={`flex-1 bg-gray-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all ${
+                              isSendBlocked ? 'opacity-60 cursor-not-allowed' : ''
+                            }`}
                         />
                         <button
                             type="submit"
-                            disabled={!messageText.trim()}
+                            disabled={!messageText.trim() || isSendBlocked}
+                            title={isSendBlocked ? 'Сообщения недоступны: статус работодателя — отказ' : undefined}
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-6 font-medium transition-colors"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

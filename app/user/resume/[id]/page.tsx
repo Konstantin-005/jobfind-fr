@@ -1199,7 +1199,7 @@ function ContactsBlock({ form, onEdit }: { form: any, onEdit: () => void }) {
     form.hidePhone && 'Скрыть номер телефона',
     form.hideEmail && 'Скрыть Емайл',
     form.hideOtherContacts && 'Скрыть остальные контакты',
-    form.hideCompanyNames && 'Скрыть названия компаний в опыте работы',
+    form.hideCompanyNames && 'Скрыть названия компаний и описание в опыте работы',
   ].filter(Boolean).join(', ');
 
   const visibilityLabels: Record<string, string> = {

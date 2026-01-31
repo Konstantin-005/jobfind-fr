@@ -50,6 +50,13 @@ interface PaginatedResponse {
   total_pages: number
 }
 
+interface JobsBySlugResponse {
+  items: JobListItem[]
+  limit: number
+  page: number
+  total: number
+}
+
 const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
 
 function buildCompanyLogoSrc(value?: string) {
@@ -216,13 +223,21 @@ export default async function VacancyBySlugPage({
   let total = 0
 
   if (Array.isArray(responseData)) {
-     jobs = responseData
-     total = jobs.length
+    jobs = responseData
+    total = jobs.length
+    totalPages = 1
+  } else if (responseData && typeof responseData === 'object' && 'items' in responseData) {
+    const paginated = responseData as JobsBySlugResponse
+    jobs = Array.isArray(paginated.items) ? paginated.items : []
+    total = typeof paginated.total === 'number' ? paginated.total : jobs.length
+
+    const pageSize = typeof paginated.limit === 'number' && paginated.limit > 0 ? paginated.limit : limit
+    totalPages = Math.max(1, Math.ceil(total / pageSize))
   } else {
-     const paginated = responseData as PaginatedResponse
-     jobs = paginated.data || []
-     totalPages = paginated.total_pages || 1
-     total = paginated.total || 0
+    const paginated = responseData as PaginatedResponse
+    jobs = Array.isArray(paginated.data) ? paginated.data : []
+    totalPages = typeof paginated.total_pages === 'number' ? paginated.total_pages : 1
+    total = typeof paginated.total === 'number' ? paginated.total : jobs.length
   }
 
   return (

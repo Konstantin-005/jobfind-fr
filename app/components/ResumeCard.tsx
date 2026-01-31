@@ -143,20 +143,10 @@ export default function ResumeCard({ resume, onOfferClick }: ResumeCardProps) {
       <div className="flex gap-6">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          <div
-            className={
-              resume.photo_url
-                ? "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-white"
-                : "w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-gray-100 text-gray-500"
-            }
-          >
-            {resume.photo_url ? (
-              <img src={`/uploads/photo/${resume.photo_url}`} alt="Photo" className="w-full h-full object-cover" />
-            ) : (
-              <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-            )}
+          <div className="w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300 bg-gray-100 text-gray-500">
+            <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
           </div>
         </div>
 

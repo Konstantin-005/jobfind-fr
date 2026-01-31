@@ -1,6 +1,5 @@
 export interface Resume {
   profession_name?: string | null;
-  photo_url?: string | null;
   title: string;
   salary_expectation?: number | null;
   professional_summary?: string | null;
@@ -63,8 +62,33 @@ export interface ResumeSkill {
   };
 }
 
+export interface ResumeContacts {
+  phone?: string | null;
+  phone_comment?: string | null;
+  email?: string | null;
+  website_url?: string | null;
+  whatsapp?: string | null;
+  telegram?: string | null;
+  photo_url?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  middle_name?: string | null;
+}
+
 export interface SearchResumesResponse {
   data: Resume[];
+  limit: number;
+  page: number;
+  total: number;
+}
+
+export interface ResumeByLinkItem {
+  resume: Resume;
+  contacts: ResumeContacts | null;
+}
+
+export interface SearchResumesByLinkResponse {
+  data: ResumeByLinkItem[];
   limit: number;
   page: number;
   total: number;

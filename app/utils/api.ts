@@ -9,6 +9,7 @@ import {
   AuthResponse,
   MessageResponse
 } from '../types/auth';
+import { PublicCompanyListItem, PublicCompanyDetail } from '../types/company';
 
 export type UserProfile = {
   user_id: string;
@@ -385,5 +386,44 @@ export const chatApi = {
       method: 'POST',
       body: JSON.stringify({ message_text: messageText }),
     });
+  },
+};
+
+export type PublicCompaniesListResponse = {
+  data: PublicCompanyListItem[];
+  page: number;
+  limit: number;
+  total_count: number;
+};
+
+export const publicCompaniesApi = {
+  async list(params?: {
+    query?: string;
+    industry_id?: number[];
+    city_id?: number[];
+    region_id?: number[];
+    page?: number;
+    limit?: number;
+  }) {
+    const qs = new URLSearchParams();
+    if (params) {
+      if (params.query) qs.set('query', params.query);
+      const appendMulti = (key: string, values?: number[]) => {
+        if (values && values.length > 0) {
+          values.forEach(v => qs.append(key, String(v)));
+        }
+      };
+      appendMulti('industry_id', params.industry_id);
+      appendMulti('city_id', params.city_id);
+      appendMulti('region_id', params.region_id);
+      if (params.page) qs.set('page', String(params.page));
+      if (params.limit) qs.set('limit', String(params.limit));
+    }
+    const endpoint = `${API_ENDPOINTS.dictionaries.companies}${qs.toString() ? `?${qs.toString()}` : ''}`;
+    return apiRequest<PublicCompaniesListResponse>(endpoint, { method: 'GET' });
+  },
+
+  async getById(companyId: number) {
+    return apiRequest<PublicCompanyDetail>(API_ENDPOINTS.dictionaries.companyById(companyId), { method: 'GET' });
   },
 };

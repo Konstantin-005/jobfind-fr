@@ -59,6 +59,8 @@ definitions:
     type: object
   controllers.ChatMessagesResponse:
     properties:
+      employer_status:
+        type: string
       job:
         $ref: '#/definitions/controllers.JobChatContext'
       messages:
@@ -213,6 +215,20 @@ definitions:
           type: integer
         type: array
     type: object
+
+  controllers.JobsBySlugResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobListItem'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
   controllers.CreateWorkExperienceDTO:
     properties:
       city_id:
@@ -355,11 +371,15 @@ definitions:
         type: string
       employer_status:
         type: string
-      full_name:
+      first_name:
+        type: string
+      last_name:
         type: string
       last_work_experience:
         $ref: '#/definitions/controllers.LastWorkExperience'
       link_uuid:
+        type: string
+      middle_name:
         type: string
       phone:
         type: string
@@ -898,6 +918,9 @@ definitions:
       enum_job_applications_employer_status: not_processed, in_progress, thinking,
       processing, test_task, interview, job_offer, onboarding, rejected.'
     properties:
+      message:
+        example: Здравствуйте! Хотим пригласить вас на интервью.
+        type: string
       status:
         example: in_progress
         type: string
@@ -1072,6 +1095,172 @@ definitions:
       start_month:
         type: integer
       start_year:
+        type: integer
+    type: object
+  controllers.companyJobAddress:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      city_name_prepositional:
+        type: string
+    type: object
+  controllers.companyJobListItem:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/controllers.companyJobAddress'
+        type: array
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      is_promo:
+        type: boolean
+      job_id:
+        type: integer
+      logo_url:
+        type: string
+      no_resume_apply:
+        type: boolean
+      salary_currency:
+        type: string
+      salary_max:
+        type: number
+      salary_min:
+        type: number
+      salary_period:
+        type: string
+      salary_type:
+        type: string
+      title:
+        type: string
+      work_experience:
+        type: string
+      work_format_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  controllers.companyPublicCity:
+    properties:
+      city_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.companyPublicDetailResponse:
+    properties:
+      brand_name:
+        type: string
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      company_size:
+        type: string
+      company_type:
+        type: string
+      description:
+        type: string
+      founded_year:
+        type: integer
+      industries:
+        items:
+          $ref: '#/definitions/controllers.companyPublicIndustry'
+        type: array
+      is_it_company:
+        type: boolean
+      jobs:
+        items:
+          $ref: '#/definitions/controllers.companyJobListItem'
+        type: array
+      location:
+        $ref: '#/definitions/controllers.companyPublicLocation'
+      logo_url:
+        type: string
+      website_url:
+        type: string
+    type: object
+  controllers.companyPublicIndustry:
+    properties:
+      industry_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.companyPublicListItem:
+    properties:
+      active_jobs_count:
+        type: integer
+      addresses:
+        items:
+          $ref: '#/definitions/models.CompanyAddress'
+        type: array
+      brand_name:
+        type: string
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      company_size:
+        type: string
+      company_type:
+        type: string
+      deleted:
+        type: boolean
+      description:
+        type: string
+      email:
+        type: string
+      employees:
+        items:
+          $ref: '#/definitions/models.CompanyEmployee'
+        type: array
+      founded_year:
+        type: integer
+      industries:
+        items:
+          $ref: '#/definitions/models.Industry'
+        type: array
+      inn:
+        type: string
+      is_it_company:
+        type: boolean
+      is_moderated:
+        type: boolean
+      job_postings:
+        items:
+          $ref: '#/definitions/models.JobPosting'
+        type: array
+      logo_url:
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Relations
+      user_id:
+        type: string
+      vacancy_imported:
+        type: boolean
+      vacancy_imported_date:
+        type: string
+      website_url:
+        type: string
+    type: object
+  controllers.companyPublicLocation:
+    properties:
+      city:
+        $ref: '#/definitions/controllers.companyPublicCity'
+      region:
+        $ref: '#/definitions/controllers.companyPublicRegion'
+    type: object
+  controllers.companyPublicRegion:
+    properties:
+      name:
+        type: string
+      region_id:
         type: integer
     type: object
   models.ChatMessage:
@@ -1357,8 +1546,6 @@ definitions:
         type: array
       industry_id:
         type: integer
-      is_active:
-        type: boolean
       name:
         type: string
       name_prepositional:
@@ -2053,7 +2240,7 @@ paths:
         name: application_id
         required: true
         type: integer
-      - description: Новый employer_status
+      - description: Новый employer_status и опциональное сообщение соискателю
         in: body
         name: data
         required: true
@@ -3219,6 +3406,115 @@ paths:
       summary: Получить город по slug
       tags:
       - Dictionaries
+  /api/dictionaries/companies:
+    get:
+      description: Возвращает публичный список компаний с возможностью поиска по названию
+        и фильтрами по городам/регионам/отраслям. По умолчанию сортировка по убыванию
+        company_id.
+      parameters:
+      - description: Поиск по названию/бренду
+        in: query
+        name: query
+        type: string
+      - collectionFormat: multi
+        description: ID городов из адресов
+        in: query
+        items:
+          type: integer
+        name: city_id
+        type: array
+      - collectionFormat: multi
+        description: ID регионов (через город адреса)
+        in: query
+        items:
+          type: integer
+        name: region_id
+        type: array
+      - collectionFormat: multi
+        description: ID отраслей
+        in: query
+        items:
+          type: integer
+        name: industry_id
+        type: array
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Лимит (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.companyPublicListItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Публичный список компаний
+      tags:
+      - Dictionaries
+  /api/dictionaries/companies/{id}:
+    get:
+      description: Возвращает публичную информацию о компании по company_id (без рейтинга/отзывов/кол-ва
+        вакансий).
+      parameters:
+      - description: ID компании
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Номер страницы вакансий (default: 1)'
+        in: query
+        name: jobs_page
+        type: integer
+      - description: 'Лимит вакансий (default: 50, max: 200)'
+        in: query
+        name: jobs_limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.companyPublicDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Публичная карточка компании
+      tags:
+      - Dictionaries
   /api/dictionaries/companies/search:
     get:
       description: Поиск компаний по названию или бренду
@@ -3622,9 +3918,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controllers.JobListItem'
-            type: array
+            $ref: '#/definitions/controllers.JobsBySlugResponse'
       security:
       - BearerAuth: []
       summary: Поиск вакансий
@@ -4699,6 +4993,55 @@ paths:
       security:
       - BearerAuth: []
       summary: Получить резюме по LinkUUID
+      tags:
+      - Resumes
+  /api/resumes/link/{link_uuid}/contacts:
+    post:
+      description: Возвращает контакты и ФИО (с учётом hide_* полей) по публичной
+        ссылке резюме. Доступно только работодателю. Лимит 15 открытий контактов в
+        сутки на компанию.
+      parameters:
+      - description: Link UUID резюме
+        in: path
+        name: link_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить контакты резюме по LinkUUID
       tags:
       - Resumes
   /api/resumes/my:

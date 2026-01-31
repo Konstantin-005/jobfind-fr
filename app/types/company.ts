@@ -49,3 +49,67 @@ export interface CompanyProfile {
   addresses?: CompanyAddress[];
   employees?: CompanyEmployee[];
 }
+
+export interface PublicCompanyListItem {
+  company_id: number;
+  company_name: string;
+  brand_name?: string;
+  logo_url?: string;
+  description?: string;
+  company_size?: string;
+  company_type?: string;
+  industries?: Industry[];
+  addresses?: CompanyAddress[];
+  active_jobs_count: number;
+}
+
+export interface CompanyPublicCity {
+  city_id: number;
+  name: string;
+}
+
+export interface CompanyPublicLocation {
+  city?: CompanyPublicCity;
+  region?: {
+    region_id: number;
+    name: string;
+  };
+}
+
+export interface CompanyJobListItem {
+  job_id: number;
+  company_id: number;
+  company_name: string;
+  title: string;
+  work_experience?: string;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency?: string;
+  salary_type?: string;
+  salary_period?: string;
+  is_promo?: boolean;
+  no_resume_apply?: boolean;
+  logo_url?: string;
+  addresses?: {
+    city?: string;
+    city_name_prepositional?: string;
+    address?: string;
+  }[];
+  work_format_ids?: number[];
+}
+
+export interface PublicCompanyDetail {
+  company_id: number;
+  company_name: string;
+  brand_name?: string;
+  logo_url?: string;
+  description?: string;
+  website_url?: string;
+  company_type?: string;
+  is_it_company?: boolean;
+  founded_year?: number;
+  company_size?: string;
+  industries: Industry[];
+  location?: CompanyPublicLocation;
+  jobs: CompanyJobListItem[];
+}

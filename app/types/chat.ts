@@ -48,6 +48,7 @@ export interface ChatMessagesResponse {
   messages: ChatMessage[];
   job?: ChatJobContext;
   resume?: ChatResumeContext;
+  employer_status?: string;
 }
 
 export interface ChatReadEvent {
