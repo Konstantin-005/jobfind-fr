@@ -215,20 +215,6 @@ definitions:
           type: integer
         type: array
     type: object
-
-  controllers.JobsBySlugResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/controllers.JobListItem'
-        type: array
-      limit:
-        type: integer
-      page:
-        type: integer
-      total:
-        type: integer
-    type: object
   controllers.CreateWorkExperienceDTO:
     properties:
       city_id:
@@ -745,6 +731,19 @@ definitions:
     - description
     - title
     - work_experience
+    type: object
+  controllers.JobsBySlugResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobListItem'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
     type: object
   controllers.LastWorkExperience:
     properties:
@@ -4289,9 +4288,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controllers.JobListItem'
-            type: array
+            $ref: '#/definitions/controllers.JobsBySlugResponse'
       security:
       - BearerAuth: []
       summary: Поиск вакансий по slug

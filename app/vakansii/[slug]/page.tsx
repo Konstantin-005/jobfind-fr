@@ -124,12 +124,22 @@ function getWorkFormatLabels(ids?: number[]) {
     .filter(Boolean)
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams
+}: {
+  params: { slug: string }
+  searchParams?: { [key: string]: string | string[] | undefined }
+}): Promise<Metadata> {
   const { slug } = params
   const h = headers()
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
   const proto = h.get('x-forwarded-proto') || 'http'
   const origin = `${proto}://${host}`
+
+  const pageParam = searchParams?.page
+  const pageValue = Array.isArray(pageParam) ? pageParam[0] : pageParam
+  const page = Number(pageValue) || 1
 
   let cityPrepositional: string | undefined
 
@@ -165,6 +175,24 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     alternates: {
       canonical: canonicalUrl,
     },
+    robots: page > 1
+      ? {
+          index: false,
+          follow: false,
+          googleBot: {
+            index: false,
+            follow: false,
+          },
+        }
+      : {
+          index: true,
+          follow: true,
+        },
+    other: page > 1
+      ? {
+          yandex: 'noindex, nofollow',
+        }
+      : undefined,
     openGraph: {
       title,
       description,

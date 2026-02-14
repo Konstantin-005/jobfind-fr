@@ -98,6 +98,13 @@ interface PaginatedJobsResponse {
   total_pages: number
 }
 
+interface JobsResponse {
+  items: JobListItem[]
+  limit: number
+  page: number
+  total: number
+}
+
 const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
 
 function buildCompanyLogoSrc(value?: string) {
@@ -180,6 +187,16 @@ export default function VacancyClient() {
           setJobs(data)
           setTotal(data.length)
           setTotalPages(1)
+        } else if (data && typeof data === 'object' && 'items' in data) {
+          const paginated = data as JobsResponse
+          const pageJobs = Array.isArray(paginated.items) ? paginated.items : []
+
+          const totalCount = typeof paginated.total === 'number' ? paginated.total : pageJobs.length
+          const pageSize = typeof paginated.limit === 'number' && paginated.limit > 0 ? paginated.limit : 50
+
+          setJobs(pageJobs)
+          setTotal(totalCount)
+          setTotalPages(Math.max(1, Math.ceil(totalCount / pageSize)))
         } else {
           const paginated = data as PaginatedJobsResponse
           const pageJobs = paginated.data || []
