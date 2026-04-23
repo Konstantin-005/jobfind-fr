@@ -62,15 +62,26 @@ jobs:
             echo "Ensuring uploads directories exist"
             mkdir -p "$DEPLOY_DIR/public/uploads/companyLogo"
 
-            # Clean old files but preserve uploads and node_modules if possible (for speed)
-            # But for clean install, we remove node_modules. We MUST preserve public/uploads.
-            # Using rsync logic or just careful removal could be better, but tar overwrite is usually fine.
-            # Let's trust tar overwrite, but we might want to clear old .next folder to be sure.
-            rm -rf "$DEPLOY_DIR/.next"
+            # Atomic .next swap: extract to temp dir, then swap in one move
+            # This avoids a window where old chunks are deleted but new ones aren't ready yet
+            EXTRACT_DIR="$DEPLOY_DIR/.next-new"
+            rm -rf "$EXTRACT_DIR"
+            mkdir -p "$EXTRACT_DIR"
 
-            # Extract new release (will overwrite existing files)
-            echo "Extracting new release to $DEPLOY_DIR"
-            tar -xzf "/tmp/${ARCHIVE_NAME}" -C "$DEPLOY_DIR"
+            # Extract new release to temp location first
+            echo "Extracting new release to temporary directory"
+            tar -xzf "/tmp/${ARCHIVE_NAME}" -C "$EXTRACT_DIR"
+
+            # Move new .next into place atomically, then remove old
+            if [ -d "$DEPLOY_DIR/.next" ]; then
+              mv "$DEPLOY_DIR/.next" "$DEPLOY_DIR/.next-old"
+            fi
+            mv "$EXTRACT_DIR/.next" "$DEPLOY_DIR/.next"
+
+            # Copy remaining files (package.json, next.config.js, public, etc.)
+            cp -r "$EXTRACT_DIR"/* "$DEPLOY_DIR/" 2>/dev/null || true
+            rm -rf "$EXTRACT_DIR"
+            rm -rf "$DEPLOY_DIR/.next-old"
 
             cd "$DEPLOY_DIR"
 
