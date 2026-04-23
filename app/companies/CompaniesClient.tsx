@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CompanyCard } from '../components/CompanyCard';
+import Pagination from '../components/Pagination';
 import { PublicCompanyListItem } from '../types/company';
 import { publicCompaniesApi } from '../utils/api';
 
@@ -19,17 +20,48 @@ interface CompaniesClientProps {
   initialMeta: { page: number; limit: number; total_count: number };
 }
 
+function normalizeCompaniesResponse(payload: any): {
+  items: PublicCompanyListItem[];
+  page: number;
+  limit: number;
+  total: number;
+} {
+  if (Array.isArray(payload)) {
+    const items = payload as PublicCompanyListItem[];
+    const total = items.length;
+    return { items, page: 1, limit: items.length || 50, total };
+  }
+
+  if (payload && typeof payload === 'object') {
+    if ('items' in payload) {
+      const items = Array.isArray(payload.items) ? (payload.items as PublicCompanyListItem[]) : [];
+      const page = typeof payload.page === 'number' ? payload.page : 1;
+      const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+      const total = typeof payload.total === 'number' ? payload.total : items.length;
+      return { items, page, limit, total };
+    }
+
+    // обратная совместимость со старым форматом
+    const items = Array.isArray(payload.data) ? (payload.data as PublicCompanyListItem[]) : [];
+    const page = typeof payload.page === 'number' ? payload.page : 1;
+    const limit = typeof payload.limit === 'number' ? payload.limit : 50;
+    const total = typeof payload.total_count === 'number' ? payload.total_count : items.length;
+    return { items, page, limit, total };
+  }
+
+  return { items: [], page: 1, limit: 50, total: 0 };
+}
+
 export default function CompaniesClient({ initialIndustries, initialCompanies, initialMeta }: CompaniesClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [companies, setCompanies] = useState<PublicCompanyListItem[]>(initialCompanies);
   const [page, setPage] = useState(initialMeta.page || 1);
-  const [limit, setLimit] = useState(initialMeta.limit || 20);
+  const [limit] = useState(initialMeta.limit || 50);
   const [totalCount, setTotalCount] = useState(initialMeta.total_count || initialCompanies.length);
   const [queryValue, setQueryValue] = useState(searchParams.get('query') || '');
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedIndustryIds = useMemo(
@@ -37,7 +69,22 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
     [searchParams]
   );
 
-  const hasMore = companies.length < totalCount;
+  const currentPage = useMemo(() => {
+    const urlPage = Number(searchParams.get('page') || '1') || 1;
+    return urlPage;
+  }, [searchParams]);
+
+  const currentLimit = useMemo(() => {
+    const raw = Number(searchParams.get('limit') || '') || 0;
+    if (!raw) return limit;
+    const clamped = Math.max(1, Math.min(200, raw));
+    return clamped;
+  }, [searchParams, limit]);
+
+  const totalPages = useMemo(() => {
+    const pageSize = currentLimit > 0 ? currentLimit : 50;
+    return Math.max(1, Math.ceil(totalCount / pageSize));
+  }, [totalCount, currentLimit]);
 
   useEffect(() => {
     const urlQuery = searchParams.get('query') || '';
@@ -45,14 +92,13 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
   }, [searchParams]);
 
   useEffect(() => {
-    const urlPage = Number(searchParams.get('page') || '1') || 1;
-    const hasFiltersOrQuery =
-      (searchParams.get('query') || '') !== '' ||
-      searchParams.getAll('industry_id').length > 0 ||
-      searchParams.getAll('city_id').length > 0 ||
-      searchParams.getAll('region_id').length > 0;
+    const urlQuery = (searchParams.get('query') || '').trim();
+    const urlIndustryIds = searchParams.getAll('industry_id').map(Number).filter(Boolean);
+    const urlPage = currentPage;
 
-    if (!hasFiltersOrQuery && urlPage === 1) return;
+    // если это самая первая загрузка без параметров, оставляем SSR-данные
+    const isBase = urlQuery === '' && urlIndustryIds.length === 0 && urlPage === 1;
+    if (isBase) return;
 
     const controller = new AbortController();
 
@@ -61,12 +107,10 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
       setError(null);
       try {
         const params = {
-          query: searchParams.get('query') || undefined,
-          industry_id: searchParams.getAll('industry_id').map(Number).filter(Boolean),
-          city_id: searchParams.getAll('city_id').map(Number).filter(Boolean),
-          region_id: searchParams.getAll('region_id').map(Number).filter(Boolean),
+          query: urlQuery || undefined,
+          industry_id: urlIndustryIds,
           page: urlPage,
-          limit,
+          limit: currentLimit,
         };
         const res = await publicCompaniesApi.list(params);
         if (controller.signal.aborted) return;
@@ -77,23 +121,10 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
           setPage(1);
           return;
         }
-        const payload = res.data as any;
-        let items: PublicCompanyListItem[] = [];
-        let total = 0;
-        let nextPage = urlPage;
-
-        if (Array.isArray(payload)) {
-          items = payload;
-          total = payload.length;
-        } else if (payload) {
-          items = Array.isArray(payload.data) ? payload.data : [];
-          total = typeof payload.total_count === 'number' ? payload.total_count : items.length;
-          nextPage = typeof payload.page === 'number' ? payload.page : urlPage;
-        }
-
-        setCompanies(items);
-        setTotalCount(total);
-        setPage(nextPage);
+        const normalized = normalizeCompaniesResponse(res.data as any);
+        setCompanies(normalized.items);
+        setTotalCount(normalized.total);
+        setPage(normalized.page);
       } catch (e) {
         if (!controller.signal.aborted) {
           setError('Ошибка загрузки списка компаний');
@@ -110,7 +141,7 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
     return () => {
       controller.abort();
     };
-  }, [searchParams, limit]);
+  }, [searchParams, currentLimit, currentPage]);
 
   const updateUrl = (params: URLSearchParams) => {
     router.push(`/companies${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
@@ -142,54 +173,6 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
       params.delete('query');
     }
     updateUrl(params);
-  };
-
-  const handleLoadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    setError(null);
-    try {
-      const params = {
-        query: searchParams.get('query') || undefined,
-        industry_id: searchParams.getAll('industry_id').map(Number).filter(Boolean),
-        city_id: searchParams.getAll('city_id').map(Number).filter(Boolean),
-        region_id: searchParams.getAll('region_id').map(Number).filter(Boolean),
-        page: nextPage,
-        limit,
-      };
-      const res = await publicCompaniesApi.list(params);
-      if (res.error || !res.data) {
-        setError(res.error || 'Ошибка загрузки списка компаний');
-        return;
-      }
-      const payload = res.data as any;
-      let newItems: PublicCompanyListItem[] = [];
-      let nextTotal = totalCount;
-      let nextPageResolved = nextPage;
-
-      if (Array.isArray(payload)) {
-        newItems = payload;
-        nextTotal = totalCount + payload.length;
-      } else if (payload) {
-        newItems = Array.isArray(payload.data) ? payload.data : [];
-        nextTotal = typeof payload.total_count === 'number' ? payload.total_count : totalCount;
-        nextPageResolved = typeof payload.page === 'number' ? payload.page : nextPage;
-      }
-
-      if (newItems.length === 0) {
-        setTotalCount(prev => prev);
-        return;
-      }
-
-      setCompanies(prev => [...prev, ...newItems]);
-      setTotalCount(nextTotal);
-      setPage(nextPageResolved);
-    } catch (e) {
-      setError('Ошибка загрузки списка компаний');
-    } finally {
-      setLoadingMore(false);
-    }
   };
 
   const industries = Array.isArray(initialIndustries) ? initialIndustries : [];
@@ -259,17 +242,8 @@ export default function CompaniesClient({ initialIndustries, initialCompanies, i
         </div>
       )}
 
-      {companies.length > 0 && hasMore && (
-        <div className="mt-4 flex justify-center">
-          <button
-            type="button"
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            className="px-6 py-2 rounded-full border border-gray-300 bg-white text-gray-800 text-sm font-medium hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loadingMore ? 'Загрузка...' : 'Показать ещё'}
-          </button>
-        </div>
+      {companies.length > 0 && (
+        <Pagination currentPage={page || currentPage} totalPages={totalPages} basePath="/companies" />
       )}
     </div>
   );

@@ -79,6 +79,48 @@ export function JobOfferModal({ isOpen, onClose, resumeLinkUuid, onSuccess }: Jo
     fetchJobsAndProfile();
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isLoadingJobs) return;
+    if (successMessage) return;
+    if (selectedJobId) return;
+
+    if (jobs.length !== 1) return;
+    const onlyJob = jobs[0];
+    if (!onlyJob?.job_id) return;
+    if (duplicateForJobIds.has(onlyJob.job_id)) return;
+
+    const applyAutoSelection = async () => {
+      setSelectedJobId(onlyJob.job_id!);
+      setMessageError(null);
+
+      let details = jobDetailsCache[onlyJob.job_id!];
+      if (!details) {
+        const detailsResp = await jobsApi.getCompanyJob(onlyJob.job_id!);
+        if (!detailsResp.error && detailsResp.data) {
+          details = detailsResp.data;
+          setJobDetailsCache((prev) => ({ ...prev, [onlyJob.job_id!]: details! }));
+        } else {
+          details = onlyJob;
+        }
+      }
+
+      const defaultText = buildDefaultMessage(details, profile);
+      setMessageText(defaultText);
+    };
+
+    applyAutoSelection();
+  }, [
+    isOpen,
+    isLoadingJobs,
+    jobs,
+    selectedJobId,
+    duplicateForJobIds,
+    jobDetailsCache,
+    profile,
+    successMessage,
+  ]);
+
   const buildDefaultMessage = (job: JobPosting, profileData: UserProfile | null) => {
     const contacts: string[] = [];
 

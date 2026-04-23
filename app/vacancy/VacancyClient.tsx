@@ -501,7 +501,9 @@ export default function VacancyClient() {
                       ))}
                     </div>
 
-                    <div className="text-gray-700 mt-1">{job.company_name}</div>
+                    <Link href={`/companies/${job.company_id}`} className="text-gray-700 mt-1 hover:underline">
+                      {job.company_name}
+                    </Link>
 
                     {(() => {
                       const primary = getPrimaryAddress(job)
@@ -534,9 +536,13 @@ export default function VacancyClient() {
                   </div>
                   <div className="flex items-start gap-4 md:ml-4">
                     {job.logo_url && (
-                      <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+                      <Link
+                        href={`/companies/${job.company_id}`}
+                        className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center"
+                        aria-label={job.company_name}
+                      >
                         <img src={buildCompanyLogoSrc(job.logo_url)} alt={job.company_name} className="max-w-full max-h-full object-contain" />
-                      </div>
+                      </Link>
                     )}
                   </div>
                 </div>

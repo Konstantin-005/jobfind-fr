@@ -84,7 +84,8 @@ export interface SearchResumesResponse {
 
 export interface ResumeByLinkItem {
   resume: Resume;
-  contacts: ResumeContacts | null;
+  contacts_opened: boolean;
+  contacts: ResumeContacts;
 }
 
 export interface SearchResumesByLinkResponse {

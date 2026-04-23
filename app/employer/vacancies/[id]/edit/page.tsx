@@ -5,9 +5,7 @@
  * @created: 2025-12-13
  */
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
-
-const EmployerVacancyEditPageClient = dynamic(() => import('./EmployerVacancyEditPageClient'), { ssr: false });
+import EmployerVacancyEditPageClient from './EmployerVacancyEditPageClient';
 
 export const metadata: Metadata = {
   title: 'Редактирование вакансии | E77.top',

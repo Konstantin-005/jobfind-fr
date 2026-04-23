@@ -104,7 +104,11 @@ const getUpdateDateLabel = (dateString: string) => {
   return `Обновлено ${updateDate.toLocaleDateString("ru-RU")}`;
 };
 
-const buildHeaderTitle = (contacts: ResumeContacts | null | undefined, resume: Resume) => {
+const buildHeaderTitle = (
+  contacts: ResumeContacts | null | undefined,
+  resume: Resume,
+  fullNameHiddenByCandidate?: boolean | null
+) => {
   const rawLastName = contacts?.last_name?.trim() || "";
   const rawFirstName = contacts?.first_name?.trim() || "";
   const rawMiddleName = contacts?.middle_name?.trim() || "";
@@ -113,6 +117,7 @@ const buildHeaderTitle = (contacts: ResumeContacts | null | undefined, resume: R
   if (hasFullName) {
     return `${rawLastName} ${rawFirstName}${rawMiddleName ? ` ${rawMiddleName}` : ""}`.trim();
   }
+  if (fullNameHiddenByCandidate) return "ФИО скрыто соискателем";
   return "Кандидат";
 };
 
@@ -137,6 +142,7 @@ export default function ResumePublicPage() {
   const [chatRoomIdFromOffer, setChatRoomIdFromOffer] = useState<number | null>(null);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [contactsError, setContactsError] = useState<string | null>(null);
+  const [fullNameHiddenByCandidate, setFullNameHiddenByCandidate] = useState<boolean | null>(null);
   const [headerTitle, setHeaderTitle] = useState<string>("");
   const [showFloatingOffer, setShowFloatingOffer] = useState(false);
   const offerButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -193,6 +199,8 @@ export default function ResumePublicPage() {
     if (response.error) {
       setContactsError(response.error);
     } else if (response.data) {
+      setFullNameHiddenByCandidate(response.data.full_name === null);
+
       const baseContacts = response.data.contacts || null;
       const nameFields = response.data.full_name || null;
       const contactsWithName: ResumeContacts | null =
@@ -200,7 +208,15 @@ export default function ResumePublicPage() {
           ? { ...(baseContacts || {}), ...(nameFields || {}) }
           : null;
 
-      setResumeItem((prev) => (prev ? { ...prev, contacts: contactsWithName } : prev));
+      setResumeItem((prev) =>
+        prev
+          ? {
+              ...prev,
+              contacts_opened: true,
+              contacts: contactsWithName || {},
+            }
+          : prev
+      );
     } else {
       setContactsError("Не удалось получить контакты");
     }
@@ -209,9 +225,9 @@ export default function ResumePublicPage() {
 
   useEffect(() => {
     if (resumeItem) {
-      setHeaderTitle(buildHeaderTitle(resumeItem.contacts, resumeItem.resume));
+      setHeaderTitle(buildHeaderTitle(resumeItem.contacts, resumeItem.resume, fullNameHiddenByCandidate));
     }
-  }, [resumeItem]);
+  }, [resumeItem, fullNameHiddenByCandidate]);
 
   useEffect(() => {
     const target = offerButtonEl;
@@ -274,21 +290,19 @@ export default function ResumePublicPage() {
   const totalExperience = calculateTotalExperience(resume);
 
   const contactItems =
-    contacts
-      ? [
-          {
-            key: "phone",
-            value: contacts.phone
-              ? `${contacts.phone}${contacts.phone_comment ? ` (${contacts.phone_comment})` : ""}`
-              : null,
-            icon: "phone",
-          },
-          { key: "whatsapp", value: contacts.whatsapp, icon: "whatsapp" },
-          { key: "telegram", value: contacts.telegram, icon: "telegram" },
-          { key: "email", value: contacts.email, icon: "email" },
-          { key: "website_url", value: contacts.website_url, icon: "website" },
-        ].filter((item) => item.value)
-      : [];
+    [
+      {
+        key: "phone",
+        value: contacts?.phone
+          ? `${contacts.phone}${contacts.phone_comment ? ` (${contacts.phone_comment})` : ""}`
+          : null,
+        icon: "phone",
+      },
+      { key: "whatsapp", value: contacts?.whatsapp, icon: "whatsapp" },
+      { key: "telegram", value: contacts?.telegram, icon: "telegram" },
+      { key: "email", value: contacts?.email, icon: "email" },
+      { key: "website_url", value: contacts?.website_url, icon: "website" },
+    ].filter((item) => item.value);
 
   const renderContactIcon = (type: string) => {
     switch (type) {
@@ -448,13 +462,13 @@ export default function ResumePublicPage() {
                     <div className="text-gray-500">Загружаем контакты…</div>
                   ) : contactsError ? (
                     <div className="text-red-600 text-sm">{contactsError}</div>
-                  ) : contacts === null ? (
+                  ) : resumeItem.contacts_opened === false ? (
                     <button
                       type="button"
                       onClick={fetchContacts}
                       className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
-                      Показать контакты
+                      Открыть контакты
                     </button>
                   ) : (
                     <div className="text-gray-500">Контакты скрыты соискателем</div>

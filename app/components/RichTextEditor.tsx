@@ -10,7 +10,10 @@ import dynamic from 'next/dynamic';
 import DOMPurify from 'dompurify';
 import { useMemo } from 'react';
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => <div className="min-h-[200px] w-full bg-gray-50 border border-gray-200 rounded animate-pulse" />,
+});
 
 export interface RichTextEditorProps {
   value: string;

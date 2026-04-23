@@ -359,6 +359,8 @@ definitions:
         type: string
       first_name:
         type: string
+      job_title:
+        type: string
       last_name:
         type: string
       last_work_experience:
@@ -469,6 +471,8 @@ definitions:
         type: string
       imported:
         type: boolean
+      imported_tv:
+        type: string
       is_active:
         type: boolean
       is_contract_possible:
@@ -525,6 +529,8 @@ definitions:
         items:
           $ref: '#/definitions/models.Skill'
         type: array
+      student_contract:
+        type: boolean
       title:
         type: string
       updated_at:
@@ -710,6 +716,8 @@ definitions:
           type: integer
         type: array
       show_contacts:
+        type: boolean
+      student_contract:
         type: boolean
       title:
         type: string
@@ -902,6 +910,15 @@ definitions:
         type: string
     required:
     - message_text
+    type: object
+  controllers.SimilarJobsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobListItem'
+        type: array
+      variant:
+        type: string
     type: object
   controllers.UpdateApplicationStatusRequest:
     description: 'Новый статус заявки. Допустимые значения enum_job_applications_status:
@@ -1096,6 +1113,19 @@ definitions:
       start_year:
         type: integer
     type: object
+  controllers.companiesPublicListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.companyPublicListItem'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
   controllers.companyJobAddress:
     properties:
       address:
@@ -1234,6 +1264,8 @@ definitions:
           $ref: '#/definitions/models.JobPosting'
         type: array
       logo_url:
+        type: string
+      ogrn:
         type: string
       user:
         allOf:
@@ -1427,6 +1459,8 @@ definitions:
           $ref: '#/definitions/models.JobPosting'
         type: array
       logo_url:
+        type: string
+      ogrn:
         type: string
       user:
         allOf:
@@ -1651,6 +1685,8 @@ definitions:
         type: string
       imported:
         type: boolean
+      imported_tv:
+        type: string
       is_active:
         type: boolean
       is_contract_possible:
@@ -1707,6 +1743,8 @@ definitions:
         items:
           $ref: '#/definitions/models.Skill'
         type: array
+      student_contract:
+        type: boolean
       title:
         type: string
       updated_at:
@@ -1744,6 +1782,10 @@ definitions:
         type: integer
       job_id:
         type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
     type: object
   models.JobPostingDrivingLicense:
     properties:
@@ -3450,9 +3492,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controllers.companyPublicListItem'
-            type: array
+            $ref: '#/definitions/controllers.companiesPublicListResponse'
         "400":
           description: Bad Request
           schema:
@@ -4218,6 +4258,42 @@ paths:
       summary: Предложить вакансию соискателю
       tags:
       - Jobs
+  /api/jobs/{job_id}/similar:
+    get:
+      description: Возвращает список похожих вакансий для указанной вакансии и признак
+        использованного сценария подбора.
+      parameters:
+      - description: ID вакансии
+        in: path
+        name: job_id
+        required: true
+        type: integer
+      - description: 'Количество вакансий в ответе (default: 10)'
+        in: query
+        name: "n"
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.SimilarJobsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить похожие вакансии
+      tags:
+      - Jobs
   /api/jobs/moderation:
     get:
       description: Получить список вакансий, ожидающих модерации (только для админов).
@@ -4690,11 +4766,7 @@ paths:
       - Resumes
   /api/resumes/{resume_id}/educations/{education_id}:
     delete:
-      consumes:
-      - application/json
-      description: |-
-        Удаляет запись об образовании
-        Добавляет новый опыт работы в резюме с проверкой на пересечение периодов
+      description: Удаляет запись об образовании
       parameters:
       - description: ID резюме
         in: path
@@ -4706,19 +4778,7 @@ paths:
         name: education_id
         required: true
         type: integer
-      - description: ID резюме
-        in: path
-        name: resume_id
-        required: true
-        type: integer
-      - description: Данные опыта работы
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.WorkExperienceCreateRequest'
       produces:
-      - application/json
       - application/json
       responses:
         "200":
@@ -4726,10 +4786,6 @@ paths:
           schema:
             additionalProperties: true
             type: object
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.WorkExperience'
         "400":
           description: Bad Request
           schema:
@@ -4747,10 +4803,8 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      - BearerAuth: []
-      summary: Добавить опыт работы в резюме
+      summary: Удалить образование из резюме
       tags:
-      - Resumes
       - Resumes
     patch:
       consumes:
@@ -4804,15 +4858,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: |-
-        Удаляет запись об образовании
-        Добавляет новый опыт работы в резюме с проверкой на пересечение периодов
+      description: Добавляет новый опыт работы в резюме с проверкой на пересечение
+        периодов
       parameters:
-      - description: ID резюме
-        in: path
-        name: resume_id
-        required: true
-        type: integer
       - description: ID резюме
         in: path
         name: resume_id
@@ -4826,13 +4874,7 @@ paths:
           $ref: '#/definitions/controllers.WorkExperienceCreateRequest'
       produces:
       - application/json
-      - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
         "201":
           description: Created
           schema:
@@ -4854,10 +4896,8 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      - BearerAuth: []
       summary: Добавить опыт работы в резюме
       tags:
-      - Resumes
       - Resumes
   /api/resumes/{resume_id}/work-experiences/{experience_id}:
     delete:

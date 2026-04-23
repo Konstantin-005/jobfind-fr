@@ -73,7 +73,7 @@ export default function ProfilePageClient() {
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) return;
-    
+
     fetch(API_ENDPOINTS.jobSeekerProfile.me, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -207,7 +207,7 @@ export default function ProfilePageClient() {
           return;
         }
         if (fromResumeAdd) {
-          router.push("/resume/add");
+          router.push("/user/resume/add");
         } else {
           setSuccess("Данные профиля успешно обновлены.");
           setLoading(false);
@@ -290,9 +290,9 @@ export default function ProfilePageClient() {
             {form.driving_licenses.length === 0
               ? "Категории"
               : drivingCategories
-                  .filter((cat) => form.driving_licenses.includes(cat.value))
-                  .map((cat) => cat.label)
-                  .join(", ")}
+                .filter((cat) => form.driving_licenses.includes(cat.value))
+                .map((cat) => cat.label)
+                .join(", ")}
           </button>
           {showDrivingDropdown && (
             <div className="absolute z-10 mt-2 w-full bg-white border rounded-lg shadow-lg p-2 max-h-60 overflow-y-auto">

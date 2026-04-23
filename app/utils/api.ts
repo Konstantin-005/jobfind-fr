@@ -390,18 +390,16 @@ export const chatApi = {
 };
 
 export type PublicCompaniesListResponse = {
-  data: PublicCompanyListItem[];
+  items: PublicCompanyListItem[];
+  total: number;
   page: number;
   limit: number;
-  total_count: number;
 };
 
 export const publicCompaniesApi = {
   async list(params?: {
     query?: string;
     industry_id?: number[];
-    city_id?: number[];
-    region_id?: number[];
     page?: number;
     limit?: number;
   }) {
@@ -414,8 +412,6 @@ export const publicCompaniesApi = {
         }
       };
       appendMulti('industry_id', params.industry_id);
-      appendMulti('city_id', params.city_id);
-      appendMulti('region_id', params.region_id);
       if (params.page) qs.set('page', String(params.page));
       if (params.limit) qs.set('limit', String(params.limit));
     }

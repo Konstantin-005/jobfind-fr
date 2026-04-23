@@ -28,6 +28,7 @@ type Application = {
   applicant_id: number;
   resume_id?: number;
   resume_title?: string;
+  job_title?: string;
   first_name?: string | null;
   last_name?: string | null;
   middle_name?: string | null;
@@ -151,6 +152,7 @@ export default function VacancyApplicationsPageClient() {
     applications: Application[];
     initialStatus: EmployerStatus; // фактический текущий статус в списке
     suggestedStatus: EmployerStatus; // предложенный статус по deriveInitialStatus
+    isBulkAction?: boolean;
   } | null>(null);
   const [modalSelectedStatus, setModalSelectedStatus] = useState<EmployerStatus>("thinking");
   const [modalMessage, setModalMessage] = useState("");
@@ -185,41 +187,49 @@ export default function VacancyApplicationsPageClient() {
     }
   };
 
-  const buildDefaultMessage = (status: EmployerStatus, app: Application, company?: string | null) => {
+  const buildDefaultMessage = (
+    status: EmployerStatus,
+    app: Application,
+    company?: string | null,
+    options?: { includeApplicantName?: boolean }
+  ) => {
+    const includeApplicantName = options?.includeApplicantName !== false;
     const firstName = (app.first_name && app.first_name.trim()) || "кандидат";
     const resumeTitle = app.resume_title || "вашу заявку";
     const companyLabel = company || "нашей компании";
+    const greeting = includeApplicantName ? `Здравствуйте, ${firstName}!` : "Здравствуйте!";
 
     switch (status) {
       case "thinking":
-        return `Здравствуйте, ${firstName}!\n\nКомпания ${companyLabel} рассмотрит ваше резюме "${resumeTitle}" и сообщит Вам о своём решении.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nКомпания ${companyLabel} рассмотрит ваше резюме "${resumeTitle}" и сообщит Вам о своём решении.\n\nС уважением,\n${companyLabel}`;
       case "processing":
-        return `Здравствуйте, ${firstName}!`;
+        return greeting;
       case "test_task":
-        return `Здравствуйте, ${firstName}!\n\nХотим предложить вам выполнить тестовое задание. Пожалуйста, уточните удобный срок выполнения.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nХотим предложить вам выполнить тестовое задание. Пожалуйста, уточните удобный срок выполнения.\n\nС уважением,\n${companyLabel}`;
       case "interview":
-        return `Здравствуйте, ${firstName}!\n\nПриглашаем Вас на собеседование. Дата и время: .\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nПриглашаем Вас на собеседование. Дата и время: .\n\nС уважением,\n${companyLabel}`;
       case "job_offer":
-        return `Здравствуйте, ${firstName}!\n\nМы хотим предложить Вам работу. Давайте обсудим детали и любые ваши вопросы.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nМы хотим предложить Вам работу. Давайте обсудим детали и любые ваши вопросы.\n\nС уважением,\n${companyLabel}`;
       case "onboarding":
-        return `Здравствуйте, ${firstName}!\n\nРады, что Вы присоединяетесь к ${companyLabel}! Подготовим все необходимые документы и расскажем о следующих шагах.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nРады, что Вы присоединяетесь к ${companyLabel}! Подготовим все необходимые документы и расскажем о следующих шагах.\n\nС уважением,\n${companyLabel}`;
       case "rejected":
-        return `Здравствуйте, ${firstName}!\n\nСпасибо за интерес к нашей вакансии. К сожалению, сейчас мы не готовы продолжить общение дальше. Мы сохраним ваше резюме и свяжемся, если появится подходящая возможность.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nСпасибо за интерес к нашей вакансии. К сожалению, сейчас мы не готовы продолжить общение дальше. Мы сохраним ваше резюме и свяжемся, если появится подходящая возможность.\n\nС уважением,\n${companyLabel}`;
       case "in_progress":
-        return `Здравствуйте, ${firstName}!\n\nМы внимательно изучили ваше резюме "${resumeTitle}" и продолжаем рассмотрение. Сообщим о решении в ближайшее время.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nМы внимательно изучили ваше резюме "${resumeTitle}" и продолжаем рассмотрение. Сообщим о решении в ближайшее время.\n\nС уважением,\n${companyLabel}`;
       default:
-        return `Здравствуйте, ${firstName}!\n\nСпасибо за интерес к ${companyLabel}.\n\nС уважением,\n${companyLabel}`;
+        return `${greeting}\n\nСпасибо за интерес к ${companyLabel}.\n\nС уважением,\n${companyLabel}`;
     }
   };
 
-  const openStatusModal = (applicationsToUpdate: Application[], preferred: EmployerStatus) => {
+  const openStatusModal = (applicationsToUpdate: Application[], preferred: EmployerStatus, isBulkAction: boolean = false) => {
     const baseApp = applicationsToUpdate[0];
     const baseStatus = (baseApp.employer_status as EmployerStatus) || preferred;
     const nextStatus = deriveInitialStatus(baseApp, preferred);
+    const isBulk = applicationsToUpdate.length > 1 || isBulkAction;
 
-    setStatusModal({ applications: applicationsToUpdate, initialStatus: baseStatus, suggestedStatus: nextStatus });
+    setStatusModal({ applications: applicationsToUpdate, initialStatus: baseStatus, suggestedStatus: nextStatus, isBulkAction });
     setModalSelectedStatus(nextStatus);
-    setModalMessage(buildDefaultMessage(nextStatus, baseApp, companyName));
+    setModalMessage(buildDefaultMessage(nextStatus, baseApp, companyName, { includeApplicantName: !isBulk }));
     setModalSendMessage(true);
     setModalMessageEdited(false);
     ensureCompanyName();
@@ -228,7 +238,8 @@ export default function VacancyApplicationsPageClient() {
   useEffect(() => {
     if (!statusModal || !companyName || modalMessageEdited) return;
     const baseApp = statusModal.applications[0];
-    setModalMessage(buildDefaultMessage(modalSelectedStatus, baseApp, companyName));
+    const isBulk = statusModal.applications.length > 1 || statusModal.isBulkAction;
+    setModalMessage(buildDefaultMessage(modalSelectedStatus, baseApp, companyName, { includeApplicantName: !isBulk }));
   }, [companyName, statusModal, modalSelectedStatus, modalMessageEdited]);
 
   // Обработчик выбора всех откликов на странице
@@ -262,7 +273,7 @@ export default function VacancyApplicationsPageClient() {
   const handleBulkStatusChange = (targetStatus: EmployerStatus) => {
     const apps = applications.filter((app) => selectedApplications.includes(app.application_id));
     if (apps.length === 0) return;
-    openStatusModal(apps, targetStatus);
+    openStatusModal(apps, targetStatus, true);
   };
 
   // Обработчик выбора отклика
@@ -273,11 +284,11 @@ export default function VacancyApplicationsPageClient() {
   const handleReject = (applicationId: number) => {
     const app = applications.find((a) => a.application_id === applicationId);
     if (!app) return;
-    openStatusModal([app], "rejected");
+    openStatusModal([app], "rejected", false);
   };
 
   const handleOpenStatusModal = (app: Application, preferred?: EmployerStatus) => {
-    openStatusModal([app], deriveInitialStatus(app, preferred));
+    openStatusModal([app], deriveInitialStatus(app, preferred), false);
   };
 
   const handleMarkAsViewed = async (applicationId: number) => {
@@ -447,7 +458,7 @@ export default function VacancyApplicationsPageClient() {
   const renderStatusModal = () => {
     if (!statusModal) return null;
     const baseApp = statusModal.applications[0];
-    const isBulk = statusModal.applications.length > 1;
+    const isBulk = statusModal.applications.length > 1 || statusModal.isBulkAction;
     const transitions = STATUS_TRANSITIONS[statusModal.initialStatus] || [];
     const allowedTransitions = transitions.length > 0 ? transitions : [statusModal.initialStatus];
     return (
@@ -470,7 +481,7 @@ export default function VacancyApplicationsPageClient() {
 
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-1">
-              {formatFullName(baseApp) && (
+              {!isBulk && formatFullName(baseApp) && (
                 <a
                   href={baseApp.link_uuid ? `/resume/${baseApp.link_uuid}` : undefined}
                   target={baseApp.link_uuid ? "_blank" : undefined}
@@ -480,7 +491,7 @@ export default function VacancyApplicationsPageClient() {
                   {formatFullName(baseApp)}
                 </a>
               )}
-              {baseApp.resume_title && (
+              {!isBulk && baseApp.resume_title && (
                 <div className="text-sm text-gray-800">
                   {baseApp.resume_title}
                   {baseApp.link_uuid && (
@@ -519,7 +530,7 @@ export default function VacancyApplicationsPageClient() {
                 }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {MODAL_STATUS_ORDER.filter((status) => allowedTransitions.includes(status)).map((status) => (
+                {MODAL_STATUS_ORDER.filter((status) => isBulk ? status === "rejected" : allowedTransitions.includes(status)).map((status) => (
                   <option key={status} value={status}>
                     {STATUS_LABELS[status]}
                   </option>
@@ -690,7 +701,12 @@ export default function VacancyApplicationsPageClient() {
           >
             ← Назад к вакансиям
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Отклики по вакансии</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Отклики по вакансии
+            {applications.length > 0 && applications[0].job_title && (
+              <span className="font-normal text-gray-700">: {applications[0].job_title}</span>
+            )}
+          </h1>
         </div>
 
         {/* Ошибка */}
@@ -714,9 +730,8 @@ export default function VacancyApplicationsPageClient() {
                       setSelectedStatus(status);
                       setPage(1);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedStatus === status ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedStatus === status ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span>{STATUS_LABELS[status]}</span>
@@ -750,11 +765,10 @@ export default function VacancyApplicationsPageClient() {
               <div className="mb-4 flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                 <button
                   onClick={toggleSelectAll}
-                  className={`w-7 h-7 flex items-center justify-center rounded-md border transition-colors ${
-                    selectedApplications.length === applications.length && applications.length > 0
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-white border-gray-300 text-transparent hover:border-gray-400'
-                  }`}
+                  className={`w-7 h-7 flex items-center justify-center rounded-md border transition-colors ${selectedApplications.length === applications.length && applications.length > 0
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-white border-gray-300 text-transparent hover:border-gray-400'
+                    }`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -885,11 +899,10 @@ export default function VacancyApplicationsPageClient() {
                           {!['onboarding', 'rejected'].includes(app.employer_status) && (
                             <button
                               onClick={() => toggleApplicationSelection(app.application_id)}
-                              className={`w-7 h-7 flex items-center justify-center rounded-md border transition-colors ${
-                                selectedApplications.includes(app.application_id)
-                                  ? 'bg-blue-600 border-blue-600 text-white'
-                                  : 'bg-white border-gray-300 text-transparent hover:border-gray-400'
-                              }`}
+                              className={`w-7 h-7 flex items-center justify-center rounded-md border transition-colors ${selectedApplications.includes(app.application_id)
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'bg-white border-gray-300 text-transparent hover:border-gray-400'
+                                }`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -909,13 +922,15 @@ export default function VacancyApplicationsPageClient() {
                           )}
 
                           <button
-                            onClick={() => handleOpenStatusModal(app, 'rejected')}
-                            disabled={updatingStatus === app.application_id}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                              app.employer_status === 'rejected'
-                                ? 'bg-red-50 text-red-600 cursor-default'
-                                : 'border border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 disabled:opacity-50'
-                            }`}
+                            onClick={() => {
+                              if (app.employer_status === 'rejected') return;
+                              handleOpenStatusModal(app, 'rejected');
+                            }}
+                            disabled={updatingStatus === app.application_id || app.employer_status === 'rejected'}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${app.employer_status === 'rejected'
+                              ? 'bg-red-50 text-red-600 cursor-default'
+                              : 'border border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 disabled:opacity-50'
+                              }`}
                           >
                             {updatingStatus === app.application_id
                               ? 'Обновление...'

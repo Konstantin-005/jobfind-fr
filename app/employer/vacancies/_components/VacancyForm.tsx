@@ -35,6 +35,7 @@ type FormExtraFields = {
   contract_with_ip?: boolean;
   contract_with_self_employed?: boolean;
   employment_contract?: boolean;
+  student_contract?: boolean;
   contact_full_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
@@ -60,6 +61,7 @@ type JobUpsertPayload = {
   contract_with_ip?: boolean;
   contract_with_self_employed?: boolean;
   employment_contract?: boolean;
+  student_contract?: boolean;
   contact_full_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
@@ -322,6 +324,7 @@ export default function VacancyForm({ mode, jobId }: Props) {
         contract_with_ip: false,
         contract_with_self_employed: false,
         employment_contract: false,
+        student_contract: false,
         contact_full_name: null,
         contact_email: null,
         contact_phone: null,
@@ -395,6 +398,7 @@ export default function VacancyForm({ mode, jobId }: Props) {
             contract_with_ip: extra.contract_with_ip ?? false,
             contract_with_self_employed: extra.contract_with_self_employed ?? false,
             employment_contract: extra.employment_contract ?? false,
+            student_contract: extra.student_contract ?? false,
             contact_full_name: extra.contact_full_name ?? null,
             contact_email: extra.contact_email ?? null,
             contact_phone: extra.contact_phone ?? null,
@@ -741,6 +745,7 @@ export default function VacancyForm({ mode, jobId }: Props) {
       contract_with_ip: form.contract_with_ip,
       contract_with_self_employed: form.contract_with_self_employed,
       employment_contract: form.employment_contract,
+      student_contract: form.student_contract,
 
       contact_full_name: form.contact_full_name ? String(form.contact_full_name).trim() : null,
       contact_email: form.contact_email ? String(form.contact_email).trim() : null,
@@ -1222,6 +1227,15 @@ export default function VacancyForm({ mode, jobId }: Props) {
                   className="h-4 w-4"
                 />
                 Договор с самозанятым
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!!form.student_contract}
+                  onChange={(e) => setForm((s) => ({ ...s, student_contract: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                Ученический договор
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input

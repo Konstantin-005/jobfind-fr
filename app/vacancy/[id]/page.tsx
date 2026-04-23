@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation'
 import { API_ENDPOINTS } from '../../config/api'
 import { headers } from 'next/headers'
 import VacancyDetailClient from './VacancyDetailClient'
+import workFormatsConfig from '@/app/config/work_formats_202505222228.json'
 
 interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
@@ -30,6 +31,36 @@ interface JobUser {
   email?: string
   name?: string
 }
+interface SimilarJobAddress {
+  city?: string
+  city_name_prepositional?: string
+  district?: string
+  address?: string
+}
+
+interface SimilarJobItem {
+  job_id: number
+  company_id: number
+  company_name: string
+  logo_url?: string
+  title: string
+  work_experience?: string
+  salary_min?: number
+  salary_max?: number
+  salary_currency?: string
+  salary_type?: string
+  salary_period?: string
+  is_promo?: boolean
+  no_resume_apply?: boolean
+  addresses?: SimilarJobAddress[]
+  work_format_ids?: number[]
+}
+
+interface SimilarJobsResponse {
+  variant: 'profession' | 'company'
+  items: SimilarJobItem[]
+}
+
 interface JobPosting {
   job_id: number
   title: string
@@ -249,6 +280,16 @@ function buildVacancyKeywords(job: JobPosting) {
   return keywords
 }
 
+const workFormatsMap: Record<number, string> = (workFormatsConfig as any)?.work_formats?.reduce(
+  (acc: Record<number, string>, wf: any) => {
+    if (wf && typeof wf.work_format_id === 'number' && typeof wf.name === 'string') {
+      acc[wf.work_format_id] = wf.name
+    }
+    return acc
+  },
+  {}
+) || {}
+
 const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
 
 function buildCompanyLogoSrc(value?: string) {
@@ -287,6 +328,20 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     loadError = true
   }
 
+  // Загружаем похожие вакансии
+  let similarJobs: SimilarJobsResponse | null = null
+  try {
+    const similarRes = await fetch(`${proto}://${host}/api/jobs/${idNum}/similar?n=6`, { cache: 'no-store' })
+    if (similarRes.ok) {
+      const similarData = await similarRes.json() as SimilarJobsResponse
+      if (Array.isArray(similarData.items) && similarData.items.length > 0) {
+        similarJobs = similarData
+      }
+    }
+  } catch {
+    // игнорируем ошибки загрузки похожих вакансий
+  }
+
   if (loadError || !job) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -310,6 +365,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const salaryFrequency = formatSalaryFrequency(job.salary_frequency)
   const companyName = job.company_profile?.company_name || ''
   const logoUrl = job.company_profile?.logo_url
+  const companyId = typeof job.company_id === 'number' ? job.company_id : undefined
   const addresses = job.addresses || []
   const primaryAddress = addresses[0]
   const city = primaryAddress?.city || ''
@@ -528,17 +584,31 @@ export default async function VacancyPage({ params }: { params: { id: string } }
 
         {/* Информация о компании */}
         {(companyName || logoUrl) && (
-          <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-4">
-            {logoUrl && (
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={buildCompanyLogoSrc(logoUrl)} alt={companyName} className="max-w-full max-h-full object-contain" />
+          companyId ? (
+            <Link href={`/companies/${companyId}`} className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-4 hover:underline">
+              {logoUrl && (
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={buildCompanyLogoSrc(logoUrl)} alt={companyName} className="max-w-full max-h-full object-contain" />
+                </div>
+              )}
+              <div className="text-gray-800">
+                <div className="font-semibold">{companyName}</div>
               </div>
-            )}
-            <div className="text-gray-800">
-              <div className="font-semibold">{companyName}</div>
+            </Link>
+          ) : (
+            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-4">
+              {logoUrl && (
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={buildCompanyLogoSrc(logoUrl)} alt={companyName} className="max-w-full max-h-full object-contain" />
+                </div>
+              )}
+              <div className="text-gray-800">
+                <div className="font-semibold">{companyName}</div>
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Обязанности / описание */}
@@ -581,6 +651,88 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         </div>
 
       </div>
+
+      {/* Похожие вакансии */}
+      {similarJobs && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-4">
+            {similarJobs.variant === 'company' ? 'Другие вакансии компании' : 'Похожие вакансии'}
+          </h2>
+          <div className="grid gap-4">
+            {similarJobs.items.map((similarJob) => (
+              <div key={similarJob.job_id} className="bg-white rounded-lg p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-gray-100">
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <h3 className="text-base font-semibold">
+                    <Link href={`/vacancy/${similarJob.job_id}`} className="text-[#2B81B0] hover:underline">{similarJob.title}</Link>
+                  </h3>
+                  {(similarJob.salary_min || similarJob.salary_max) && (
+                    <div className="text-base font-semibold text-gray-800">
+                      {(() => {
+                        const min = similarJob.salary_min
+                        const max = similarJob.salary_max
+                        const range = min && max
+                          ? `${min.toLocaleString('ru-RU')} – ${max.toLocaleString('ru-RU')}`
+                          : min
+                            ? `от ${min.toLocaleString('ru-RU')}`
+                            : max
+                              ? `до ${max.toLocaleString('ru-RU')}`
+                              : ''
+                        if (!range) return null
+                        const currency = similarJob.salary_currency === 'RUB' ? '₽' : (similarJob.salary_currency || '')
+                        return <>{[range, currency].filter(Boolean).join(' ')}</>
+                      })()}
+                      {(() => {
+                        const periodMap: Record<string, string> = { month: 'в месяц', hour: 'в час', shift: 'за смену', vahta: 'за вахту', project: 'за проект' }
+                        const typeMap: Record<string, string> = { after_tax: 'на руки', before_tax: 'до вычета налогов' }
+                        const period = similarJob.salary_period ? periodMap[similarJob.salary_period] : undefined
+                        const sType = similarJob.salary_type ? typeMap[similarJob.salary_type] : undefined
+                        const details = [period, sType].filter(Boolean).join(', ')
+                        return details ? <span className="text-gray-500 font-normal text-sm"> ({details})</span> : null
+                      })()}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1.5 mt-0.5">
+                    {(() => {
+                      const expMap: Record<string, string> = { '0': 'Без опыта', '0_1': 'Опыт до 1 года', '1_3': 'Опыт 1-3 года', '3_5': 'Опыт 3-5 лет', 'more_5': 'Опыт от 5 лет' }
+                      const label = similarJob.work_experience ? expMap[similarJob.work_experience] : undefined
+                      return label ? <span className="inline-flex items-center bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs max-w-max">{label}</span> : null
+                    })()}
+                    {(similarJob.work_format_ids || []).filter((id) => [1, 2, 4].includes(id)).map((id) => {
+                      const name = workFormatsMap[id]
+                      return name ? <span key={id} className="bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full text-xs">{name}</span> : null
+                    })}
+                  </div>
+                  <Link href={`/companies/${similarJob.company_id}`} className="text-gray-600 text-sm hover:underline">{similarJob.company_name}</Link>
+                  {(() => {
+                    const primary = Array.isArray(similarJob.addresses) && similarJob.addresses.length > 0 ? similarJob.addresses[0] : undefined
+                    const line = [primary?.city, primary?.address].filter(Boolean).join(', ')
+                    return line ? (
+                      <div className="text-gray-500 text-sm flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-gray-400" aria-hidden="true">
+                          <path d="M12 2.25c-4.28 0-7.75 3.47-7.75 7.75 0 5.81 7.13 11.22 7.43 11.45.2.15.47.15.67 0 .3-.23 7.43-5.64 7.43-11.45 0-4.28-3.47-7.75-7.75-7.75Zm0 10.25a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" />
+                        </svg>
+                        <span>{line}</span>
+                      </div>
+                    ) : null
+                  })()}
+                </div>
+                <div className="flex items-start gap-3 md:ml-4">
+                  {similarJob.logo_url && (
+                    <Link
+                      href={`/companies/${similarJob.company_id}`}
+                      className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center"
+                      aria-label={similarJob.company_name}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={buildCompanyLogoSrc(similarJob.logo_url)} alt={similarJob.company_name} className="max-w-full max-h-full object-contain" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
         </div>
       </div>

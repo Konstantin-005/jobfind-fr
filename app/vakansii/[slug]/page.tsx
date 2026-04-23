@@ -57,6 +57,12 @@ interface JobsBySlugResponse {
   total: number
 }
 
+interface NeighborCity {
+  CityID: number
+  Name: string
+  Slug: string
+}
+
 const COMPANY_LOGO_PREFIX = '/uploads/companyLogo/'
 
 function buildCompanyLogoSrc(value?: string) {
@@ -218,16 +224,18 @@ export default async function VacancyBySlugPage({
   const proto = h.get('x-forwarded-proto') || 'http'
   const origin = `${proto}://${host}`
 
-  // Получаем город в предложном падеже для заголовка H1 (аналогично generateMetadata)
+  // Получаем город в предложном падеже и ID города для загрузки соседних городов
   let cityPrepositional: string | undefined
+  let cityId: number | undefined
   try {
     const res = await fetch(`${origin}/api/dictionaries/cities/by-slug/${encodeURIComponent(slug)}`, {
       cache: 'no-store',
     })
 
     if (res.ok) {
-      const data = await res.json() as { name_prepositional?: string }
+      const data = await res.json() as { name_prepositional?: string; city_id?: number }
       cityPrepositional = data?.name_prepositional || undefined
+      cityId = data?.city_id
     }
   } catch {
     // используем fallback ниже, если город не найден
@@ -266,6 +274,21 @@ export default async function VacancyBySlugPage({
     jobs = Array.isArray(paginated.data) ? paginated.data : []
     totalPages = typeof paginated.total_pages === 'number' ? paginated.total_pages : 1
     total = typeof paginated.total === 'number' ? paginated.total : jobs.length
+  }
+
+  // Загружаем соседние города региона
+  let neighborCities: NeighborCity[] = []
+  if (cityId) {
+    try {
+      const neighborsRes = await fetch(`${origin}/api/dictionaries/cities/${cityId}/neighbors?population=20000&limit=10`, {
+        cache: 'no-store',
+      })
+      if (neighborsRes.ok) {
+        neighborCities = await neighborsRes.json() as NeighborCity[]
+      }
+    } catch {
+      // игнорируем ошибки при загрузке соседних городов
+    }
   }
 
   return (
@@ -327,7 +350,9 @@ export default async function VacancyBySlugPage({
                       ))}
                     </div>
 
-                    <div className="text-gray-700 mt-1">{job.company_name}</div>
+                    <Link href={`/companies/${job.company_id}`} className="text-gray-700 mt-1 hover:underline">
+                      {job.company_name}
+                    </Link>
 
                     {(() => {
                       const primary = Array.isArray(job.addresses) && job.addresses.length > 0
@@ -357,21 +382,43 @@ export default async function VacancyBySlugPage({
                   </div>
                   <div className="flex items-start gap-4 md:ml-4">
                     {job.logo_url && (
-                      <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+                      <Link
+                        href={`/companies/${job.company_id}`}
+                        className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center"
+                        aria-label={job.company_name}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={buildCompanyLogoSrc(job.logo_url)} alt={job.company_name} className="max-w-full max-h-full object-contain" />
-                      </div>
+                      </Link>
                     )}
                   </div>
                 </div>
               ))}
             </div>
-            <Pagination 
-              currentPage={page} 
-              totalPages={totalPages} 
-              basePath={`/vakansii/${slug}`} 
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              basePath={`/vakansii/${slug}`}
             />
             </>
+          )}
+
+          {/* Блок "Работа в других городах" */}
+          {neighborCities.length > 0 && (
+            <div className="mt-8 bg-white rounded-lg p-6">
+              <h2 className="text-lg font-semibold mb-4">Работа в соседних городах</h2>
+              <div className="flex flex-wrap gap-2">
+                {neighborCities.map((city) => (
+                  <Link
+                    key={city.CityID}
+                    href={`/vakansii/${city.Slug}`}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors"
+                  >
+                    {city.Name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
