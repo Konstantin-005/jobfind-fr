@@ -85,6 +85,19 @@ jobs:
 
             cd "$DEPLOY_DIR"
 
+            # Verify .next/static files exist after extraction
+            echo "Verifying .next/static files..."
+            STATIC_COUNT=$(find "$DEPLOY_DIR/.next/static" -type f 2>/dev/null | wc -l)
+            echo "Found $STATIC_COUNT files in .next/static"
+            if [ "$STATIC_COUNT" -eq 0 ]; then
+              echo "ERROR: No static files found in .next/static! Build may be incomplete."
+              ls -la "$DEPLOY_DIR/.next/" || echo ".next directory missing"
+              exit 1
+            fi
+            # Show a few chunk files for verification
+            echo "Sample chunk files:"
+            find "$DEPLOY_DIR/.next/static/chunks" -name "*.js" -type f 2>/dev/null | head -5
+
             # Ensure pm2 installed
             if ! command -v pm2 >/dev/null 2>&1; then
               echo "Installing pm2 globally"
@@ -106,6 +119,20 @@ jobs:
 
             # Save PM2 process list
             pm2 save
+
+            # Wait for application to be ready before touching nginx
+            echo "Waiting for application to be ready..."
+            MAX_WAIT=30
+            WAITED=0
+            until curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/ | grep -q "200\|301\|302"; do
+              sleep 1
+              WAITED=$((WAITED + 1))
+              if [ $WAITED -ge $MAX_WAIT ]; then
+                echo "WARNING: App did not become ready in ${MAX_WAIT}s, proceeding anyway"
+                break
+              fi
+            done
+            echo "Application is ready (waited ${WAITED}s)"
 
             # Clear nginx proxy cache to avoid stale HTML and reload nginx
             CACHE_DIR="/www/server/nginx/proxy_cache_dir"
