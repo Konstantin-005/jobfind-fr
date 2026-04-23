@@ -11,6 +11,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Auto-reload on ChunkLoadError after deploy (stale HTML references deleted chunks)
+    const handleChunkError = (event: ErrorEvent) => {
+      const isChunkLoad = event.message?.includes('Loading chunk') || event.message?.includes('ChunkLoadError');
+      if (isChunkLoad && !sessionStorage.getItem('chunk-reload')) {
+        sessionStorage.setItem('chunk-reload', '1');
+        window.location.reload();
+      }
+    };
+    window.addEventListener('error', handleChunkError);
+    return () => window.removeEventListener('error', handleChunkError);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const existingToken = localStorage.getItem('token');
 
     // Если пользователь уже залогинен, авто-токен из ссылки игнорируем
