@@ -302,6 +302,20 @@ function buildCompanyLogoSrc(value?: string) {
   return `${COMPANY_LOGO_PREFIX}${trimmed}`
 }
 
+import { cache } from 'react'
+
+const getJobData = cache(async (id: number, origin: string): Promise<JobPosting | null> => {
+  try {
+    const res = await fetch(`${origin}${API_ENDPOINTS.jobById(id)}`, { cache: 'no-store' })
+    if (res.ok) {
+      return await res.json() as JobPosting
+    }
+  } catch (error) {
+    console.error('[getJobData] error:', error)
+  }
+  return null
+})
+
 export default async function VacancyPage({ params }: { params: { id: string } }) {
   const idNum = Number(params.id)
   if (!Number.isFinite(idNum)) {
@@ -311,38 +325,15 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const h = headers()
   const proto = h.get('x-forwarded-proto') || 'http'
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
-  const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
-  let job: JobPosting | null = null
-  let loadError = false
-  try {
-    const res = await fetch(absUrl.toString(), { cache: 'no-store' })
-    if (res.status === 404) {
-      notFound()
-    }
-    if (!res.ok) {
-      throw new Error('Failed to load job')
-    }
-    job = await res.json()
-  } catch (error) {
-    console.error('[VacancyPage] job load failed', error)
-    loadError = true
-  }
+  const origin = `${proto}://${host}`
 
-  // Загружаем похожие вакансии
-  let similarJobs: SimilarJobsResponse | null = null
-  try {
-    const similarRes = await fetch(`${proto}://${host}/api/jobs/${idNum}/similar?n=6`, { cache: 'no-store' })
-    if (similarRes.ok) {
-      const similarData = await similarRes.json() as SimilarJobsResponse
-      if (Array.isArray(similarData.items) && similarData.items.length > 0) {
-        similarJobs = similarData
-      }
-    }
-  } catch {
-    // игнорируем ошибки загрузки похожих вакансий
-  }
+  // Загружаем данные вакансии и похожие вакансии параллельно
+  const [job, similarJobsData] = await Promise.all([
+    getJobData(idNum, origin),
+    fetch(`${origin}/api/jobs/${idNum}/similar?n=6`, { cache: 'no-store' }).then(res => res.ok ? res.json() as Promise<SimilarJobsResponse> : null).catch(() => null)
+  ])
 
-  if (loadError || !job) {
+  if (!job) {
     return (
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 overflow-y-auto">
@@ -357,6 +348,11 @@ export default async function VacancyPage({ params }: { params: { id: string } }
         </div>
       </div>
     )
+  }
+
+  let similarJobs = similarJobsData
+  if (similarJobs && (!Array.isArray(similarJobs.items) || similarJobs.items.length === 0)) {
+    similarJobs = null
   }
 
   const title = job.title
@@ -749,10 +745,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     const h = headers()
     const proto = h.get('x-forwarded-proto') || 'http'
     const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
-    const absUrl = new URL(API_ENDPOINTS.jobById(idNum), `${proto}://${host}`)
-    const res = await fetch(absUrl.toString(), { cache: 'no-store' })
-    if (!res.ok) return { title: 'Вакансия | E77.top' }
-    const job: JobPosting = await res.json()
+    const origin = `${proto}://${host}`
+    
+    const job = await getJobData(idNum, origin)
+    if (!job) return { title: 'Вакансия | E77.top' }
+
     const title = buildVacancyMetaTitle(job)
     const description = buildVacancyMetaDescription(job)
     const keywords = buildVacancyKeywords(job)

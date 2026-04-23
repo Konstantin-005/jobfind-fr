@@ -239,8 +239,9 @@ export default function VacancyClient() {
         const res = await fetch(API_ENDPOINTS.dictionaries.citiesByIds, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ city_ids: ids })
-        })
+          body: JSON.stringify({ city_ids: ids }),
+          next: { revalidate: 3600 }
+        } as any)
         if (!res.ok) {
           setSelectedCityNames([])
           return

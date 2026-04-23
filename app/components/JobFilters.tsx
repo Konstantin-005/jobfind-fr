@@ -310,7 +310,9 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
   useEffect(() => {
     const fetchProfessions = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.dictionaries.professions)
+        const response = await fetch(API_ENDPOINTS.dictionaries.professions, {
+          next: { revalidate: 3600 }
+        } as any)
         if (!response.ok) throw new Error('Failed to fetch professions')
         const data = await response.json()
         // Преобразуем VacancyProfessions -> professions
@@ -330,7 +332,9 @@ export default function JobFilters({ onFilterChange }: JobFiltersProps) {
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.dictionaries.industries)
+        const response = await fetch(API_ENDPOINTS.dictionaries.industries, {
+          next: { revalidate: 3600 }
+        } as any)
         if (!response.ok) {
           throw new Error('Failed to fetch industries')
         }

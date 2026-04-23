@@ -113,9 +113,12 @@ jobs:
             # Start or restart the application from correct directory
             echo "Starting or restarting the application from $DEPLOY_DIR"
             
+            # Remove legacy frontend process if it still exists and occupies port 4000
+            pm2 delete "e77-next" || true
+            
             # Reload logic: delete old process to ensure new CWD and ENV are picked up
             pm2 delete "$APP_NAME" || true
-            pm2 start npm --name "$APP_NAME" --cwd "$DEPLOY_DIR" -- start -- -p 4000
+            pm2 start npm --name "$APP_NAME" --cwd "$DEPLOY_DIR" -- start
 
             # Save PM2 process list
             pm2 save

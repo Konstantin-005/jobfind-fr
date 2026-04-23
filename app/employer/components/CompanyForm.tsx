@@ -94,7 +94,9 @@ export default function CompanyForm({ mode }: CompanyFormProps) {
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.dictionaries.industries);
+        const response = await fetch(API_ENDPOINTS.dictionaries.industries, {
+          next: { revalidate: 3600 }
+        } as any);
         if (response.ok) {
           const data = await response.json();
           setIndustries(data);

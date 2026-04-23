@@ -130,6 +130,28 @@ function getWorkFormatLabels(ids?: number[]) {
     .filter(Boolean)
 }
 
+import { cache } from 'react'
+
+interface CityData {
+  name_prepositional?: string;
+  city_id?: number;
+}
+
+const getCityData = cache(async (slug: string, origin: string): Promise<CityData | undefined> => {
+  try {
+    const res = await fetch(`${origin}/api/dictionaries/cities/by-slug/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 3600 },
+    })
+
+    if (res.ok) {
+      return await res.json() as CityData
+    }
+  } catch (error) {
+    console.error('[getCityData] error:', error)
+  }
+  return undefined
+})
+
 export async function generateMetadata({
   params,
   searchParams
@@ -147,20 +169,8 @@ export async function generateMetadata({
   const pageValue = Array.isArray(pageParam) ? pageParam[0] : pageParam
   const page = Number(pageValue) || 1
 
-  let cityPrepositional: string | undefined
-
-  try {
-    const res = await fetch(`${origin}/api/dictionaries/cities/by-slug/${encodeURIComponent(slug)}`, {
-      cache: 'no-store',
-    })
-
-    if (res.ok) {
-      const data = await res.json() as { name_prepositional?: string }
-      cityPrepositional = data?.name_prepositional || undefined
-    }
-  } catch {
-    // проглатываем ошибку, используем fallback ниже
-  }
+  const cityData = await getCityData(slug, origin)
+  const cityPrepositional = cityData?.name_prepositional
 
   const baseTitle = 'Свежие вакансии от прямых работодателей — E77.top'
   const baseDescription = 'Найдите свою идеальную работу с E77.top: свежие вакансии от прямых работодателей по всей России.'
@@ -224,28 +234,18 @@ export default async function VacancyBySlugPage({
   const proto = h.get('x-forwarded-proto') || 'http'
   const origin = `${proto}://${host}`
 
-  // Получаем город в предложном падеже и ID города для загрузки соседних городов
-  let cityPrepositional: string | undefined
-  let cityId: number | undefined
-  try {
-    const res = await fetch(`${origin}/api/dictionaries/cities/by-slug/${encodeURIComponent(slug)}`, {
+  // Загружаем данные города и список вакансий параллельно
+  const [cityData, jobsRes] = await Promise.all([
+    getCityData(slug, origin),
+    fetch(`${origin}/api/jobs/searchBySlug?city_slug=${encodeURIComponent(slug)}&page=${page}&limit=${limit}`, {
       cache: 'no-store',
     })
+  ])
 
-    if (res.ok) {
-      const data = await res.json() as { name_prepositional?: string; city_id?: number }
-      cityPrepositional = data?.name_prepositional || undefined
-      cityId = data?.city_id
-    }
-  } catch {
-    // используем fallback ниже, если город не найден
-  }
+  const cityPrepositional = cityData?.name_prepositional
+  const cityId = cityData?.city_id
 
-  const res = await fetch(`${origin}/api/jobs/searchBySlug?city_slug=${encodeURIComponent(slug)}&page=${page}&limit=${limit}`, {
-    cache: 'no-store',
-  })
-
-  if (!res.ok) {
+  if (!jobsRes.ok) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-red-500">Не удалось загрузить вакансии</div>
@@ -253,7 +253,7 @@ export default async function VacancyBySlugPage({
     )
   }
   
-  const responseData = await res.json()
+  const responseData = await jobsRes.json()
   let jobs: JobListItem[] = []
   let totalPages = 1
   let total = 0
@@ -281,7 +281,7 @@ export default async function VacancyBySlugPage({
   if (cityId) {
     try {
       const neighborsRes = await fetch(`${origin}/api/dictionaries/cities/${cityId}/neighbors?population=20000&limit=10`, {
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       })
       if (neighborsRes.ok) {
         neighborCities = await neighborsRes.json() as NeighborCity[]

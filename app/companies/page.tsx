@@ -72,7 +72,7 @@ async function fetchInitialData() {
   const companiesUrl = new URL(`${API_ENDPOINTS.dictionaries.companies}?page=1&limit=${limit}`, base).toString();
 
   const [industriesRes, companiesRes] = await Promise.all([
-    fetch(industriesUrl, { cache: 'no-store' }),
+    fetch(industriesUrl, { next: { revalidate: 3600 } }),
     fetch(companiesUrl, { cache: 'no-store' }),
   ]);
 
