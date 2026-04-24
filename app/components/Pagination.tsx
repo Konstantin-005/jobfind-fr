@@ -76,6 +76,7 @@ export default function Pagination({ currentPage, totalPages, basePath }: Pagina
       {currentPage > 1 ? (
         <Link
           href={createPageUrl(currentPage - 1)}
+          prefetch={false}
           className="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
         >
           &larr;
@@ -103,6 +104,7 @@ export default function Pagination({ currentPage, totalPages, basePath }: Pagina
           <Link
             key={pageNum}
             href={createPageUrl(pageNum)}
+            prefetch={false}
             className={`px-3 py-2 rounded-md border ${
               isActive
                 ? 'bg-[#2B81B0] text-white border-[#2B81B0]'
@@ -118,6 +120,7 @@ export default function Pagination({ currentPage, totalPages, basePath }: Pagina
       {currentPage < totalPages ? (
         <Link
           href={createPageUrl(currentPage + 1)}
+          prefetch={false}
           className="px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
         >
           &rarr;

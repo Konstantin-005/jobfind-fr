@@ -33,6 +33,7 @@ export default function VacancySlugClient({ jobId, jobTitle, isPromo, noResumeAp
     return (
       <Link
         href={`/vacancy/${jobId}/to`}
+        prefetch={false}
         target="_blank"
         rel="noreferrer noopener"
         className="inline-flex justify-center bg-[#2B81B0] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#18608a] transition w-auto"

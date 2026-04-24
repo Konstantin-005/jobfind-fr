@@ -327,7 +327,7 @@ export default async function VacancyBySlugPage({
                 <div key={job.job_id} className="bg-white rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex-1 flex flex-col gap-2">
                     <h2 className="text-xl font-semibold">
-                      <Link href={`/vacancy/${job.job_id}`} className="text-[#2B81B0] hover:underline">{job.title}</Link>
+                      <Link href={`/vacancy/${job.job_id}`} prefetch={false} className="text-[#2B81B0] hover:underline">{job.title}</Link>
                     </h2>
 
                     {(job.salary_min || job.salary_max) && (
@@ -350,7 +350,7 @@ export default async function VacancyBySlugPage({
                       ))}
                     </div>
 
-                    <Link href={`/companies/${job.company_id}`} className="text-gray-700 mt-1 hover:underline">
+                    <Link href={`/companies/${job.company_id}`} prefetch={false} className="text-gray-700 mt-1 hover:underline">
                       {job.company_name}
                     </Link>
 
@@ -384,6 +384,7 @@ export default async function VacancyBySlugPage({
                     {job.logo_url && (
                       <Link
                         href={`/companies/${job.company_id}`}
+                        prefetch={false}
                         className="w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center"
                         aria-label={job.company_name}
                       >
@@ -412,6 +413,7 @@ export default async function VacancyBySlugPage({
                   <Link
                     key={city.CityID}
                     href={`/vakansii/${city.Slug}`}
+                    prefetch={false}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-700 transition-colors"
                   >
                     {city.Name}
