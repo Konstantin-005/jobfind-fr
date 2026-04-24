@@ -11,13 +11,42 @@ import { notFound } from 'next/navigation'
 import { API_ENDPOINTS } from '../../config/api'
 import { headers } from 'next/headers'
 import VacancyDetailClient from './VacancyDetailClient'
+import VacancyMap from './VacancyMap'
 import workFormatsConfig from '@/app/config/work_formats_202505222228.json'
 
 interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
 interface CompanyProfile { company_name?: string; logo_url?: string }
-interface VacancyAddress { city?: string; city_name_prepositional?: string; district?: string; address?: string }
+interface VacancyAddress { city?: string; city_name_prepositional?: string; district?: string; address?: string; latitude?: number; longitude?: number }
 interface Region { region_id?: number; name?: string }
 interface Skill { skill_id?: number; name?: string }
+
+async function getReverseGeocode(lat: number, lon: number): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`,
+      { 
+        headers: {
+          'User-Agent': 'JobFind-FR/1.0 (contact@e77.top)' // Nominatim требует валидный User-Agent
+        },
+        next: { revalidate: 86400 },
+        signal: AbortSignal.timeout(3000) // Таймаут 3 секунды, чтобы не вешать страницу
+      }
+    )
+    if (!response.ok) return null
+    const data = await response.json()
+    if (data && data.address) {
+      const parts = data.address
+      const city = parts.city || parts.town || parts.village || ''
+      const road = parts.road || ''
+      const houseNumber = parts.house_number || ''
+      return [city, road, houseNumber].filter(Boolean).join(', ') || data.display_name || null
+    }
+  } catch (error) {
+    console.error('[getReverseGeocode] error:', error)
+  }
+  return null
+}
+
 interface NamedId {
   id?: number
   name?: string
@@ -327,7 +356,7 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const host = h.get('x-forwarded-host') || h.get('host') || 'localhost:4000'
   const origin = `${proto}://${host}`
 
-  // Загружаем данные вакансии и похожие вакансии параллельно
+    // Загружаем данные вакансии и похожие вакансии параллельно
   const [job, similarJobsData] = await Promise.all([
     getJobData(idNum, origin),
     fetch(`${origin}/api/jobs/${idNum}/similar?n=6`, { cache: 'no-store' }).then(res => res.ok ? res.json() as Promise<SimilarJobsResponse> : null).catch(() => null)
@@ -350,6 +379,14 @@ export default async function VacancyPage({ params }: { params: { id: string } }
     )
   }
 
+  // Получаем адрес через геокодер на сервере
+  let geoAddress: string | null = null
+  const addresses = job.addresses || []
+  const primaryAddress = addresses[0]
+  if (primaryAddress?.latitude && primaryAddress?.longitude) {
+    geoAddress = await getReverseGeocode(primaryAddress.latitude, primaryAddress.longitude)
+  }
+
   let similarJobs = similarJobsData
   if (similarJobs && (!Array.isArray(similarJobs.items) || similarJobs.items.length === 0)) {
     similarJobs = null
@@ -362,8 +399,6 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const companyName = job.company_profile?.company_name || ''
   const logoUrl = job.company_profile?.logo_url
   const companyId = typeof job.company_id === 'number' ? job.company_id : undefined
-  const addresses = job.addresses || []
-  const primaryAddress = addresses[0]
   const city = primaryAddress?.city || ''
   const district = primaryAddress?.district || ''
   const streetAddress = primaryAddress?.address || ''
@@ -616,6 +651,23 @@ export default async function VacancyPage({ params }: { params: { id: string } }
             />
           </div>
         )}
+
+        {/* Карта */}
+        {(() => {
+          if (!primaryAddress?.latitude || !primaryAddress?.longitude) return null
+          const finalAddress = geoAddress || addressLine
+          if (!finalAddress) return null
+
+          return (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <VacancyMap 
+                latitude={primaryAddress.latitude} 
+                longitude={primaryAddress.longitude}
+                address={finalAddress}
+              />
+            </div>
+          )
+        })()}
 
         {/* Панель действий (sticky внутри карточки) */}
         <div className="sticky bottom-0 -mx-6 md:-mx-8 mt-4 border-t bg-white/90 backdrop-blur">

@@ -313,6 +313,10 @@ definitions:
         type: string
       district:
         type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
     type: object
   controllers.JobApplicationItemResponse:
     properties:
@@ -582,6 +586,8 @@ definitions:
         type: string
       title:
         type: string
+      tv:
+        type: boolean
       work_experience:
         type: string
       work_format_ids:
