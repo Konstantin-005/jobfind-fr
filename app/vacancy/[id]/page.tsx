@@ -14,17 +14,46 @@ import VacancyDetailClient from './VacancyDetailClient'
 import VacancyMap from './VacancyMap'
 import workFormatsConfig from '@/app/config/work_formats_202505222228.json'
 
-interface City { city_id?: number; id?: number; name?: string; name_prepositional?: string }
-interface CompanyProfile { company_name?: string; logo_url?: string }
-interface VacancyAddress { city?: string; city_name_prepositional?: string; district?: string; address?: string; latitude?: number; longitude?: number }
-interface Region { region_id?: number; name?: string }
-interface Skill { skill_id?: number; name?: string }
+interface City {
+  city_id?: number
+  id?: number
+  name?: string
+  name_prepositional?: string
+  region_id?: number
+  slug?: string
+}
+
+interface CompanyProfile {
+  company_id?: number
+  company_name?: string
+  brand_name?: string
+  logo_url?: string
+}
+
+interface VacancyAddress {
+  city?: string
+  city_name_prepositional?: string
+  district?: string
+  address?: string
+  latitude?: number
+  longitude?: number
+}
+
+interface Region {
+  region_id?: number
+  name?: string
+}
+
+interface Skill {
+  skill_id?: number
+  name?: string
+}
 
 async function getReverseGeocode(lat: number, lon: number): Promise<string | null> {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`,
-      { 
+      {
         headers: {
           'User-Agent': 'JobFind-FR/1.0 (contact@e77.top)' // Nominatim требует валидный User-Agent
         },
@@ -52,14 +81,17 @@ interface NamedId {
   name?: string
   [key: string]: any
 }
+
 interface VacancyProfession extends NamedId {
   profession_id?: number
 }
+
 interface JobUser {
   user_id?: string
   email?: string
   name?: string
 }
+
 interface SimilarJobAddress {
   city?: string
   city_name_prepositional?: string
@@ -96,6 +128,7 @@ interface JobPosting {
   description?: string
   company_profile?: CompanyProfile | null
   company_id?: number
+  cities?: City[]
   salary_min?: number
   salary_max?: number
   salary_currency?: string
@@ -113,6 +146,7 @@ interface JobPosting {
   created_at?: string
   expiration_date?: string
   updated_at?: string
+  imported_tv?: string
   experience_level?: string
   is_active?: boolean
   is_contract_possible?: boolean
@@ -146,10 +180,12 @@ const salaryPeriodMap: Record<string, string> = {
   vahta: 'за вахту',
   project: 'за проект',
 }
+
 const salaryTypeMap: Record<string, string> = {
   after_tax: 'на руки',
   before_tax: 'до вычета налогов',
 }
+
 const salaryFrequencyMap: Record<string, string> = {
   month: 'раз в месяц',
   'раз в месяц': 'раз в месяц',
@@ -160,6 +196,7 @@ const salaryFrequencyMap: Record<string, string> = {
   other: 'по договоренности',
   другое: 'по договоренности',
 }
+
 const workExperienceMap: Record<string, string> = {
   '0': 'без опыта',
   '0_1': 'до 1 года',
@@ -184,6 +221,7 @@ function formatSalary(job: JobPosting) {
   const currency = cur === 'RUB' ? '₽' : (cur || '')
   return [range, currency].filter(Boolean).join(' ')
 }
+
 function getSalaryDetails(job: JobPosting) {
   const period = job.salary_period ? salaryPeriodMap[job.salary_period] : undefined
   const stype = job.salary_type ? salaryTypeMap[job.salary_type] : undefined
@@ -236,6 +274,15 @@ function formatMetaDate(value?: string) {
     return undefined
   }
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+}
+
+function formatPostedDate(value?: string) {
+  if (!value) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return undefined
+  }
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function buildTitleSalarySegment(job: JobPosting) {
@@ -396,9 +443,11 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const salary = formatSalary(job)
   const salaryDetails = getSalaryDetails(job)
   const salaryFrequency = formatSalaryFrequency(job.salary_frequency)
-  const companyName = job.company_profile?.company_name || ''
+  const companyName = job.company_profile?.brand_name || job.company_profile?.company_name || ''
   const logoUrl = job.company_profile?.logo_url
-  const companyId = typeof job.company_id === 'number' ? job.company_id : undefined
+  const companyId = typeof job.company_id === 'number'
+    ? job.company_id
+    : (typeof job.company_profile?.company_id === 'number' ? job.company_profile.company_id : undefined)
   const city = primaryAddress?.city || ''
   const district = primaryAddress?.district || ''
   const streetAddress = primaryAddress?.address || ''
@@ -652,6 +701,12 @@ export default async function VacancyPage({ params }: { params: { id: string } }
           </div>
         )}
 
+        {job.imported_tv && (
+          <div className="mt-3 text-gray-500 text-sm">
+            вакансия с trudvsem.ru
+          </div>
+        )}
+
         {/* Карта */}
         {(() => {
           if (!primaryAddress?.latitude || !primaryAddress?.longitude) return null
@@ -659,12 +714,17 @@ export default async function VacancyPage({ params }: { params: { id: string } }
           if (!finalAddress) return null
 
           return (
-            <div className="mt-6 pt-6 border-t border-gray-100">
+            <div>
               <VacancyMap 
                 latitude={primaryAddress.latitude} 
                 longitude={primaryAddress.longitude}
                 address={finalAddress}
               />
+              {job.posted_date && (
+                <div className="mt-3 text-gray-600 text-sm">
+                  Вакансия размещена {formatPostedDate(job.posted_date)}
+                </div>
+              )}
             </div>
           )
         })()}

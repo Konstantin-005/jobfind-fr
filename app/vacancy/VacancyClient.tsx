@@ -88,6 +88,7 @@ interface JobListItem {
   publication_cities?: string[]
   work_format_ids?: number[]
   no_resume_apply?: boolean
+  tv?: boolean
 }
 
 interface PaginatedJobsResponse {
@@ -491,6 +492,9 @@ export default function VacancyClient() {
                         {formatSalary(job)} {job.salary_currency === 'RUB' ? '₽' : ''}
                         {getSalaryDetails(job) && <span className="text-gray-600 font-normal"> ({getSalaryDetails(job)})</span>}
                       </div>
+                    )}
+                    {job.tv && (
+                      <div className="text-xs text-gray-500 -mt-1">вакансия с trudvsem.ru</div>
                     )}
 
                     <div className="flex flex-wrap gap-2 mt-1">
