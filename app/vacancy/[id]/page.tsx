@@ -37,6 +37,7 @@ interface VacancyAddress {
   address?: string
   latitude?: number
   longitude?: number
+  slug?: string
 }
 
 interface Region {
@@ -84,6 +85,7 @@ interface NamedId {
 
 interface VacancyProfession extends NamedId {
   profession_id?: number
+  slug?: string
 }
 
 interface JobUser {
@@ -256,6 +258,16 @@ function getCityPrepositional(job: JobPosting) {
     return addr.city_name_prepositional || addr.city || ''
   }
   return ''
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9а-яё-]/gi, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
 }
 
 function formatMoney(value?: number, currency?: string) {
@@ -452,6 +464,15 @@ export default async function VacancyPage({ params }: { params: { id: string } }
   const district = primaryAddress?.district || ''
   const streetAddress = primaryAddress?.address || ''
   const addressLine = [city, district, streetAddress].filter(Boolean).join(', ')
+
+  const cityPrepositional = primaryAddress?.city_name_prepositional || primaryAddress?.city || ''
+  const citySlug = primaryAddress?.slug || job.cities?.[0]?.slug || (city ? slugify(city) : '')
+  const professionList = Array.isArray((job as any).profession)
+    ? ((job as any).profession as VacancyProfession[])
+    : (job.profession ? [job.profession] : [])
+  const primaryProfession = professionList[0]
+  const professionSlug = primaryProfession?.slug || (primaryProfession?.name ? slugify(String(primaryProfession.name)) : '')
+  const professionNamePrepositional = primaryProfession?.name_prepositional || primaryProfession?.name || ''
   const experience = job.work_experience ? workExperienceMap[job.work_experience] : undefined
   const workFormats = chipsFrom(job.work_formats)
   const employment = chipsFrom(job.employment_types)
@@ -599,10 +620,26 @@ export default async function VacancyPage({ params }: { params: { id: string } }
           <li>
             <Link href="/" className="hover:underline">Главная</Link>
           </li>
-          <li className="text-gray-400">/</li>
-          <li>
-            <Link href="/vacancy" className="hover:underline">Вакансии</Link>
-          </li>
+          {citySlug && cityPrepositional && (
+            <>
+              <li className="text-gray-400">/</li>
+              <li>
+                <Link href={`/vakansii/${encodeURIComponent(citySlug)}`} className="hover:underline">
+                  Работа в {cityPrepositional}
+                </Link>
+              </li>
+            </>
+          )}
+          {citySlug && professionSlug && professionNamePrepositional && (
+            <>
+              <li className="text-gray-400">/</li>
+              <li>
+                <Link href={`/vakansii/${encodeURIComponent(citySlug)}/${encodeURIComponent(professionSlug)}`} className="hover:underline">
+                  Работа {professionNamePrepositional}
+                </Link>
+              </li>
+            </>
+          )}
           <li className="text-gray-400">/</li>
           <li className="text-gray-700 line-clamp-1" title={title}>{title}</li>
         </ol>

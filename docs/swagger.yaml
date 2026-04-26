@@ -317,6 +317,8 @@ definitions:
         type: number
       longitude:
         type: number
+      slug:
+        type: string
     type: object
   controllers.JobApplicationItemResponse:
     properties:
@@ -409,7 +411,31 @@ definitions:
       job_title:
         type: string
     type: object
-  controllers.JobDetailResponse:
+  controllers.JobCitySwagger:
+    properties:
+      city_id:
+        type: integer
+      name:
+        type: string
+      name_prepositional:
+        type: string
+      region_id:
+        type: integer
+      slug:
+        type: string
+    type: object
+  controllers.JobCompanyProfileSwagger:
+    properties:
+      brand_name:
+        type: string
+      company_id:
+        type: integer
+      company_name:
+        type: string
+      logo_url:
+        type: string
+    type: object
+  controllers.JobDetailSwaggerResponse:
     properties:
       accessible_for_disabled:
         type: boolean
@@ -423,65 +449,41 @@ definitions:
         type: boolean
       cities:
         items:
-          $ref: '#/definitions/models.City'
+          $ref: '#/definitions/controllers.JobCitySwagger'
         type: array
       company_id:
         type: integer
       company_profile:
-        allOf:
-        - $ref: '#/definitions/models.CompanyProfile'
-        description: Relations
-      contact_email:
+        $ref: '#/definitions/controllers.JobCompanyProfileSwagger'
+      created_at:
         type: string
-      contact_full_name:
-        type: string
-      contact_phone:
-        type: string
-      contact_phone_comment:
-        type: string
-      contact_telegram:
-        type: string
-      contract_with_ip:
-        type: boolean
-      contract_with_self_employed:
-        type: boolean
-      cover_letter_required:
-        type: boolean
       day_lengths:
         items:
-          $ref: '#/definitions/models.WorkDayLength'
+          $ref: '#/definitions/controllers.JobWorkDayLengthSwagger'
         type: array
-      deleted:
-        type: boolean
       description:
         type: string
       driving_licenses:
         items:
-          $ref: '#/definitions/models.JobPostingDrivingLicense'
+          $ref: '#/definitions/controllers.JobPostingDrivingLicenseSwagger'
         type: array
       education_types:
         items:
-          $ref: '#/definitions/models.EducationType'
+          $ref: '#/definitions/controllers.JobEducationTypeSwagger'
         type: array
-      employment_contract:
-        type: boolean
       employment_types:
         items:
-          $ref: '#/definitions/models.EmploymentType'
+          $ref: '#/definitions/controllers.JobEmploymentTypeSwagger'
         type: array
       experience_level:
         type: string
       expiration_date:
         type: string
-      imported:
-        type: boolean
       imported_tv:
         type: string
       is_active:
         type: boolean
       is_contract_possible:
-        type: boolean
-      is_moderated:
         type: boolean
       is_promo:
         type: boolean
@@ -489,28 +491,20 @@ definitions:
         type: integer
       languages:
         items:
-          $ref: '#/definitions/models.JobPostingLanguage'
+          $ref: '#/definitions/controllers.JobPostingLanguageSwagger'
         type: array
       link:
         type: string
       no_resume_apply:
         type: boolean
-      notify_by_email:
-        type: boolean
-      posted_by:
-        type: string
       posted_date:
         type: string
       profession:
-        $ref: '#/definitions/models.VacancyProfession'
+        $ref: '#/definitions/controllers.JobProfessionSwagger'
       profession_id:
         type: integer
       publish_in_all_cities:
         type: boolean
-      regions:
-        items:
-          $ref: '#/definitions/models.Region'
-        type: array
       salary_currency:
         type: string
       salary_frequency:
@@ -525,36 +519,58 @@ definitions:
         type: string
       shift_types:
         items:
-          $ref: '#/definitions/models.ShiftType'
+          $ref: '#/definitions/controllers.JobShiftTypeSwagger'
         type: array
-      show_contacts:
-        type: boolean
-      skills:
-        items:
-          $ref: '#/definitions/models.Skill'
-        type: array
-      student_contract:
-        type: boolean
       title:
         type: string
       updated_at:
         type: string
-      user:
-        $ref: '#/definitions/models.User'
       work_experience:
         type: string
       work_formats:
         items:
-          $ref: '#/definitions/models.WorkFormat'
+          $ref: '#/definitions/controllers.JobWorkFormatSwagger'
         type: array
       work_schedule_types:
         items:
-          $ref: '#/definitions/models.WorkScheduleType'
+          $ref: '#/definitions/controllers.JobWorkScheduleTypeSwagger'
         type: array
       work_schedules:
         items:
-          $ref: '#/definitions/models.WorkSchedule'
+          $ref: '#/definitions/controllers.JobWorkScheduleSwagger'
         type: array
+    type: object
+  controllers.JobDrivingLicenseCategorySwagger:
+    properties:
+      category_id:
+        type: integer
+      code:
+        type: string
+      description:
+        type: string
+    type: object
+  controllers.JobEducationTypeSwagger:
+    properties:
+      education_type_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.JobEmploymentTypeSwagger:
+    properties:
+      employment_type_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.JobLanguageSwagger:
+    properties:
+      code:
+        type: string
+      language_id:
+        type: integer
+      name:
+        type: string
     type: object
   controllers.JobListItem:
     properties:
@@ -565,6 +581,8 @@ definitions:
       company_id:
         type: integer
       company_name:
+        type: string
+      description:
         type: string
       is_promo:
         type: boolean
@@ -628,12 +646,65 @@ definitions:
     - address
     - city_id
     type: object
+  controllers.JobPostingDrivingLicenseSwagger:
+    properties:
+      category:
+        $ref: '#/definitions/controllers.JobDrivingLicenseCategorySwagger'
+      category_id:
+        type: integer
+      id:
+        type: integer
+    type: object
   controllers.JobPostingLanguageInput:
     properties:
       language_id:
         type: integer
       proficiency_level:
         type: string
+    type: object
+  controllers.JobPostingLanguageSwagger:
+    properties:
+      id:
+        type: integer
+      language:
+        $ref: '#/definitions/controllers.JobLanguageSwagger'
+      language_id:
+        type: integer
+      proficiency_level:
+        type: string
+    type: object
+  controllers.JobProfessionListItem:
+    properties:
+      group_id:
+        type: integer
+      name:
+        type: string
+      name_prepositional:
+        type: string
+      profession_id:
+        type: integer
+      slug:
+        type: string
+    type: object
+  controllers.JobProfessionSwagger:
+    properties:
+      group_id:
+        type: integer
+      name:
+        type: string
+      name_prepositional:
+        type: string
+      profession_id:
+        type: integer
+      slug:
+        type: string
+    type: object
+  controllers.JobShiftTypeSwagger:
+    properties:
+      name:
+        type: string
+      shift_type_id:
+        type: integer
     type: object
   controllers.JobUpsertRequest:
     properties:
@@ -745,6 +816,49 @@ definitions:
     - description
     - title
     - work_experience
+    type: object
+  controllers.JobWorkDayLengthSwagger:
+    properties:
+      day_length_id:
+        type: integer
+      name:
+        type: string
+    type: object
+  controllers.JobWorkFormatSwagger:
+    properties:
+      name:
+        type: string
+      work_format_id:
+        type: integer
+    type: object
+  controllers.JobWorkScheduleSwagger:
+    properties:
+      name:
+        type: string
+      schedule_id:
+        type: integer
+    type: object
+  controllers.JobWorkScheduleTypeSwagger:
+    properties:
+      name:
+        type: string
+      schedule_type_id:
+        type: integer
+    type: object
+  controllers.JobsBySlug2Response:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/controllers.JobListItem'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      profession:
+        $ref: '#/definitions/controllers.JobProfessionListItem'
+      total:
+        type: integer
     type: object
   controllers.JobsBySlugResponse:
     properties:
@@ -4019,7 +4133,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controllers.JobDetailResponse'
+            $ref: '#/definitions/controllers.JobDetailSwaggerResponse'
         "404":
           description: Not Found
           schema:
@@ -4374,6 +4488,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Поиск вакансий по slug
+      tags:
+      - Jobs
+  /api/jobs/searchBySlug2:
+    get:
+      description: Получить список вакансий по `profession_slug` в конкретном `city_slug`
+        без поведения `publish_in_all_cities`
+      parameters:
+      - description: Slug профессии
+        in: query
+        name: profession_slug
+        required: true
+        type: string
+      - description: Slug города
+        in: query
+        name: city_slug
+        required: true
+        type: string
+      - description: 'Номер страницы (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Количество элементов на странице (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.JobsBySlug2Response'
+      security:
+      - BearerAuth: []
+      summary: Поиск вакансий по slug (строго профессия + город)
       tags:
       - Jobs
   /api/locations:

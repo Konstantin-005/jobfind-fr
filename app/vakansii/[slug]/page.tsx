@@ -25,6 +25,7 @@ interface JobListItem {
   salary_type?: string
   salary_period?: string
   tv?: boolean
+  description?: string
   // Старое поле address оставляем для обратной совместимости
   address?: {
     city?: string
@@ -36,6 +37,7 @@ interface JobListItem {
     city?: string
     city_name_prepositional?: string
     address?: string
+    slug?: string
   }[]
   publication_cities?: string[]
   work_format_ids?: number[]
@@ -354,14 +356,21 @@ export default async function VacancyBySlugPage({
                       ))}
                     </div>
 
+                    {job.description && (
+                      <div className="mt-2 text-gray-700 text-sm leading-relaxed line-clamp-3">
+                        {job.description}
+                      </div>
+                    )}
+
                     <Link href={`/companies/${job.company_id}`} prefetch={false} className="text-gray-700 mt-1 hover:underline">
                       {job.company_name}
                     </Link>
 
                     {(() => {
-                      const primary = Array.isArray(job.addresses) && job.addresses.length > 0
-                        ? job.addresses[0]
-                        : job.address || undefined
+                      const primaryFromList = Array.isArray(job.addresses) && job.addresses.length > 0
+                        ? (job.addresses.find(a => a?.slug === slug) || job.addresses[0])
+                        : undefined
+                      const primary = primaryFromList || job.address || undefined
                       const city = primary?.city
                       const addr = primary?.address
                       const line = [city, addr].filter(Boolean).join(', ')

@@ -189,3 +189,13 @@
   - [ ] Провести ручную проверку рендера (зарплата, компания, адрес, карта, метаданные)
 - **Зависимости**: `app/vacancy/[id]/page.tsx`, эндпоинт `GET /api/jobs/{job_id}`
 
+## Задача: SSR-страница вакансий по городу и профессии (/vakansii/[citySlug]/[professionSlug])
+- **Статус**: В процессе
+- **Описание**: Реализовать SSR-страницу списка вакансий конкретной профессии в выбранном городе по адресу `/vakansii/[slug города]/[slug профессии]`. Загрузка данных должна выполняться через `GET /api/jobs/searchBySlug2?city_slug=...&profession_slug=...` (строго профессия + город, без поведения `publish_in_all_cities`), с серверной пагинацией (`page`, `limit`) и UI на основе страницы `/vakansii/[slug]`.
+- **Шаги выполнения**:
+  - [x] Уточнить контракт эндпоинта `GET /api/jobs/searchBySlug2` в `docs/swagger.yaml`
+  - [ ] Актуализировать документацию (changelog, plan, при необходимости architecture)
+  - [ ] Создать SSR-страницу `app/vakansii/[slug]/[professionSlug]/page.tsx`
+  - [ ] Провести ручное тестирование (переходы, пагинация, корректный город в адресе)
+- **Зависимости**: `app/vakansii/[slug]/page.tsx`, `docs/swagger.yaml`, эндпоинт `GET /api/jobs/searchBySlug2`
+

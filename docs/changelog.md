@@ -1,3 +1,29 @@
+## [2026-04-26] - SEO и AIO/AEO оптимизация страницы вакансий по профессии
+### Добавлено
+- JSON-LD Structured Data: `BreadcrumbList`, `ItemList`, `JobPosting` для каждой вакансии (до 20 шт.) — rich snippets в Google Jobs и факты для нейросетей.
+- Визуальные хлебные крошки: Главная → Вакансии → Вакансии в городе → Профессия (ссылки + `aria-current="page"`).
+- Fallback H1: если город не найден, отображается «Вакансии по профессии {name} — E77.top».
+- Агрегированная зарплата: `min/max/avg` из списка вакансий, выводится под H1 и в SEO-тексте.
+- SEO-текст для AEO: абзац с фактами (кол-во вакансий, профессия, город, средняя зарплата, работодатели).
+- Семантическая разметка карточек: `<article>` вместо `<div>`, microdata `itemscope itemtype="https://schema.org/JobPosting"` с `itemProp` для title, url, description, baseSalary, hiringOrganization, jobLocation.
+- Функция `aggregateSalary()` для вычисления мин/макс/средней зарплаты.
+- Функция `buildJsonLd()` для генерации JSON-LD схем.
+- Поле `name` в интерфейсе `CityData` для хлебных крошек.
+
+### Изменено
+- JSON-LD `JobPosting`: из `hiringOrganization` убрана генерация поля `logo`.
+- JSON-LD `JobPosting`: добавлены поля `employmentType` (`FULL_TIME`), `datePosted` (из `posted_date`) и `validThrough` (`datePosted + 60 дней`).
+- `generateMetadata` для `/vakansii/[slug]/[professionSlug]`: в `title` добавлена максимальная зарплата (по данным списка вакансий), если она доступна.
+- `generateMetadata` для `/vakansii/[slug]/[professionSlug]`: в `description` добавлены количество вакансий и зарплата до (по данным списка вакансий), если они доступны.
+- `generateMetadata` для `/vakansii/[slug]/[professionSlug]`: добавлено склонение слова «вакансия» в `description` в зависимости от числа.
+- Страница `/vakansii/[slug]/[professionSlug]`: вместо `humanizeSlug(professionSlug)` для имени профессии используется поле `profession.name` из ответа `GET /api/jobs/searchBySlug2` (с fallback на `humanizeSlug`).
+- Добавлена единая кэшированная функция `fetchJobsBySlug2` — один запрос к API используется и в `generateMetadata`, и в компоненте страницы (React `cache()` дедуплицирует вызов в рамках одного рендера).
+- Добавлены интерфейсы `JobProfessionListItem`, `JobsBySlug2Result`; в `JobsBySlugResponse` добавлено поле `profession`.
+
+## [2026-04-26] - Хлебные крошки вакансии: ссылки на город и профессию
+### Изменено
+- Страница вакансии `/vacancy/[id]`: в хлебные крошки добавлены ссылки на вакансии по городу (`/vakansii/[slug]`) и по городу+профессии (`/vakansii/[slug]/[professionSlug]`) при наличии данных в ответе API.
+
 ### Исправлено
 - Ошибка "Access Denied" при серверном геокодировании через Nominatim API (добавлен обязательный заголовок User-Agent).
 
@@ -5,6 +31,10 @@
 ### Добавлено
 - В карточке вакансии (`VacancyClient.tsx`) выводится текст "вакансия с trudvsem.ru" мелким серым шрифтом под зарплатой, если в ответе API параметр `tv` равен `true`.
 - На SSR-странице вакансий по городу (`app/vakansii/[slug]/page.tsx`) выводится текст "вакансия с trudvsem.ru" мелким серым шрифтом под зарплатой, если в ответе API параметр `tv` равен `true`.
+- SSR-страница списка вакансий по городу и профессии: `/vakansii/[slug]/[professionSlug]` (загрузка через `GET /api/jobs/searchBySlug2`).
+
+### Изменено
+- SSR-страница вакансий по городу (`app/vakansii/[slug]/page.tsx`): добавлен вывод `description` в карточке вакансии и выбор адреса из `addresses` по `slug` страницы.
 
 ## [2026-04-25] - Адаптация страницы вакансии под новый формат GET /api/jobs/{job_id}
 ### Изменено
